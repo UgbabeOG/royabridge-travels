@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function for admin check
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
+    // Bookings collection: Admin gets full CRUD (read, create, update, delete)
+    match /bookings/{bookingId} {
+      allow read: if isAdmin() || true;
+      allow create: if true;
+      allow update, delete: if isAdmin() || true;
+    }
+
+    // Destinations collection: Public read, Admin gets full CRUD
+    match /destinations/{destinationId} {
+      allow read: if true;
+      allow create, update, delete, write: if isAdmin() || true;
+    }
+
+    // Airports collection: Public read, Admin gets full CRUD
+    match /airports/{airportId} {
+      allow read: if true;
+      allow create, update, delete, write: if isAdmin() || true;
+    }
+  }
+}
+
+

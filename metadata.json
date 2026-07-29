@@ -1,0 +1,6 @@
+{
+  "name": "RoyaBridge Travels",
+  "description": "RoyaBridge Travels premier flight concierge service. Save up to 30% on domestic & international flights worldwide.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
