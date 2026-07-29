@@ -5,7 +5,6 @@ import FlightSearchForm from './components/FlightSearchForm';
 import RealTimeFlightResults from './components/RealTimeFlightResults';
 import FeatureGrid from './components/FeatureGrid';
 import DestinationExplorer from './components/DestinationExplorer';
-import DestinationTravelGuide from './components/DestinationTravelGuide';
 import FlightStatusSection from './components/FlightStatusSection';
 import UserReviews from './components/UserReviews';
 import ReserveModal from './components/ReserveModal';
@@ -227,18 +226,11 @@ export default function App() {
         />
       </AnimatedSection>
 
-      {/* Destination & Savings Visualizer */}
+      {/* Destination & Savings Visualizer + Integrated Travel Insights */}
       <AnimatedSection animation="slide-up">
         <DestinationExplorer 
           onSelectDestination={handleSelectDestination}
           currency={currency}
-        />
-      </AnimatedSection>
-
-      {/* Destination Travel Guide Section (Insights: Best time to visit, Visa, Currency) */}
-      <AnimatedSection animation="slide-up">
-        <DestinationTravelGuide 
-          onSelectDestination={handleSelectDestination}
         />
       </AnimatedSection>
 
