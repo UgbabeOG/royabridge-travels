@@ -37,10 +37,10 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
       <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         
         {/* Brand Logo */}
-        <a href="#" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
+        <a href="#" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', minWidth: 0 }}>
           <div style={{
-            width: '42px',
-            height: '42px',
+            width: '36px',
+            height: '36px',
             borderRadius: '50%',
             background: 'radial-gradient(circle, rgba(229, 193, 88, 0.3) 0%, rgba(11, 16, 29, 0.9) 100%)',
             border: '1.5px solid var(--color-gold)',
@@ -50,7 +50,7 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
             boxShadow: '0 0 15px rgba(229, 193, 88, 0.3)',
             flexShrink: 0
           }}>
-            <svg width="26" height="26" viewBox="0 0 100 100">
+            <svg width="22" height="22" viewBox="0 0 100 100">
               <circle cx="50" cy="50" r="44" fill="none" stroke="var(--color-gold)" strokeWidth="4" />
               <ellipse cx="50" cy="50" rx="44" ry="18" fill="none" stroke="var(--color-gold)" strokeWidth="3" />
               <ellipse cx="50" cy="50" rx="18" ry="44" fill="none" stroke="var(--color-gold)" strokeWidth="3" />
@@ -58,23 +58,30 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
               <path d="M 65 52 V 46 Q 65 43 70 43 Q 75 43 75 46 V 52" fill="none" stroke="var(--color-gold)" strokeWidth="3" />
             </svg>
           </div>
-          <div>
+          <div style={{ overflow: 'hidden' }}>
             <span className="font-royal" style={{
-              fontSize: 'clamp(1.1rem, 2vw, 1.45rem)',
+              fontSize: 'clamp(0.95rem, 3.8vw, 1.35rem)',
               fontWeight: 800,
               color: 'var(--color-gold-bright)',
-              letterSpacing: '0.03em',
+              letterSpacing: '0.02em',
               display: 'block',
-              lineHeight: 1.1
+              lineHeight: 1.1,
+              whiteSpace: 'nowrap',
+              textOverflow: 'ellipsis',
+              overflow: 'hidden'
             }}>
               ROYABRIDGE TRAVELS
             </span>
             <span style={{
-              fontSize: '0.68rem',
+              fontSize: '0.62rem',
               color: '#CBD5E1',
-              letterSpacing: '0.1em',
+              letterSpacing: '0.08em',
               textTransform: 'uppercase',
-              fontWeight: 500
+              fontWeight: 500,
+              display: 'block',
+              whiteSpace: 'nowrap',
+              textOverflow: 'ellipsis',
+              overflow: 'hidden'
             }}>
               Flight Concierge & Booking
             </span>
@@ -82,24 +89,24 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
         </a>
 
         {/* Desktop Navigation Links */}
-        <div style={{ display: 'none', lg: 'flex', alignItems: 'center', gap: '24px' }} className="desktop-links">
-          <a href="#about" style={navLinkStyle}>About Us</a>
+        <div className="desktop-links">
+          <a href="#about" style={navLinkStyle}>About</a>
           <a href="#destinations" style={navLinkStyle}>Destinations</a>
-          <a href="#reserve" style={navLinkStyle}>Reserve Before Payment</a>
-          <a href="#reviews" style={navLinkStyle}>User Reviews</a>
+          <a href="#reserve" style={navLinkStyle}>Reserve Flight</a>
+          <a href="#reviews" style={navLinkStyle}>Reviews</a>
           <a href="#faq" style={navLinkStyle}>FAQ</a>
         </div>
 
         {/* Action Buttons & Hamburger Menu */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           
-          {/* Contact Us Button */}
+          {/* Contact Us Button - Desktop Only */}
           <button 
             onClick={onOpenContact}
-            className="btn-outline-gold"
-            style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+            className="btn-outline-gold desktop-only"
+            style={{ padding: '7px 14px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
           >
-            <PhoneCall size={15} />
+            <PhoneCall size={14} />
             Contact Us
           </button>
 
@@ -107,9 +114,9 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
           <button 
             onClick={onOpenTracker}
             className="btn-outline-gold desktop-only"
-            style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+            style={{ padding: '7px 14px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
           >
-            <ShieldCheck size={15} />
+            <ShieldCheck size={14} />
             Track
           </button>
 
@@ -117,9 +124,9 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
           <button 
             onClick={onOpenChat}
             className="btn-gold desktop-only"
-            style={{ padding: '9px 18px', fontSize: '0.85rem' }}
+            style={{ padding: '7px 16px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
           >
-            <MessageSquare size={15} />
+            <MessageSquare size={14} />
             Message
           </button>
 
@@ -204,15 +211,20 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
       )}
 
       <style>{`
+        .desktop-links {
+          display: none;
+        }
         @media (min-width: 992px) {
           .desktop-links {
             display: flex !important;
+            align-items: center;
+            gap: 16px;
           }
           .hamburger-btn {
             display: none !important;
           }
         }
-        @media (max-width: 768px) {
+        @media (max-width: 991px) {
           .desktop-only {
             display: none !important;
           }
@@ -225,9 +237,12 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
 const navLinkStyle = {
   color: 'var(--color-text-main)',
   textDecoration: 'none',
-  fontSize: '0.92rem',
-  fontWeight: '500',
-  transition: 'color 0.2s ease'
+  fontSize: '0.84rem',
+  fontWeight: '600',
+  letterSpacing: '0.01em',
+  whiteSpace: 'nowrap',
+  transition: 'color 0.2s ease',
+  padding: '4px 6px'
 };
 
 const mobileNavLinkStyle = {

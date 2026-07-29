@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Search, ShieldCheck, X, Clock, Plane, Activity, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Search, ShieldCheck, X, Clock, Plane, Activity, CheckCircle2, AlertCircle, RefreshCw, User, Mail, Phone, Tag } from 'lucide-react';
 import { formatCurrency } from '../utils/pnrGenerator';
+import { lookupBookingFromDatabase } from '../lib/bookingsService';
 
-export default function BookingTracker({ isOpen, onClose, onOpenChat }) {
+export default function BookingTracker({ isOpen, onClose, onOpenChat, showToast }) {
   const [tab, setTab] = useState('pnr'); // 'pnr' | 'flight'
   const [searchInput, setSearchInput] = useState('');
   const [result, setResult] = useState(null);
@@ -12,24 +13,37 @@ export default function BookingTracker({ isOpen, onClose, onOpenChat }) {
 
   if (!isOpen) return null;
 
-  const handlePnrSearch = (e) => {
+  const handlePnrSearch = async (e) => {
     e.preventDefault();
     if (!searchInput.trim()) {
-      setError('Please enter a PNR code or email.');
+      setError('Please enter your 6-character PNR code, full legal name, or email address.');
       return;
     }
     setError('');
-    
-    setResult({
-      pnr: searchInput.toUpperCase(),
-      passenger: 'Alex Morgan',
-      route: 'JFK (New York) → LHR (London Heathrow)',
-      status: 'CONFIRMED_HOLD',
-      holdExpires: '23 Hours Remaining',
-      totalFare: 805,
-      savedAmount: 345,
-      cabin: 'Business Class'
-    });
+    setLoading(true);
+    setResult(null);
+
+    try {
+      const bookingData = await lookupBookingFromDatabase(searchInput);
+      if (bookingData) {
+        setResult(bookingData);
+        if (showToast) {
+          showToast({
+            type: 'success',
+            title: 'PNR Hold Found in DB!',
+            message: `Retrieved confirmed booking for ${bookingData.passenger} (${bookingData.route}).`,
+            pnr: bookingData.pnr
+          });
+        }
+      } else {
+        setError(`No active reservation hold found matching "${searchInput}". Please check your 6-character PNR code or email address.`);
+      }
+    } catch (err) {
+      console.error('PNR lookup error:', err);
+      setError('Failed to query database. Please check your search code and try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFlightStatusSearch = async (e) => {
@@ -172,7 +186,7 @@ export default function BookingTracker({ isOpen, onClose, onOpenChat }) {
             <form onSubmit={handlePnrSearch} style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
               <input 
                 type="text" 
-                placeholder="e.g. RB7X9Y or email@domain.com"
+                placeholder="e.g. RB8K92, Full Name, or email@domain.com"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 style={{
@@ -186,39 +200,98 @@ export default function BookingTracker({ isOpen, onClose, onOpenChat }) {
                   outline: 'none'
                 }}
               />
-              <button type="submit" className="btn-gold" style={{ padding: '12px 20px' }}>
-                <Search size={18} />
-                Search
+              <button type="submit" className="btn-gold" style={{ padding: '12px 20px' }} disabled={loading}>
+                {loading ? <RefreshCw className="animate-spin" size={18} /> : <Search size={18} />}
+                {loading ? 'Searching...' : 'Search DB'}
               </button>
             </form>
 
-            {result && (
+            {/* Loading Skeleton */}
+            {loading && (
               <div style={{
-                background: 'rgba(7, 11, 20, 0.8)',
+                background: 'rgba(7, 11, 20, 0.9)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid rgba(229, 193, 88, 0.2)',
+                padding: '24px',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: '-100%',
+                  width: '100%',
+                  height: '100%',
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%)',
+                  animation: 'skeletonShimmer 1.5s infinite'
+                }} />
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <div>
+                    <div style={{ width: '120px', height: '12px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', marginBottom: '8px' }} />
+                    <div style={{ width: '160px', height: '24px', background: 'rgba(229,193,88,0.2)', borderRadius: '4px' }} />
+                  </div>
+                  <div style={{ width: '100px', height: '28px', background: 'rgba(16,185,129,0.2)', borderRadius: '20px' }} />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '20px' }}>
+                  {[1, 2, 3, 4, 5, 6].map(i => (
+                    <div key={i} style={{ width: '80%', height: '16px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px' }} />
+                  ))}
+                </div>
+
+                <div style={{ width: '100%', height: '40px', background: 'rgba(229,193,88,0.15)', borderRadius: 'var(--radius-sm)' }} />
+              </div>
+            )}
+
+            {!loading && result && (
+              <div style={{
+                background: 'rgba(7, 11, 20, 0.9)',
                 borderRadius: 'var(--radius-md)',
                 border: '1px solid rgba(16, 185, 129, 0.4)',
                 padding: '20px'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#94A3B8' }}>PNR Reference Code</span>
-                  <span style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--color-gold-bright)' }}>{result.pnr}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Passenger</span>
-                  <span style={{ color: '#FFF', fontWeight: 600 }}>{result.passenger}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Route</span>
-                  <span style={{ color: '#FFF', fontWeight: 600 }}>{result.route}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Hold Expiry</span>
-                  <span style={{ color: '#6EE7B7', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Clock size={14} /> {result.holdExpires}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '10px' }}>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: '#94A3B8' }}>DATABASE PNR RECORD</span>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--color-gold-bright)', letterSpacing: '0.05em' }}>
+                      {result.pnr}
+                    </div>
+                  </div>
+                  <span style={{
+                    background: 'rgba(16, 185, 129, 0.2)',
+                    color: '#10B981',
+                    border: '1px solid #10B981',
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-full)',
+                    fontSize: '0.75rem',
+                    fontWeight: 800
+                  }}>
+                    {result.status}
                   </span>
                 </div>
-                <button onClick={onOpenChat} className="btn-gold" style={{ width: '100%', padding: '10px' }}>
-                  Chat With Flight Concierge Agent
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.86rem', color: '#CBD5E1', marginBottom: '16px' }}>
+                  <div><strong>Lead Passenger:</strong> {result.passenger}</div>
+                  <div><strong>Email:</strong> {result.email || 'N/A'}</div>
+                  <div><strong>Flight:</strong> {result.airline} ({result.flightNumber})</div>
+                  <div><strong>Cabin:</strong> {result.cabin}</div>
+                  <div style={{ gridColumn: 'span 2' }}><strong>Route:</strong> {result.route}</div>
+                  <div><strong>Depart Date:</strong> {result.departDate}</div>
+                  {result.returnDate && <div><strong>Return Date:</strong> {result.returnDate}</div>}
+                  <div><strong>Total Fare:</strong> {formatCurrency(result.totalFare)}</div>
+                  <div><strong>Saved:</strong> <span style={{ color: '#6EE7B7', fontWeight: 700 }}>{formatCurrency(result.savedAmount)}</span></div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(16, 185, 129, 0.1)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#94A3B8' }}>24h Hold Expiry Countdown</span>
+                  <span style={{ color: '#6EE7B7', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.88rem' }}>
+                    <Clock size={15} /> {result.holdExpires}
+                  </span>
+                </div>
+
+                <button onClick={onOpenChat} className="btn-gold" style={{ width: '100%', padding: '11px', fontSize: '0.9rem' }}>
+                  Message Concierge Regarding PNR {result.pnr}
                 </button>
               </div>
             )}
@@ -255,7 +328,38 @@ export default function BookingTracker({ isOpen, onClose, onOpenChat }) {
               </button>
             </form>
 
-            {flightStatus && (
+            {/* Loading Skeleton */}
+            {loading && (
+              <div style={{
+                background: 'rgba(7, 11, 20, 0.8)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid rgba(229, 193, 88, 0.2)',
+                padding: '20px',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: '-100%',
+                  width: '100%',
+                  height: '100%',
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%)',
+                  animation: 'skeletonShimmer 1.5s infinite'
+                }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <div style={{ width: '140px', height: '24px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }} />
+                  <div style={{ width: '80px', height: '24px', background: 'rgba(16,185,129,0.2)', borderRadius: '12px' }} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  {[1, 2, 3, 4, 5, 6].map(i => (
+                    <div key={i} style={{ width: '75%', height: '14px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px' }} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!loading && flightStatus && (
               <div style={{
                 background: 'rgba(7, 11, 20, 0.8)',
                 borderRadius: 'var(--radius-md)',

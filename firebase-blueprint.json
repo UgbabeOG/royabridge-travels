@@ -1,0 +1,29 @@
+{
+  "entities": {
+    "bookings": {
+      "title": "Flight Bookings & PNR Holds",
+      "description": "Stores user flight reservations, passenger details, PNR code, route, pricing, and hold expiry",
+      "properties": {
+        "pnr": { "type": "string", "description": "Unique 6-character PNR reference code" },
+        "passengerName": { "type": "string", "description": "Lead passenger full legal name" },
+        "passengerEmail": { "type": "string", "description": "Lead passenger email address" },
+        "passengerPhone": { "type": "string", "description": "Lead passenger contact phone" },
+        "flightNumber": { "type": "string", "description": "Flight number e.g. BA178" },
+        "airline": { "type": "string", "description": "Airline name e.g. British Airways" },
+        "origin": { "type": "string", "description": "Departure airport code e.g. JFK" },
+        "destination": { "type": "string", "description": "Arrival airport code e.g. LHR" },
+        "departDate": { "type": "string", "description": "Departure date string" },
+        "returnDate": { "type": "string", "description": "Return date string or null" },
+        "cabinClass": { "type": "string", "description": "Cabin class e.g. Business Class" },
+        "passengersCount": { "type": "number", "description": "Number of passengers" },
+        "retailPrice": { "type": "number", "description": "Original retail fare USD" },
+        "royaPrice": { "type": "number", "description": "Discounted Concierge fare USD" },
+        "savings": { "type": "number", "description": "Saved USD amount" },
+        "status": { "type": "string", "description": "Status e.g. CONFIRMED_HOLD, TICKETED, EXPIRED" },
+        "holdExpiresAt": { "type": "string", "description": "ISO timestamp for hold expiry" },
+        "createdAt": { "type": "string", "description": "ISO timestamp when hold was created" }
+      },
+      "required": ["pnr", "passengerName", "passengerEmail", "origin", "destination", "status"]
+    }
+  }
+}

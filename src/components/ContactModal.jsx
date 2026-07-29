@@ -30,7 +30,9 @@ export default function ContactModal({ isOpen, onClose, onOpenChat }) {
         background: '#0E1526',
         border: '1.5px solid var(--border-gold-glow)',
         borderRadius: 'var(--radius-lg)',
-        padding: '32px'
+        padding: 'clamp(20px, 5vw, 32px)',
+        maxHeight: '90vh',
+        overflowY: 'auto'
       }}>
         
         <div style={{
@@ -39,13 +41,13 @@ export default function ContactModal({ isOpen, onClose, onOpenChat }) {
           alignItems: 'center',
           borderBottom: '1px solid rgba(229, 193, 88, 0.2)',
           paddingBottom: '16px',
-          marginBottom: '24px'
+          marginBottom: '20px'
         }}>
           <div>
             <span className="gold-badge" style={{ fontSize: '0.75rem', marginBottom: '4px' }}>
               24/7 Concierge Support
             </span>
-            <h2 className="font-royal" style={{ color: '#FFF', fontSize: '1.5rem', marginTop: '4px' }}>
+            <h2 className="font-royal" style={{ color: '#FFF', fontSize: '1.4rem', marginTop: '4px' }}>
               Contact RoyaBridge Travels
             </h2>
           </div>
@@ -61,56 +63,58 @@ export default function ContactModal({ isOpen, onClose, onOpenChat }) {
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              flexShrink: 0
             }}
           >
             <X size={18} />
           </button>
         </div>
 
-        <p style={{ color: '#CBD5E1', fontSize: '0.92rem', marginBottom: '24px' }}>
+        <p style={{ color: '#CBD5E1', fontSize: '0.9rem', marginBottom: '20px', lineHeight: 1.5 }}>
           Connect directly with our senior flight concierge team via phone, email, or live chat for immediate assistance with bookings, itinerary holds, or custom fares.
         </p>
 
         {/* Contact Options Grid */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '28px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
           
           {/* Phone Contact */}
           <div style={{
             background: 'rgba(7, 11, 20, 0.7)',
             border: '1px solid var(--border-gold)',
             borderRadius: 'var(--radius-md)',
-            padding: '16px 20px',
+            padding: '14px 18px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
             gap: '12px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: '1 1 200px' }}>
               <div style={{
-                width: '42px',
-                height: '42px',
+                width: '40px',
+                height: '40px',
                 borderRadius: '50%',
                 background: 'rgba(229, 193, 88, 0.15)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'var(--color-gold-bright)'
+                color: 'var(--color-gold-bright)',
+                flexShrink: 0
               }}>
-                <Phone size={20} />
+                <Phone size={18} />
               </div>
-              <div>
-                <span style={{ fontSize: '0.78rem', color: '#94A3B8', display: 'block' }}>Call Toll-Free (24/7)</span>
-                <strong style={{ fontSize: '1.05rem', color: '#FFF' }}>+1 (800) 769-2274</strong>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <span style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block' }}>Call Toll-Free (24/7)</span>
+                <strong style={{ fontSize: '1.02rem', color: '#FFF', display: 'block' }}>+1 (800) 769-2274</strong>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
               <a 
                 href="tel:+18007692274"
                 className="btn-gold"
-                style={{ padding: '8px 14px', fontSize: '0.8rem' }}
+                style={{ padding: '8px 14px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
               >
                 Call Now
               </a>
@@ -122,7 +126,8 @@ export default function ContactModal({ isOpen, onClose, onOpenChat }) {
                   borderRadius: 'var(--radius-sm)',
                   color: '#CBD5E1',
                   padding: '8px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  flexShrink: 0
                 }}
                 title="Copy Phone Number"
               >
@@ -136,37 +141,46 @@ export default function ContactModal({ isOpen, onClose, onOpenChat }) {
             background: 'rgba(7, 11, 20, 0.7)',
             border: '1px solid var(--border-gold)',
             borderRadius: 'var(--radius-md)',
-            padding: '16px 20px',
+            padding: '14px 18px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
             gap: '12px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: '1 1 200px' }}>
               <div style={{
-                width: '42px',
-                height: '42px',
+                width: '40px',
+                height: '40px',
                 borderRadius: '50%',
                 background: 'rgba(229, 193, 88, 0.15)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'var(--color-gold-bright)'
+                color: 'var(--color-gold-bright)',
+                flexShrink: 0
               }}>
-                <Mail size={20} />
+                <Mail size={18} />
               </div>
-              <div>
-                <span style={{ fontSize: '0.78rem', color: '#94A3B8', display: 'block' }}>Email Concierge</span>
-                <strong style={{ fontSize: '0.98rem', color: '#FFF' }}>concierge@royabridgetravels.com</strong>
+              <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                <span style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block' }}>Email Concierge</span>
+                <strong style={{ 
+                  fontSize: 'clamp(0.8rem, 3vw, 0.95rem)', 
+                  color: '#FFF', 
+                  display: 'block',
+                  wordBreak: 'break-word',
+                  overflowWrap: 'anywhere'
+                }}>
+                  concierge@royabridgetravels.com
+                </strong>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
               <a 
                 href="mailto:concierge@royabridgetravels.com?subject=RoyaBridge%20Flight%20Concierge%20Inquiry"
                 className="btn-outline-gold"
-                style={{ padding: '8px 14px', fontSize: '0.8rem' }}
+                style={{ padding: '8px 14px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
               >
                 Send Email
               </a>
@@ -178,7 +192,8 @@ export default function ContactModal({ isOpen, onClose, onOpenChat }) {
                   borderRadius: 'var(--radius-sm)',
                   color: '#CBD5E1',
                   padding: '8px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  flexShrink: 0
                 }}
                 title="Copy Email Address"
               >

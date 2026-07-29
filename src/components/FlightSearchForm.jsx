@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plane, Calendar, Users, Shield, ArrowRightLeft, Sparkles, Activity, Search } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plane, Calendar, Users, Shield, ArrowRightLeft, Sparkles, Activity, Search, History, Clock, ArrowRight, Tag } from 'lucide-react';
 import { POPULAR_AIRPORTS } from '../data/destinations';
 import { calculateSavings, formatCurrency } from '../utils/pnrGenerator';
 
@@ -13,29 +13,99 @@ export default function FlightSearchForm({ onSearchFlights, loading }) {
   const [cabinClass, setCabinClass] = useState('Business');
   const [reserveBeforePayment, setReserveBeforePayment] = useState(true);
 
+  // Recent Searches state (last 3 queries persisted in localStorage)
+  const [recentSearches, setRecentSearches] = useState([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('royabridge_recent_searches');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setRecentSearches(parsed.slice(0, 3));
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load recent searches:', err);
+    }
+  }, []);
+
+  const saveRecentSearch = (searchItem) => {
+    try {
+      const updated = [
+        searchItem,
+        ...recentSearches.filter(s => !(s.origin === searchItem.origin && s.destination === searchItem.destination && s.cabinClass === searchItem.cabinClass))
+      ].slice(0, 3);
+      setRecentSearches(updated);
+      localStorage.setItem('royabridge_recent_searches', JSON.stringify(updated));
+    } catch (err) {
+      console.warn('Failed to persist recent search:', err);
+    }
+  };
+
   // Dynamic estimate calculation
   const baseEstimate = cabinClass === 'Business' ? 1450 : (cabinClass === 'First' ? 2800 : 750);
   const totalBase = baseEstimate * passengers;
   const savings = calculateSavings(totalBase, cabinClass);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const originObj = POPULAR_AIRPORTS.find(a => a.code === origin) || { code: origin, city: origin, name: origin };
-    const destObj = POPULAR_AIRPORTS.find(a => a.code === destination) || { code: destination, city: destination, name: destination };
+  const executeSearch = (params) => {
+    const originCode = params.origin || origin;
+    const destCode = params.destination || destination;
+    const cabin = params.cabinClass || cabinClass;
+    const depDate = params.departDate || departDate;
+    const retDate = params.returnDate || returnDate;
+    const tType = params.tripType || tripType;
+    const pax = params.passengers || passengers;
 
-    onSearchFlights({
-      tripType,
-      origin,
-      destination,
+    const originObj = POPULAR_AIRPORTS.find(a => a.code === originCode) || { code: originCode, city: originCode, name: originCode };
+    const destObj = POPULAR_AIRPORTS.find(a => a.code === destCode) || { code: destCode, city: destCode, name: destCode };
+
+    const searchPayload = {
+      tripType: tType,
+      origin: originCode,
+      destination: destCode,
       originObj,
       destObj,
-      departDate,
-      returnDate: tripType === 'round' ? returnDate : null,
-      passengers,
-      cabinClass,
+      departDate: depDate,
+      returnDate: tType === 'round' ? retDate : null,
+      passengers: pax,
+      cabinClass: cabin,
       reserveBeforePayment,
       savings
+    };
+
+    // Persist to recent searches
+    saveRecentSearch({
+      id: Date.now(),
+      origin: originCode,
+      destination: destCode,
+      originCity: originObj.city || originCode,
+      destCity: destObj.city || destCode,
+      departDate: depDate,
+      returnDate: tType === 'round' ? retDate : null,
+      cabinClass: cabin,
+      tripType: tType,
+      passengers: pax
     });
+
+    onSearchFlights(searchPayload);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    executeSearch({ origin, destination, departDate, returnDate, tripType, passengers, cabinClass });
+  };
+
+  const handleSelectRecent = (recent) => {
+    setOrigin(recent.origin);
+    setDestination(recent.destination);
+    setDepartDate(recent.departDate || '2026-08-15');
+    if (recent.returnDate) setReturnDate(recent.returnDate);
+    setCabinClass(recent.cabinClass || 'Business');
+    if (recent.tripType) setTripType(recent.tripType);
+    if (recent.passengers) setPassengers(recent.passengers);
+
+    executeSearch(recent);
   };
 
   const swapLocations = () => {
@@ -238,47 +308,136 @@ export default function FlightSearchForm({ onSearchFlights, loading }) {
 
             </div>
 
-            {/* Bottom Bar: Savings Calculator + Action Button */}
+            {/* Recent Searches Bar (horizontal scrollable, max 3 queries) */}
+            {recentSearches && recentSearches.length > 0 && (
+              <div style={{
+                marginTop: '20px',
+                paddingTop: '16px',
+                borderTop: '1px dashed rgba(229, 193, 88, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.78rem',
+                  color: 'var(--color-gold-bright)',
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap'
+                }}>
+                  <History size={14} color="var(--color-gold)" />
+                  Recent Searches:
+                </div>
+
+                <div 
+                  className="no-scrollbar"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    overflowX: 'auto',
+                    paddingBottom: '2px',
+                    width: '100%'
+                  }}
+                >
+                  {recentSearches.map((item, idx) => (
+                    <button
+                      key={item.id || idx}
+                      type="button"
+                      onClick={() => handleSelectRecent(item)}
+                      style={{
+                        background: 'rgba(7, 11, 20, 0.85)',
+                        border: '1px solid rgba(229, 193, 88, 0.35)',
+                        borderRadius: 'var(--radius-full)',
+                        padding: '6px 14px',
+                        color: '#FFF',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        whiteSpace: 'nowrap',
+                        transition: 'all 0.2s ease',
+                        flexShrink: 0
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--color-gold-bright)';
+                        e.currentTarget.style.background = 'rgba(229, 193, 88, 0.2)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(229, 193, 88, 0.35)';
+                        e.currentTarget.style.background = 'rgba(7, 11, 20, 0.85)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      <Clock size={12} color="var(--color-gold)" />
+                      <span>{item.origin} → {item.destination}</span>
+                      <span style={{ color: '#94A3B8', fontSize: '0.72rem' }}>• {item.cabinClass}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Bottom Bar: High-Visibility Price Comparison + Action Button */}
             <div style={{
-              marginTop: '32px',
+              marginTop: '28px',
               paddingTop: '24px',
-              borderTop: '1px solid rgba(229, 193, 88, 0.15)',
+              borderTop: '1px solid rgba(229, 193, 88, 0.2)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               flexWrap: 'wrap',
               gap: '20px'
             }}>
-              {/* Dynamic Price Preview Badge */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{
-                  padding: '12px 20px',
-                  background: 'rgba(16, 185, 129, 0.12)',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  borderRadius: 'var(--radius-md)'
-                }}>
-                  <span style={{ fontSize: '0.8rem', color: '#6EE7B7', display: 'block', fontWeight: 600 }}>
-                    ESTIMATED CONCIERGE PRICE
+              {/* High Impact Public Fare vs RoyaBridge Concierge Fare Comparison Box */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(7, 11, 20, 0.95) 0%, rgba(14, 21, 38, 0.95) 100%)',
+                border: '1.5px solid #10B981',
+                borderRadius: 'var(--radius-md)',
+                padding: '14px 22px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '20px',
+                flexWrap: 'wrap',
+                boxShadow: '0 4px 20px rgba(16, 185, 129, 0.15)'
+              }}>
+                <div>
+                  <span style={{ fontSize: '0.72rem', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, display: 'block' }}>
+                    PUBLIC AIRFARE (STANDARD)
                   </span>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-gold-bright)' }}>
-                      {formatCurrency(savings.finalPrice)}
-                    </span>
-                    <span style={{ fontSize: '0.9rem', color: '#94A3B8', textDecoration: 'line-through' }}>
-                      {formatCurrency(savings.originalPrice)}
-                    </span>
-                    <span style={{
-                      fontSize: '0.78rem',
-                      background: 'var(--color-gold)',
-                      color: '#070B14',
-                      padding: '2px 8px',
-                      borderRadius: '10px',
-                      fontWeight: 800
-                    }}>
-                      SAVE {savings.savingsPercentage}%
-                    </span>
-                  </div>
+                  <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#EF4444', textDecoration: 'line-through' }}>
+                    {formatCurrency(savings.originalPrice)}
+                  </span>
                 </div>
+
+                <div style={{ width: '1px', height: '32px', background: 'rgba(255,255,255,0.15)' }} />
+
+                <div>
+                  <span style={{ fontSize: '0.72rem', color: '#6EE7B7', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800, display: 'block' }}>
+                    ROYABRIDGE CONCIERGE FARE
+                  </span>
+                  <span style={{ fontSize: '1.65rem', fontWeight: 900, color: 'var(--color-gold-bright)', letterSpacing: '-0.02em' }}>
+                    {formatCurrency(savings.finalPrice)}
+                  </span>
+                </div>
+
+                <span style={{
+                  background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                  color: '#FFF',
+                  padding: '6px 14px',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: '0.82rem',
+                  fontWeight: 900,
+                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                  whiteSpace: 'nowrap'
+                }}>
+                  YOU SAVE {formatCurrency(savings.discountAmount)} ({savings.savingsPercentage}% OFF)
+                </span>
               </div>
 
               {/* Submit CTA */}

@@ -46,19 +46,29 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbar - Subtle & Clean */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: var(--bg-dark);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-gold-dark);
+  background: rgba(229, 193, 88, 0.3);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-gold);
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
 /* Typography Utilities */
@@ -254,3 +264,30 @@ h1, h2, h3, .font-royal {
   z-index: 0;
   animation: orbFloat 10s ease-in-out infinite;
 }
+
+/* Continuous Autoplay Infinite Marquee Carousel */
+@keyframes continuousMarquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.marquee-wrapper {
+  display: flex;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}
+
+.marquee-track {
+  display: flex;
+  gap: 16px;
+  width: max-content;
+  animation: continuousMarquee 35s linear infinite;
+}
+
+.marquee-wrapper:hover .marquee-track {
+  animation-play-state: paused;
+}
+

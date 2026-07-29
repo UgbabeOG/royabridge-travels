@@ -5,6 +5,7 @@ import FlightSearchForm from './components/FlightSearchForm';
 import RealTimeFlightResults from './components/RealTimeFlightResults';
 import FeatureGrid from './components/FeatureGrid';
 import DestinationExplorer from './components/DestinationExplorer';
+import FlightStatusSection from './components/FlightStatusSection';
 import UserReviews from './components/UserReviews';
 import ReserveModal from './components/ReserveModal';
 import BookingTracker from './components/BookingTracker';
@@ -12,6 +13,7 @@ import ConciergeChat from './components/ConciergeChat';
 import ContactModal from './components/ContactModal';
 import FAQSection from './components/FAQSection';
 import Footer from './components/Footer';
+import ToastNotification from './components/ToastNotification';
 import { POPULAR_AIRPORTS } from './data/destinations';
 
 export default function App() {
@@ -19,6 +21,16 @@ export default function App() {
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
+  const [toasts, setToasts] = useState([]);
+
+  const showToast = ({ type = 'success', title, message, pnr, duration = 5000 }) => {
+    const id = Date.now() + Math.random().toString(36).substring(2, 6);
+    setToasts(prev => [...prev, { id, type, title, message, pnr, duration }]);
+  };
+
+  const handleDismissToast = (id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   // Real-time Flight Search API State
   const [searchQuery, setSearchQuery] = useState({
@@ -181,6 +193,11 @@ export default function App() {
         onSelectDestination={handleSelectDestination}
       />
 
+      {/* Flight Status Lookup Section */}
+      <FlightStatusSection 
+        onSelectFlight={handleSelectFlight}
+      />
+
       {/* Customer Feedback & Reviews Section */}
       <UserReviews 
         onOpenChat={() => setIsChatOpen(true)}
@@ -199,6 +216,7 @@ export default function App() {
       {reserveModalData && (
         <ReserveModal 
           data={reserveModalData}
+          showToast={showToast}
           onClose={() => setReserveModalData(null)}
           onOpenChat={() => {
             setReserveModalData(null);
@@ -210,6 +228,7 @@ export default function App() {
       {/* PNR Booking Tracker & Live Flight Status Modal */}
       <BookingTracker 
         isOpen={isTrackerOpen}
+        showToast={showToast}
         onClose={() => setIsTrackerOpen(false)}
         onOpenChat={() => {
           setIsTrackerOpen(false);
@@ -231,6 +250,12 @@ export default function App() {
       <ConciergeChat 
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
+      />
+
+      {/* Toast Notification Container */}
+      <ToastNotification 
+        toasts={toasts} 
+        onDismiss={handleDismissToast} 
       />
 
     </div>
