@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plane, Calendar, Users, Shield, ArrowRightLeft, Sparkles, Activity, Search, History, Clock, ArrowRight, Tag } from 'lucide-react';
+import { Plane, Calendar, Users, Shield, ArrowRightLeft, Sparkles, Activity, Search, History, Clock, ArrowRight, Tag, Globe } from 'lucide-react';
 import { POPULAR_AIRPORTS } from '../data/destinations';
 import { calculateSavings, formatCurrency } from '../utils/pnrGenerator';
 
-export default function FlightSearchForm({ onSearchFlights, loading }) {
+export default function FlightSearchForm({ onSearchFlights, loading, currency = 'USD', onCurrencyChange }) {
   const [tripType, setTripType] = useState('round');
   const [origin, setOrigin] = useState('JFK');
   const [destination, setDestination] = useState('LHR');
@@ -170,8 +170,43 @@ export default function FlightSearchForm({ onSearchFlights, loading }) {
               </button>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span className="gold-badge" style={{ fontSize: '0.8rem', padding: '4px 12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              {/* Currency Selector Dropdown */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'rgba(15, 23, 42, 0.85)',
+                border: '1.5px solid var(--border-gold)',
+                borderRadius: 'var(--radius-full)',
+                padding: '5px 14px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+              }}>
+                <Globe size={15} color="var(--color-gold)" />
+                <span style={{ fontSize: '0.8rem', color: '#94A3B8', fontWeight: 600 }}>Currency:</span>
+                <select 
+                  value={currency} 
+                  onChange={(e) => onCurrencyChange && onCurrencyChange(e.target.value)}
+                  style={{
+                    background: 'transparent',
+                    color: 'var(--color-gold-bright)',
+                    border: 'none',
+                    outline: 'none',
+                    fontWeight: 800,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    paddingRight: '2px'
+                  }}
+                  id="currency-selector"
+                  aria-label="Select Currency"
+                >
+                  <option value="USD" style={{ background: '#0F172A', color: '#FFF' }}>USD ($)</option>
+                  <option value="EUR" style={{ background: '#0F172A', color: '#FFF' }}>EUR (€)</option>
+                  <option value="GBP" style={{ background: '#0F172A', color: '#FFF' }}>GBP (£)</option>
+                </select>
+              </div>
+
+              <span className="gold-badge" style={{ fontSize: '0.8rem', padding: '5px 14px' }}>
                 <Shield size={14} color="var(--color-gold)" />
                 Reserve Before Payment Enabled
               </span>
@@ -411,7 +446,7 @@ export default function FlightSearchForm({ onSearchFlights, loading }) {
                     PUBLIC AIRFARE (STANDARD)
                   </span>
                   <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#EF4444', textDecoration: 'line-through' }}>
-                    {formatCurrency(savings.originalPrice)}
+                    {formatCurrency(savings.originalPrice, currency)}
                   </span>
                 </div>
 
@@ -422,7 +457,7 @@ export default function FlightSearchForm({ onSearchFlights, loading }) {
                     ROYABRIDGE CONCIERGE FARE
                   </span>
                   <span style={{ fontSize: '1.65rem', fontWeight: 900, color: 'var(--color-gold-bright)', letterSpacing: '-0.02em' }}>
-                    {formatCurrency(savings.finalPrice)}
+                    {formatCurrency(savings.finalPrice, currency)}
                   </span>
                 </div>
 
@@ -436,7 +471,7 @@ export default function FlightSearchForm({ onSearchFlights, loading }) {
                   boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
                   whiteSpace: 'nowrap'
                 }}>
-                  YOU SAVE {formatCurrency(savings.discountAmount)} ({savings.savingsPercentage}% OFF)
+                  YOU SAVE {formatCurrency(savings.discountAmount, currency)} ({savings.savingsPercentage}% OFF)
                 </span>
               </div>
 

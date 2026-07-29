@@ -11,7 +11,8 @@ export default function RealTimeFlightResults({
   error, 
   onSelectFlight,
   priceTrend,
-  onCheckStatus
+  onCheckStatus,
+  currency = 'USD'
 }) {
   const [sortBy, setSortBy] = useState('price'); // 'price' | 'duration' | 'departure'
   const [selectedAirline, setSelectedAirline] = useState('ALL');
@@ -486,7 +487,7 @@ export default function RealTimeFlightResults({
                             PUBLIC AIRLINE FARE:
                           </span>
                           <span style={{ fontSize: '1.05rem', color: '#F87171', fontWeight: 800, textDecoration: 'line-through' }}>
-                            {formatCurrency(flight.retailPrice)}
+                            {formatCurrency(flight.retailPrice, currency)}
                           </span>
                         </div>
 
@@ -499,7 +500,7 @@ export default function RealTimeFlightResults({
                             <span style={{ fontSize: '0.7rem', color: '#CBD5E1' }}>Includes 24h PNR Lock</span>
                           </div>
                           <span style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--color-gold-bright)', letterSpacing: '-0.02em' }}>
-                            {formatCurrency(flight.royaPrice)}
+                            {formatCurrency(flight.royaPrice, currency)}
                           </span>
                         </div>
 
@@ -521,7 +522,7 @@ export default function RealTimeFlightResults({
                             fontWeight: 800,
                             boxShadow: '0 2px 8px rgba(16,185,129,0.3)'
                           }}>
-                            SAVE {formatCurrency(flight.retailPrice - flight.royaPrice)} (30% OFF)
+                            SAVE {formatCurrency(flight.retailPrice - flight.royaPrice, currency)} (30% OFF)
                           </span>
                         </div>
                       </div>
@@ -596,7 +597,7 @@ export default function RealTimeFlightResults({
                     whiteSpace: 'nowrap'
                   }}
                 >
-                  <strong>{f.flightNumber}</strong> ({formatCurrency(f.royaPrice)})
+                  <strong>{f.flightNumber}</strong> ({formatCurrency(f.royaPrice, currency)})
                   <button 
                     onClick={() => toggleCompareFlight(f.id || f.flightNumber)}
                     style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 0, display: 'flex' }}
@@ -644,6 +645,7 @@ export default function RealTimeFlightResults({
         {isComparisonOpen && (
           <FlightComparisonModal 
             selectedFlights={selectedComparedFlights}
+            currency={currency}
             onClose={() => setIsComparisonOpen(false)}
             onSelectFlight={onSelectFlight}
             onRemoveFlight={(flightId) => {

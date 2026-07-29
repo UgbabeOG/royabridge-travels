@@ -1,14 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { X, ShieldCheck, Download, Printer, MessageCircle, Clock, CheckCircle2, Copy, Plane, Activity, AlertCircle } from 'lucide-react';
+import { X, ShieldCheck, Download, Printer, MessageCircle, Clock, CheckCircle2, Copy, Plane, Activity, AlertCircle, Shield, Sparkles, Check, Luggage, PlusCircle, FileText, Lock, HeartHandshake } from 'lucide-react';
 import { generatePNR, formatCurrency } from '../utils/pnrGenerator';
 import { saveBookingToDatabase } from '../lib/bookingsService';
 import { validateEmail, validatePhone, validateName } from '../utils/validation';
 
-export default function ReserveModal({ data, onClose, onOpenChat, showToast }) {
+export default function ReserveModal({ data, onClose, onOpenChat, showToast, currency = 'USD' }) {
   const [passengerName, setPassengerName] = useState('');
   const [passengerEmail, setPassengerEmail] = useState('');
   const [passengerPhone, setPassengerPhone] = useState('');
-  
+  const [specialRequests, setSpecialRequests] = useState('');
+  const [seatPreference, setSeatPreference] = useState('Window');
+  const [mealPreference, setMealPreference] = useState('Standard');
+
+  // Interactive Cabin Selection
+  const initialCabin = data?.cabinClass || 'Business';
+  const [selectedCabin, setSelectedCabin] = useState(initialCabin);
+
+  // Interactive Travel Insurance & Add-ons
+  const [addOns, setAddOns] = useState({
+    travelInsurance: true, // Comprehensive Medical & Delay Coverage ($49/pax)
+    conciergeProtection: false, // VIP Concierge & Baggage Guarantee ($29/pax)
+    flexiBooking: false, // Flexi Date Change Protection ($35/pax)
+    carbonOffset: false // Eco-Travel Carbon Neutral Offset ($12/pax)
+  });
+
   const [fieldErrors, setFieldErrors] = useState({ name: '', email: '', phone: '' });
   const [validationError, setValidationError] = useState('');
   const [confirmedSuccess, setConfirmedSuccess] = useState(false);
@@ -37,8 +52,52 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const toggleAddOn = (key) => {
+    setAddOns(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Pricing Calculations
+  const passengersCount = data?.passengers || 1;
+  const baseRoyaPricePerPax = data?.savings?.finalPrice || data?.royaPrice || 840;
+  const baseRetailPricePerPax = data?.savings?.originalPrice || data?.retailPrice || 1200;
+
+  // Cabin adjustments relative to base price
+  const CABIN_PRICING = {
+    'Economy': -320,
+    'Premium Economy': -150,
+    'Business': 0,
+    'First': 480
+  };
+
+  const cabinDelta = CABIN_PRICING[selectedCabin] !== undefined ? CABIN_PRICING[selectedCabin] : 0;
+  
+  const flightFarePerPax = Math.max(200, baseRoyaPricePerPax + cabinDelta);
+  const flightRetailPerPax = Math.max(300, baseRetailPricePerPax + cabinDelta);
+
+  const baseFlightTotal = flightFarePerPax * passengersCount;
+  const baseRetailTotal = flightRetailPerPax * passengersCount;
+
+  // Add-ons total
+  const ADD_ON_RATES = {
+    travelInsurance: 49,
+    conciergeProtection: 29,
+    flexiBooking: 35,
+    carbonOffset: 12
+  };
+
+  let addOnsTotalPerPax = 0;
+  if (addOns.travelInsurance) addOnsTotalPerPax += ADD_ON_RATES.travelInsurance;
+  if (addOns.conciergeProtection) addOnsTotalPerPax += ADD_ON_RATES.conciergeProtection;
+  if (addOns.flexiBooking) addOnsTotalPerPax += ADD_ON_RATES.flexiBooking;
+  if (addOns.carbonOffset) addOnsTotalPerPax += ADD_ON_RATES.carbonOffset;
+
+  const totalAddOnsAmount = addOnsTotalPerPax * passengersCount;
+
+  const totalFinalPrice = baseFlightTotal + totalAddOnsAmount;
+  const totalRetailPrice = baseRetailTotal + totalAddOnsAmount;
+  const totalSavings = totalRetailPrice - totalFinalPrice;
+
   const handleConfirm = async () => {
-    // Perform thorough input validation
     const nameVal = validateName(passengerName);
     const emailVal = validateEmail(passengerEmail);
     const phoneVal = validatePhone(passengerPhone);
@@ -61,6 +120,8 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast }) {
     setSaving(true);
 
     try {
+      const addOnsList = Object.keys(addOns).filter(k => addOns[k]);
+
       await saveBookingToDatabase({
         pnr: pnr,
         passengerName: passengerName.trim(),
@@ -75,11 +136,15 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast }) {
         departDate: data.departDate || '2026-08-20',
         returnDate: data.returnDate,
         tripType: data.tripType || 'round',
-        cabinClass: data.cabinClass || 'Business Class',
-        passengersCount: data.passengers || 1,
-        retailPrice: data.savings?.originalPrice || 1200,
-        royaPrice: data.savings?.finalPrice || 840,
-        savings: data.savings?.discountAmount || 360,
+        cabinClass: selectedCabin,
+        passengersCount: passengersCount,
+        retailPrice: totalRetailPrice,
+        royaPrice: totalFinalPrice,
+        savings: totalSavings,
+        selectedAddOns: addOnsList,
+        seatPreference: seatPreference,
+        mealPreference: mealPreference,
+        specialRequests: specialRequests,
         aircraft: data.aircraft || 'Boeing 787 Dreamliner'
       });
 
@@ -88,7 +153,7 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast }) {
         showToast({
           type: 'success',
           title: 'Flight Reservation Hold Confirmed!',
-          message: `Itinerary hold locked for ${passengerName.trim()}. 24h PNR record stored in database.`,
+          message: `Itinerary hold locked for ${passengerName.trim()}. PNR reference ${pnr} registered.`,
           pnr: pnr
         });
       }
@@ -129,14 +194,14 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast }) {
       overflowY: 'auto'
     }}>
       <div className="glass-card" style={{
-        maxWidth: '720px',
+        maxWidth: '1100px',
         width: '100%',
-        maxHeight: '90vh',
+        maxHeight: '92vh',
         overflowY: 'auto',
         background: '#0E1526',
         border: '1.5px solid var(--border-gold-glow)',
         borderRadius: 'var(--radius-lg)',
-        padding: '32px'
+        padding: '28px'
       }}>
         
         {/* Header Bar */}
@@ -145,7 +210,7 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast }) {
           justifyContent: 'space-between',
           alignItems: 'center',
           borderBottom: '1px solid rgba(229, 193, 88, 0.2)',
-          paddingBottom: '20px',
+          paddingBottom: '18px',
           marginBottom: '24px'
         }}>
           <div>
@@ -176,287 +241,667 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast }) {
           </button>
         </div>
 
-        {/* 24-Hour Hold Banner */}
+        {/* 2-Column Checkout Layout */}
         <div style={{
-          background: 'linear-gradient(135deg, rgba(229, 193, 88, 0.15) 0%, rgba(16, 185, 129, 0.1) 100%)',
-          border: '1px solid var(--border-gold)',
-          borderRadius: 'var(--radius-md)',
-          padding: '16px 20px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '12px',
-          marginBottom: '24px'
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: '28px',
+          alignItems: 'start'
         }}>
-          <div>
-            <span style={{ fontSize: '0.8rem', color: 'var(--color-gold-bright)', fontWeight: 600, display: 'block' }}>
-              PNR BOOKING REFERENCE CODE
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '0.1em', color: '#FFF' }}>
-                {pnr}
-              </span>
+          
+          {/* LEFT COLUMN: Options, Passengers & Add-ons */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+
+            {/* Flight Itinerary Overview */}
+            <div style={{
+              background: 'rgba(7, 11, 20, 0.6)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              padding: '18px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--color-gold-bright)', fontWeight: 700 }}>
+                  Flight Route & Carrier
+                </span>
+                <span style={{ fontSize: '0.75rem', color: '#6EE7B7', fontWeight: 600 }}>
+                  {data.airline || 'British Airways'} • {data.flightNumber || 'BA178'}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <span style={{ fontSize: '0.75rem', color: '#94A3B8' }}>Origin</span>
+                  <strong style={{ display: 'block', fontSize: '1.1rem', color: '#FFF' }}>
+                    {data.origin?.city || data.origin} ({data.origin?.code || data.origin})
+                  </strong>
+                </div>
+
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '2px 0' }}>
+                    <div style={{ width: '30px', height: '1px', background: 'var(--color-gold)' }} />
+                    <Plane size={15} color="var(--color-gold)" />
+                    <div style={{ width: '30px', height: '1px', background: 'var(--color-gold)' }} />
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: '#94A3B8' }}>
+                    {data.tripType === 'round' ? 'Round Trip' : 'One Way'}
+                  </span>
+                </div>
+
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#94A3B8' }}>Destination</span>
+                  <strong style={{ display: 'block', fontSize: '1.1rem', color: '#FFF' }}>
+                    {data.destination?.city || data.destination} ({data.destination?.code || data.destination})
+                  </strong>
+                </div>
+              </div>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '8px',
+                marginTop: '12px',
+                paddingTop: '10px',
+                borderTop: '1px dashed rgba(255,255,255,0.1)',
+                fontSize: '0.82rem',
+                color: '#CBD5E1'
+              }}>
+                <div><strong>Depart:</strong> {data.departDate}</div>
+                {data.returnDate && <div><strong>Return:</strong> {data.returnDate}</div>}
+                <div><strong>Passengers:</strong> {passengersCount} Adult(s)</div>
+                <div><strong>Aircraft:</strong> {data.aircraft || 'Boeing 787'}</div>
+              </div>
+            </div>
+
+            {/* Interactive Cabin Class Selector */}
+            <div>
+              <label style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--color-gold-bright)', display: 'block', marginBottom: '8px' }}>
+                Select Cabin Class Upgrade
+              </label>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '10px'
+              }}>
+                {[
+                  { name: 'Economy', priceNote: '-$320' },
+                  { name: 'Premium Economy', priceNote: '-$150' },
+                  { name: 'Business', priceNote: 'Standard Rate' },
+                  { name: 'First', priceNote: '+$480 Upgrade' }
+                ].map(cabin => {
+                  const isSelected = selectedCabin === cabin.name;
+                  return (
+                    <button
+                      key={cabin.name}
+                      type="button"
+                      onClick={() => setSelectedCabin(cabin.name)}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 'var(--radius-sm)',
+                        background: isSelected ? 'rgba(229,193,88,0.15)' : 'rgba(7,11,20,0.6)',
+                        border: isSelected ? '1.5px solid var(--color-gold)' : '1px solid rgba(255,255,255,0.08)',
+                        color: isSelected ? 'var(--color-gold-bright)' : '#CBD5E1',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: isSelected ? 800 : 600, fontSize: '0.88rem' }}>
+                          {cabin.name}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: isSelected ? 'var(--color-gold)' : '#94A3B8' }}>
+                          {cabin.priceNote}
+                        </div>
+                      </div>
+                      {isSelected && <Check size={16} color="var(--color-gold)" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Interactive Travel Insurance & Add-ons */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--color-gold-bright)', margin: 0 }}>
+                  Travel Insurance & Protection Add-ons
+                </label>
+                <span style={{ fontSize: '0.75rem', color: '#6EE7B7' }}>
+                  <Shield size={12} style={{ display: 'inline', marginRight: '4px' }} />
+                  Real-time Price Adjustment
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                
+                {/* Addon 1: Comprehensive Insurance */}
+                <div 
+                  onClick={() => toggleAddOn('travelInsurance')}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: addOns.travelInsurance ? 'rgba(16, 185, 129, 0.1)' : 'rgba(7, 11, 20, 0.6)',
+                    border: addOns.travelInsurance ? '1px solid #10B981' : '1px solid rgba(255,255,255,0.08)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={addOns.travelInsurance} 
+                      onChange={() => {}} 
+                      style={{ marginTop: '3px', accentColor: '#10B981' }} 
+                    />
+                    <div>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#FFF' }}>
+                        Comprehensive Travel & Medical Insurance
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#94A3B8' }}>
+                        Coverage for medical emergencies, flight delays & lost baggage up to $50,000.
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '0.88rem', fontWeight: 800, color: '#6EE7B7' }}>
+                      +$49
+                    </span>
+                    <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>/ passenger</span>
+                  </div>
+                </div>
+
+                {/* Addon 2: VIP Concierge Protection */}
+                <div 
+                  onClick={() => toggleAddOn('conciergeProtection')}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: addOns.conciergeProtection ? 'rgba(229, 193, 88, 0.1)' : 'rgba(7, 11, 20, 0.6)',
+                    border: addOns.conciergeProtection ? '1px solid var(--color-gold)' : '1px solid rgba(255,255,255,0.08)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={addOns.conciergeProtection} 
+                      onChange={() => {}} 
+                      style={{ marginTop: '3px', accentColor: 'var(--color-gold)' }} 
+                    />
+                    <div>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#FFF' }}>
+                        VIP Fast-Track & Disruption Monitoring
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#94A3B8' }}>
+                        24/7 dedicated travel concierge assistant & instant re-booking on flight changes.
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--color-gold-bright)' }}>
+                      +$29
+                    </span>
+                    <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>/ passenger</span>
+                  </div>
+                </div>
+
+                {/* Addon 3: Flexi Date Guarantee */}
+                <div 
+                  onClick={() => toggleAddOn('flexiBooking')}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: addOns.flexiBooking ? 'rgba(129, 140, 248, 0.1)' : 'rgba(7, 11, 20, 0.6)',
+                    border: addOns.flexiBooking ? '1px solid #818CF8' : '1px solid rgba(255,255,255,0.08)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={addOns.flexiBooking} 
+                      onChange={() => {}} 
+                      style={{ marginTop: '3px', accentColor: '#818CF8' }} 
+                    />
+                    <div>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#FFF' }}>
+                        Flexi-Date Change Guarantee
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#94A3B8' }}>
+                        Zero change fee penalty for shifting departure or return dates up to 2h prior.
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '0.88rem', fontWeight: 800, color: '#A5B4FC' }}>
+                      +$35
+                    </span>
+                    <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>/ passenger</span>
+                  </div>
+                </div>
+
+                {/* Addon 4: Eco Carbon Offset */}
+                <div 
+                  onClick={() => toggleAddOn('carbonOffset')}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: addOns.carbonOffset ? 'rgba(52, 211, 153, 0.1)' : 'rgba(7, 11, 20, 0.6)',
+                    border: addOns.carbonOffset ? '1px solid #34D399' : '1px solid rgba(255,255,255,0.08)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={addOns.carbonOffset} 
+                      onChange={() => {}} 
+                      style={{ marginTop: '3px', accentColor: '#34D399' }} 
+                    />
+                    <div>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#FFF' }}>
+                        100% SAF Carbon Neutral Eco-Pass
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#94A3B8' }}>
+                        Certified Sustainable Aviation Fuel offset for your flight carbon footprint.
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '0.88rem', fontWeight: 800, color: '#6EE7B7' }}>
+                      +$12
+                    </span>
+                    <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>/ passenger</span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Passenger Contact Form */}
+            <div>
+              <h3 style={{ fontSize: '0.92rem', color: 'var(--color-gold-bright)', marginBottom: '10px' }}>
+                Lead Passenger Information
+              </h3>
+
+              {validationError && (
+                <div style={{
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid #EF4444',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '10px 14px',
+                  color: '#FCA5A5',
+                  fontSize: '0.85rem',
+                  marginBottom: '12px',
+                  fontWeight: 600
+                }}>
+                  ⚠️ {validationError}
+                </div>
+              )}
+
+              {confirmedSuccess && (
+                <div style={{
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid #10B981',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '12px 16px',
+                  color: '#6EE7B7',
+                  fontSize: '0.88rem',
+                  marginBottom: '12px',
+                  fontWeight: 700
+                }}>
+                  ✓ Flight Hold Confirmed for {passengerName}! Your PNR ({pnr}) details have been sent to {passengerEmail}.
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+                <div>
+                  <label style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>
+                    Full Legal Name <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder="As shown on Passport"
+                    value={passengerName} 
+                    onChange={(e) => { 
+                      setPassengerName(e.target.value); 
+                      setValidationError(''); 
+                      setFieldErrors(prev => ({ ...prev, name: '' }));
+                    }}
+                    style={{
+                      ...modalInputStyle,
+                      borderColor: fieldErrors.name ? '#EF4444' : 'var(--border-gold)'
+                    }}
+                  />
+                  {fieldErrors.name && (
+                    <span style={{ fontSize: '0.72rem', color: '#FCA5A5', marginTop: '2px', display: 'block' }}>
+                      {fieldErrors.name}
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>
+                    Email Address <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <input 
+                    type="email" 
+                    placeholder="e.g. alex@example.com"
+                    value={passengerEmail} 
+                    onChange={(e) => { 
+                      setPassengerEmail(e.target.value); 
+                      setValidationError(''); 
+                      setFieldErrors(prev => ({ ...prev, email: '' }));
+                    }}
+                    style={{
+                      ...modalInputStyle,
+                      borderColor: fieldErrors.email ? '#EF4444' : 'var(--border-gold)'
+                    }}
+                  />
+                  {fieldErrors.email && (
+                    <span style={{ fontSize: '0.72rem', color: '#FCA5A5', marginTop: '2px', display: 'block' }}>
+                      {fieldErrors.email}
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>
+                    Phone / WhatsApp <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <input 
+                    type="tel" 
+                    placeholder="e.g. +1 555-0192"
+                    value={passengerPhone} 
+                    onChange={(e) => { 
+                      setPassengerPhone(e.target.value); 
+                      setValidationError(''); 
+                      setFieldErrors(prev => ({ ...prev, phone: '' }));
+                    }}
+                    style={{
+                      ...modalInputStyle,
+                      borderColor: fieldErrors.phone ? '#EF4444' : 'var(--border-gold)'
+                    }}
+                  />
+                  {fieldErrors.phone && (
+                    <span style={{ fontSize: '0.72rem', color: '#FCA5A5', marginTop: '2px', display: 'block' }}>
+                      {fieldErrors.phone}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Preferences */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
+                <div>
+                  <label style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>
+                    Seat Preference
+                  </label>
+                  <select 
+                    value={seatPreference} 
+                    onChange={(e) => setSeatPreference(e.target.value)}
+                    style={modalInputStyle}
+                  >
+                    <option value="Window">Window Seat</option>
+                    <option value="Aisle">Aisle Seat</option>
+                    <option value="Extra Legroom">Extra Legroom</option>
+                    <option value="No Preference">No Preference</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>
+                    Dietary Meal Request
+                  </label>
+                  <select 
+                    value={mealPreference} 
+                    onChange={(e) => setMealPreference(e.target.value)}
+                    style={modalInputStyle}
+                  >
+                    <option value="Standard">Standard Gourmet Menu</option>
+                    <option value="Vegetarian">Vegetarian / Vegan</option>
+                    <option value="Halal">Halal Certified</option>
+                    <option value="Kosher">Kosher Certified</option>
+                    <option value="Diabetic">Diabetic Friendly</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+
+          {/* RIGHT COLUMN: STICKY REAL-TIME BOOKING SUMMARY SIDEBAR */}
+          <div style={{
+            position: 'sticky',
+            top: '0px',
+            background: 'linear-gradient(180deg, #131B2E 0%, #0A0F1D 100%)',
+            border: '1.5px solid var(--border-gold)',
+            borderRadius: 'var(--radius-md)',
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '18px',
+            boxShadow: '0 12px 36px rgba(0,0,0,0.5)'
+          }}>
+
+            {/* Sidebar Title & Live Status */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid rgba(229,193,88,0.2)',
+              paddingBottom: '12px'
+            }}>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-gold)', fontWeight: 800, letterSpacing: '0.05em' }}>
+                  REAL-TIME CHECKOUT
+                </span>
+                <h3 style={{ fontSize: '1.15rem', color: '#FFF', fontWeight: 800, margin: 0 }}>
+                  Booking Summary
+                </h3>
+              </div>
+              <div style={{
+                background: 'rgba(16, 185, 129, 0.15)',
+                border: '1px solid #10B981',
+                padding: '3px 8px',
+                borderRadius: '12px',
+                fontSize: '0.7rem',
+                color: '#6EE7B7',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }} className="animate-pulse" />
+                Live Updated
+              </div>
+            </div>
+
+            {/* PNR Hold Banner */}
+            <div style={{
+              background: 'rgba(229,193,88,0.08)',
+              border: '1px dashed rgba(229,193,88,0.3)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '10px 12px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <span style={{ fontSize: '0.68rem', color: '#94A3B8', display: 'block' }}>PNR HOLD REF</span>
+                <strong style={{ fontSize: '1.05rem', color: '#FFF', letterSpacing: '0.08em' }}>{pnr}</strong>
+              </div>
               <button 
+                type="button" 
                 onClick={copyPNR}
                 style={{
                   background: 'transparent',
                   border: 'none',
                   color: 'var(--color-gold)',
                   cursor: 'pointer',
+                  fontSize: '0.75rem',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '4px',
-                  fontSize: '0.8rem'
+                  gap: '4px'
                 }}
               >
-                {copied ? <CheckCircle2 size={16} color="#10B981" /> : <Copy size={16} />}
+                {copied ? <CheckCircle2 size={14} color="#10B981" /> : <Copy size={14} />}
                 {copied ? 'Copied' : 'Copy'}
               </button>
             </div>
-          </div>
 
-          <div style={{ textAlign: 'right' }}>
-            <span style={{ fontSize: '0.8rem', color: '#CBD5E1', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Clock size={14} color="var(--color-gold)" />
-              Price Lock Guarantee Timer
-            </span>
-            <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#6EE7B7' }}>
-              {formatTime(timeLeft)}
-            </span>
-          </div>
-        </div>
-
-        {/* Flight Itinerary Details */}
-        <div style={{
-          background: 'rgba(7, 11, 20, 0.6)',
-          borderRadius: 'var(--radius-md)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          padding: '20px',
-          marginBottom: '24px'
-        }}>
-          <h3 style={{ fontSize: '1rem', color: 'var(--color-gold-bright)', marginBottom: '14px' }}>
-            Itinerary Summary
-          </h3>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-            <div>
-              <span style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Origin</span>
-              <strong style={{ display: 'block', fontSize: '1.2rem', color: '#FFF' }}>
-                {data.origin.city} ({data.origin.code})
-              </strong>
-            </div>
-
-            <div style={{ textAlign: 'center' }}>
-              <span style={{ fontSize: '0.78rem', color: 'var(--color-gold)', background: 'rgba(229,193,88,0.1)', padding: '2px 10px', borderRadius: '10px' }}>
-                {data.cabinClass} • {data.tripType === 'round' ? 'Round Trip' : 'One Way'}
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0' }}>
-                <div style={{ width: '40px', height: '1px', background: 'var(--color-gold)' }} />
-                <Plane size={16} color="var(--color-gold)" />
-                <div style={{ width: '40px', height: '1px', background: 'var(--color-gold)' }} />
-              </div>
-              <span style={{ fontSize: '0.75rem', color: '#94A3B8' }}>Direct / 1-Stop</span>
-            </div>
-
-            <div style={{ textAlign: 'right' }}>
-              <span style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Destination</span>
-              <strong style={{ display: 'block', fontSize: '1.2rem', color: '#FFF' }}>
-                {data.destination.city} ({data.destination.code})
-              </strong>
-            </div>
-          </div>
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '12px',
-            marginTop: '16px',
-            paddingTop: '12px',
-            borderTop: '1px dashed rgba(255,255,255,0.1)',
-            fontSize: '0.88rem',
-            color: '#CBD5E1'
-          }}>
-            <div><strong>Depart Date:</strong> {data.departDate}</div>
-            {data.returnDate && <div><strong>Return Date:</strong> {data.returnDate}</div>}
-            <div><strong>Passengers:</strong> {data.passengers} Adult(s)</div>
-            <div><strong>Luggage:</strong> 2x 23kg Included</div>
-          </div>
-        </div>
-
-        {/* Passenger Input Form */}
-        <div style={{ marginBottom: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <h3 style={{ fontSize: '1rem', color: 'var(--color-gold-bright)', margin: 0 }}>
-              Lead Passenger Contact Details
-            </h3>
-            <span style={{ fontSize: '0.75rem', color: '#CBD5E1' }}>* Required for PNR E-Ticket</span>
-          </div>
-
-          {validationError && (
+            {/* Timer Banner */}
             <div style={{
-              background: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid #EF4444',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'rgba(15, 23, 42, 0.8)',
+              padding: '8px 12px',
               borderRadius: 'var(--radius-sm)',
-              padding: '10px 14px',
-              color: '#FCA5A5',
-              fontSize: '0.85rem',
-              marginBottom: '14px',
-              fontWeight: 600
+              fontSize: '0.8rem'
             }}>
-              ⚠️ {validationError}
+              <span style={{ color: '#CBD5E1', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Clock size={13} color="var(--color-gold)" /> 24h Lock Guarantee
+              </span>
+              <strong style={{ color: '#6EE7B7' }}>{formatTime(timeLeft)}</strong>
             </div>
-          )}
 
-          {confirmedSuccess && (
+            {/* Itemized Real-Time Price Breakdown */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.84rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#CBD5E1' }}>
+                <span>
+                  Flight Fare ({passengersCount} pax • {selectedCabin})
+                </span>
+                <span>{formatCurrency(baseFlightTotal, currency)}</span>
+              </div>
+
+              {addOns.travelInsurance && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6EE7B7', fontSize: '0.8rem' }}>
+                  <span>+ Medical & Travel Insurance</span>
+                  <span>+{formatCurrency(ADD_ON_RATES.travelInsurance * passengersCount, currency)}</span>
+                </div>
+              )}
+
+              {addOns.conciergeProtection && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-gold-bright)', fontSize: '0.8rem' }}>
+                  <span>+ VIP Concierge Protection</span>
+                  <span>+{formatCurrency(ADD_ON_RATES.conciergeProtection * passengersCount, currency)}</span>
+                </div>
+              )}
+
+              {addOns.flexiBooking && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#A5B4FC', fontSize: '0.8rem' }}>
+                  <span>+ Flexi-Date Change Protection</span>
+                  <span>+{formatCurrency(ADD_ON_RATES.flexiBooking * passengersCount, currency)}</span>
+                </div>
+              )}
+
+              {addOns.carbonOffset && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#34D399', fontSize: '0.8rem' }}>
+                  <span>+ Eco SAF Carbon Offset</span>
+                  <span>+{formatCurrency(ADD_ON_RATES.carbonOffset * passengersCount, currency)}</span>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94A3B8', fontSize: '0.78rem' }}>
+                <span>Airport Taxes & Airline Surcharges</span>
+                <span style={{ color: '#6EE7B7' }}>Included ($0)</span>
+              </div>
+
+              <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '4px 0' }} />
+
+              {/* Total Price Section */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <div>
+                  <span style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block' }}>Total Reserved Fare</span>
+                  <span style={{ fontSize: '0.8rem', color: '#94A3B8', textDecoration: 'line-through' }}>
+                    {formatCurrency(totalRetailPrice, currency)}
+                  </span>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '1.7rem', fontWeight: 900, color: 'var(--color-gold-bright)', lineHeight: 1 }}>
+                    {formatCurrency(totalFinalPrice, currency)}
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: '#6EE7B7', fontWeight: 700 }}>
+                    You Save {formatCurrency(totalSavings, currency)} (30% OFF)
+                  </span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Zero Dollar Paid Today Callout */}
             <div style={{
-              background: 'rgba(16, 185, 129, 0.15)',
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.15) 100%)',
               border: '1px solid #10B981',
               borderRadius: 'var(--radius-sm)',
-              padding: '12px 16px',
+              padding: '10px',
+              textAlign: 'center',
               color: '#6EE7B7',
-              fontSize: '0.88rem',
-              marginBottom: '14px',
-              fontWeight: 700
-            }}>
-              ✓ Flight Hold Confirmed for {passengerName}! Your PNR ({pnr}) details have been sent to {passengerEmail}.
-            </div>
-          )}
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-            <div>
-              <label style={{ fontSize: '0.78rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>
-                Full Legal Name <span style={{ color: '#EF4444' }}>*</span>
-              </label>
-              <input 
-                type="text" 
-                placeholder="Enter full name (as on Passport)"
-                value={passengerName} 
-                onChange={(e) => { 
-                  setPassengerName(e.target.value); 
-                  setValidationError(''); 
-                  setFieldErrors(prev => ({ ...prev, name: '' }));
-                }}
-                style={{
-                  ...modalInputStyle,
-                  borderColor: fieldErrors.name ? '#EF4444' : 'var(--border-gold)'
-                }}
-              />
-              {fieldErrors.name && (
-                <span style={{ fontSize: '0.73rem', color: '#FCA5A5', marginTop: '4px', display: 'block' }}>
-                  {fieldErrors.name}
-                </span>
-              )}
-            </div>
-
-            <div>
-              <label style={{ fontSize: '0.78rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>
-                Email Address <span style={{ color: '#EF4444' }}>*</span>
-              </label>
-              <input 
-                type="email" 
-                placeholder="e.g. alex.morgan@example.com"
-                value={passengerEmail} 
-                onChange={(e) => { 
-                  setPassengerEmail(e.target.value); 
-                  setValidationError(''); 
-                  setFieldErrors(prev => ({ ...prev, email: '' }));
-                }}
-                style={{
-                  ...modalInputStyle,
-                  borderColor: fieldErrors.email ? '#EF4444' : 'var(--border-gold)'
-                }}
-              />
-              {fieldErrors.email && (
-                <span style={{ fontSize: '0.73rem', color: '#FCA5A5', marginTop: '4px', display: 'block' }}>
-                  {fieldErrors.email}
-                </span>
-              )}
-            </div>
-
-            <div>
-              <label style={{ fontSize: '0.78rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>
-                Phone / WhatsApp <span style={{ color: '#EF4444' }}>*</span>
-              </label>
-              <input 
-                type="tel" 
-                placeholder="e.g. +1 555-234-5678"
-                value={passengerPhone} 
-                onChange={(e) => { 
-                  setPassengerPhone(e.target.value); 
-                  setValidationError(''); 
-                  setFieldErrors(prev => ({ ...prev, phone: '' }));
-                }}
-                style={{
-                  ...modalInputStyle,
-                  borderColor: fieldErrors.phone ? '#EF4444' : 'var(--border-gold)'
-                }}
-              />
-              {fieldErrors.phone && (
-                <span style={{ fontSize: '0.73rem', color: '#FCA5A5', marginTop: '4px', display: 'block' }}>
-                  {fieldErrors.phone}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Pricing Summary */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '16px',
-          background: 'rgba(15, 23, 42, 0.9)',
-          borderRadius: 'var(--radius-md)',
-          marginBottom: '24px'
-        }}>
-          <div>
-            <span style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Total Reserved Fare</span>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-              <span style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--color-gold-bright)' }}>
-                {formatCurrency(data.savings.finalPrice)}
-              </span>
-              <span style={{ fontSize: '0.85rem', color: '#94A3B8', textDecoration: 'line-through' }}>
-                {formatCurrency(data.savings.originalPrice)}
-              </span>
-            </div>
-          </div>
-
-          <div style={{ textAlign: 'right' }}>
-            <span style={{
-              background: '#10B981',
-              color: '#070B14',
+              fontSize: '0.82rem',
               fontWeight: 800,
-              fontSize: '0.75rem',
-              padding: '4px 10px',
-              borderRadius: '10px'
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px'
             }}>
-              $0.00 PAID TODAY
-            </span>
+              <Lock size={14} /> NO IMMEDIATE PAYMENT REQUIRED TODAY
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button 
+                type="button"
+                onClick={handleConfirm}
+                className="btn-gold"
+                disabled={saving}
+                style={{ width: '100%', padding: '12px', fontSize: '0.92rem', fontWeight: 800 }}
+              >
+                {saving ? <Activity className="animate-spin" size={16} /> : <MessageCircle size={16} />}
+                {saving ? 'Locking PNR in DB...' : 'Confirm Flight Hold ($0 Now)'}
+              </button>
+
+              <button 
+                type="button"
+                onClick={handlePrint}
+                className="btn-outline-gold"
+                style={{ width: '100%', padding: '10px', fontSize: '0.85rem' }}
+              >
+                <Printer size={15} />
+                Print / Save Itinerary PDF
+              </button>
+            </div>
+
+            {/* Guarantees */}
+            <div style={{ fontSize: '0.72rem', color: '#94A3B8', textAlign: 'center', lineHeight: 1.4 }}>
+              🛡️ Official PNR hold stored securely in database. Cancel anytime within 24 hours at no cost.
+            </div>
+
           </div>
-        </div>
 
-        {/* Actions */}
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <button 
-            onClick={handlePrint}
-            className="btn-outline-gold"
-            style={{ flex: 1, padding: '12px', fontSize: '0.9rem' }}
-          >
-            <Printer size={16} />
-            Print / Save Itinerary PDF
-          </button>
-
-          <button 
-            onClick={handleConfirm}
-            className="btn-gold"
-            disabled={saving}
-            style={{ flex: 1.2, padding: '12px', fontSize: '0.9rem' }}
-          >
-            {saving ? <Activity className="animate-spin" size={16} /> : <MessageCircle size={16} />}
-            {saving ? 'Saving Hold to DB...' : 'Confirm Booking & Save Hold ($0 Now)'}
-          </button>
         </div>
 
       </div>
@@ -470,7 +915,8 @@ const modalInputStyle = {
   borderRadius: 'var(--radius-sm)',
   padding: '8px 12px',
   color: '#FFF',
-  fontSize: '0.9rem',
+  fontSize: '0.88rem',
   width: '100%',
   outline: 'none'
 };
+

@@ -379,6 +379,78 @@ const BACKEND_DESTINATIONS = [
     discount: '30%',
     popular: true,
     tagline: 'Harbour Wonders & Coastal Magic'
+  },
+  {
+    id: 'cairo',
+    name: 'Cairo, Egypt',
+    airport: 'CAI',
+    region: 'Africa',
+    image: 'https://images.unsplash.com/photo-1572252009286-268acec5ca0a?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 980,
+    royaPrice: 686,
+    discount: '30%',
+    popular: true,
+    tagline: 'Pyramids of Giza & Ancient Wonders'
+  },
+  {
+    id: 'capetown',
+    name: 'Cape Town, South Africa',
+    airport: 'CPT',
+    region: 'Africa',
+    image: 'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1250,
+    royaPrice: 875,
+    discount: '30%',
+    popular: true,
+    tagline: 'Table Mountain & Coastal Vineyards'
+  },
+  {
+    id: 'marrakech',
+    name: 'Marrakech, Morocco',
+    airport: 'RAK',
+    region: 'Africa',
+    image: 'https://images.unsplash.com/photo-1597212618440-806262de4f6b?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 920,
+    royaPrice: 644,
+    discount: '30%',
+    popular: true,
+    tagline: 'Vibrant Souks & Saharan Majesty'
+  },
+  {
+    id: 'nairobi',
+    name: 'Nairobi, Kenya',
+    airport: 'NBO',
+    region: 'Africa',
+    image: 'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1180,
+    royaPrice: 826,
+    discount: '30%',
+    popular: true,
+    tagline: 'Safari Gateway & Masai Mara Wildlife'
+  },
+  {
+    id: 'zanzibar',
+    name: 'Zanzibar, Tanzania',
+    airport: 'ZNZ',
+    region: 'Africa',
+    image: 'https://images.unsplash.com/photo-1568084680786-a84f91d1153c?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1290,
+    royaPrice: 903,
+    discount: '30%',
+    popular: true,
+    tagline: 'Turquoise Waters & Coral Reefs'
+  },
+  {
+    id: 'lagos',
+    name: 'Lagos, Nigeria',
+    airport: 'LOS',
+    region: 'Africa',
+    image: 'https://images.unsplash.com/photo-1618828665011-0abd973f7ad8?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1100,
+    royaPrice: 770,
+    discount: '30%',
+    popular: false,
+    tagline: 'Afrobeats Culture & Atlantic Coast'
   }
 ];
 
@@ -387,6 +459,13 @@ const BACKEND_AIRPORTS = [
   { code: 'LHR', city: 'London', country: 'United Kingdom', name: 'Heathrow Airport' },
   { code: 'DXB', city: 'Dubai', country: 'United Arab Emirates', name: 'Dubai Intl Airport' },
   { code: 'CDG', city: 'Paris', country: 'France', name: 'Charles de Gaulle Airport' },
+  { code: 'CAI', city: 'Cairo', country: 'Egypt', name: 'Cairo Intl Airport' },
+  { code: 'CPT', city: 'Cape Town', country: 'South Africa', name: 'Cape Town Intl Airport' },
+  { code: 'RAK', city: 'Marrakech', country: 'Morocco', name: 'Marrakech Menara Airport' },
+  { code: 'NBO', city: 'Nairobi', country: 'Kenya', name: 'Jomo Kenyatta Intl Airport' },
+  { code: 'ZNZ', city: 'Zanzibar', country: 'Tanzania', name: 'Abeid Amani Karume Intl' },
+  { code: 'LOS', city: 'Lagos', country: 'Nigeria', name: 'Murtala Muhammed Intl' },
+  { code: 'ACC', city: 'Accra', country: 'Ghana', name: 'Kotoka Intl Airport' },
   { code: 'YYZ', city: 'Toronto', country: 'Canada', name: 'Pearson Intl Airport' },
   { code: 'HND', city: 'Tokyo', country: 'Japan', name: 'Haneda Airport' },
   { code: 'DPS', city: 'Bali', country: 'Indonesia', name: 'Ngurah Rai Intl Airport' },

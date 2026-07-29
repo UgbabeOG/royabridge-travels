@@ -5,6 +5,7 @@ import { formatCurrency } from '../utils/pnrGenerator';
 
 export default function FlightComparisonModal({
   selectedFlights = [],
+  currency = 'USD',
   onClose,
   onSelectFlight,
   onRemoveFlight,
@@ -210,7 +211,7 @@ export default function FlightComparisonModal({
                         </span>
                       )}
                       <div style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--color-gold-bright)' }}>
-                        {formatCurrency(flight.royaPrice)}
+                        {formatCurrency(flight.royaPrice, currency)}
                       </div>
                     </td>
                   );
@@ -224,7 +225,7 @@ export default function FlightComparisonModal({
                 </td>
                 {selectedFlights.map((flight) => (
                   <td key={`retail-${flight.id || flight.flightNumber}`} style={{ padding: '14px', textAlign: 'center', color: '#F87171', textDecoration: 'line-through', fontWeight: 700 }}>
-                    {formatCurrency(flight.retailPrice)}
+                    {formatCurrency(flight.retailPrice, currency)}
                   </td>
                 ))}
               </tr>
@@ -236,7 +237,7 @@ export default function FlightComparisonModal({
                 </td>
                 {selectedFlights.map((flight) => (
                   <td key={`save-${flight.id || flight.flightNumber}`} style={{ padding: '14px', textAlign: 'center', color: '#6EE7B7', fontWeight: 800 }}>
-                    Save {formatCurrency(flight.retailPrice - flight.royaPrice)} (30%)
+                    Save {formatCurrency(flight.retailPrice - flight.royaPrice, currency)} (30%)
                   </td>
                 ))}
               </tr>

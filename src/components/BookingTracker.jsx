@@ -3,7 +3,7 @@ import { Search, ShieldCheck, X, Clock, Plane, Activity, CheckCircle2, AlertCirc
 import { formatCurrency } from '../utils/pnrGenerator';
 import { lookupBookingFromDatabase } from '../lib/bookingsService';
 
-export default function BookingTracker({ isOpen, onClose, onOpenChat, showToast }) {
+export default function BookingTracker({ isOpen, onClose, onOpenChat, showToast, currency = 'USD' }) {
   const [tab, setTab] = useState('pnr'); // 'pnr' | 'flight'
   const [searchInput, setSearchInput] = useState('');
   const [result, setResult] = useState(null);
@@ -279,8 +279,8 @@ export default function BookingTracker({ isOpen, onClose, onOpenChat, showToast 
                   <div style={{ gridColumn: 'span 2' }}><strong>Route:</strong> {result.route}</div>
                   <div><strong>Depart Date:</strong> {result.departDate}</div>
                   {result.returnDate && <div><strong>Return Date:</strong> {result.returnDate}</div>}
-                  <div><strong>Total Fare:</strong> {formatCurrency(result.totalFare)}</div>
-                  <div><strong>Saved:</strong> <span style={{ color: '#6EE7B7', fontWeight: 700 }}>{formatCurrency(result.savedAmount)}</span></div>
+                  <div><strong>Total Fare:</strong> {formatCurrency(result.totalFare, currency)}</div>
+                  <div><strong>Saved:</strong> <span style={{ color: '#6EE7B7', fontWeight: 700 }}>{formatCurrency(result.savedAmount, currency)}</span></div>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(16, 185, 129, 0.1)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', marginBottom: '16px' }}>

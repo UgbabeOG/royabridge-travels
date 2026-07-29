@@ -3,7 +3,7 @@ import { DESTINATIONS } from '../data/destinations';
 import { formatCurrency } from '../utils/pnrGenerator';
 import { Plane, Tag, Sparkles, Database, ShieldCheck, RefreshCw } from 'lucide-react';
 
-export default function DestinationExplorer({ onSelectDestination }) {
+export default function DestinationExplorer({ onSelectDestination, currency = 'USD' }) {
   const [destinations, setDestinations] = useState([]);
   const [filter, setFilter] = useState('All');
   const [loading, setLoading] = useState(true);
@@ -184,10 +184,10 @@ export default function DestinationExplorer({ onSelectDestination }) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '16px' }}>
                     <div>
                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>
-                        Retail Fare: <strike>{formatCurrency(dest.retailPrice)}</strike>
+                        Retail Fare: <strike>{formatCurrency(dest.retailPrice, currency)}</strike>
                       </span>
                       <span style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-gold-bright)' }}>
-                        {formatCurrency(dest.royaPrice)}
+                        {formatCurrency(dest.royaPrice, currency)}
                       </span>
                     </div>
                     <span style={{ fontSize: '0.8rem', color: '#6EE7B7', fontWeight: 600 }}>

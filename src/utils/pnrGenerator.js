@@ -23,10 +23,19 @@ export function calculateSavings(baseFare, cabinClass = 'Economy') {
   };
 }
 
+export const CURRENCY_RATES = {
+  USD: { rate: 1.0, symbol: '$', code: 'USD', name: 'USD ($)' },
+  EUR: { rate: 0.92, symbol: '€', code: 'EUR', name: 'EUR (€)' },
+  GBP: { rate: 0.78, symbol: '£', code: 'GBP', name: 'GBP (£)' }
+};
+
 export function formatCurrency(amount, currency = 'USD') {
+  if (amount === undefined || amount === null || isNaN(amount)) return '$0';
+  const info = CURRENCY_RATES[currency] || CURRENCY_RATES.USD;
+  const convertedAmount = Math.round(amount * info.rate);
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: currency,
+    currency: info.code,
     maximumFractionDigits: 0
-  }).format(amount);
+  }).format(convertedAmount);
 }

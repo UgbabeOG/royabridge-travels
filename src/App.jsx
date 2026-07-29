@@ -18,6 +18,7 @@ import AnimatedSection from './components/AnimatedSection';
 import { POPULAR_AIRPORTS } from './data/destinations';
 
 export default function App() {
+  const [currency, setCurrency] = useState('USD');
   const [reserveModalData, setReserveModalData] = useState(null);
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -174,6 +175,8 @@ export default function App() {
         <FlightSearchForm 
           onSearchFlights={handleSearchFlights}
           loading={searchLoading}
+          currency={currency}
+          onCurrencyChange={setCurrency}
         />
       </AnimatedSection>
 
@@ -186,6 +189,7 @@ export default function App() {
           error={searchError}
           priceTrend={priceTrend}
           onSelectFlight={handleSelectFlight}
+          currency={currency}
         />
       </AnimatedSection>
 
@@ -201,6 +205,7 @@ export default function App() {
       <AnimatedSection animation="slide-up">
         <DestinationExplorer 
           onSelectDestination={handleSelectDestination}
+          currency={currency}
         />
       </AnimatedSection>
 
@@ -233,6 +238,7 @@ export default function App() {
       {reserveModalData && (
         <ReserveModal 
           data={reserveModalData}
+          currency={currency}
           showToast={showToast}
           onClose={() => setReserveModalData(null)}
           onOpenChat={() => {
@@ -245,6 +251,7 @@ export default function App() {
       {/* PNR Booking Tracker & Live Flight Status Modal */}
       <BookingTracker 
         isOpen={isTrackerOpen}
+        currency={currency}
         showToast={showToast}
         onClose={() => setIsTrackerOpen(false)}
         onOpenChat={() => {
