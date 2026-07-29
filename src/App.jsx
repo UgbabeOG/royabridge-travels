@@ -276,10 +276,23 @@ export default function App() {
         <FAQSection />
       </AnimatedSection>
 
+      {/* Keyboard shortcut for Admin Access (Ctrl+Shift+A) */}
+      {useEffect(() => {
+        const handleKeyDown = (e) => {
+          if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+            e.preventDefault();
+            setIsAdminOpen(true);
+          }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+      }, [])}
+
       {/* Footer */}
       <Footer 
         onOpenChat={() => setIsChatOpen(true)}
         onOpenContact={() => setIsContactOpen(true)}
+        onOpenAdmin={() => setIsAdminOpen(true)}
       />
 
       {/* Reserve Before Payment Itinerary Hold Modal */}

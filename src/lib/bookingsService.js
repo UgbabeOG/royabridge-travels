@@ -1,4 +1,4 @@
-import { db, doc, setDoc, getDoc, collection, query, where, getDocs, limit } from './firebase.js';
+import { db, doc, setDoc, getDoc, deleteDoc, collection, query, where, getDocs, limit } from './firebase.js';
 
 /**
  * Saves a flight booking reservation into Firestore database and local cache
@@ -360,7 +360,7 @@ export async function updateBookingStatusInDatabase(pnrCode, newStatus) {
     const docRef = doc(db, 'bookings', cleanPnr);
     const snap = await getDoc(docRef);
     if (snap.exists()) {
-      await setDoc(docRef, { status: newStatus, updatedAt: newDate().toISOString() }, { merge: true });
+      await setDoc(docRef, { status: newStatus, updatedAt: new Date().toISOString() }, { merge: true });
     }
   } catch (err) {
     console.warn('[Firestore Update Warning]', err);
@@ -379,5 +379,69 @@ export async function updateBookingStatusInDatabase(pnrCode, newStatus) {
   }
 
   return { pnr: cleanPnr, status: newStatus };
+}
+
+/**
+ * Updates full booking details in Firestore DB and LocalStorage
+ */
+export async function updateBookingDetailsInDatabase(pnrCode, updateData) {
+  if (!pnrCode) return null;
+  const cleanPnr = pnrCode.toUpperCase();
+
+  const payload = {
+    ...updateData,
+    pnr: cleanPnr,
+    updatedAt: new Date().toISOString()
+  };
+
+  try {
+    const docRef = doc(db, 'bookings', cleanPnr);
+    await setDoc(docRef, payload, { merge: true });
+    console.log(`[Firestore] Updated booking details for PNR ${cleanPnr}`);
+  } catch (err) {
+    console.warn('[Firestore Update Details Error]', err);
+  }
+
+  try {
+    const localStr = localStorage.getItem('royabridge_bookings');
+    if (localStr) {
+      const list = JSON.parse(localStr);
+      const updated = list.map(b => b.pnr?.toUpperCase() === cleanPnr ? { ...b, ...payload } : b);
+      localStorage.setItem('royabridge_bookings', JSON.stringify(updated));
+    }
+  } catch (e) {
+    console.warn('LocalStorage update details error:', e);
+  }
+
+  return payload;
+}
+
+/**
+ * Deletes a booking record from Firestore DB and LocalStorage
+ */
+export async function deleteBookingFromDatabase(pnrCode) {
+  if (!pnrCode) return false;
+  const cleanPnr = pnrCode.toUpperCase();
+
+  try {
+    const docRef = doc(db, 'bookings', cleanPnr);
+    await deleteDoc(docRef);
+    console.log(`[Firestore] Deleted booking PNR ${cleanPnr}`);
+  } catch (err) {
+    console.warn('[Firestore Delete Booking Warning]', err);
+  }
+
+  try {
+    const localStr = localStorage.getItem('royabridge_bookings');
+    if (localStr) {
+      const list = JSON.parse(localStr);
+      const updated = list.filter(b => b.pnr?.toUpperCase() !== cleanPnr);
+      localStorage.setItem('royabridge_bookings', JSON.stringify(updated));
+    }
+  } catch (e) {
+    console.warn('LocalStorage delete error:', e);
+  }
+
+  return true;
 }
 

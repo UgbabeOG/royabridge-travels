@@ -183,17 +183,6 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
         {/* Action Buttons & Hamburger Menu */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           
-          {/* Share Itinerary Button */}
-          <button 
-            onClick={() => onOpenShare && onOpenShare()}
-            className="btn-outline-gold desktop-only"
-            style={{ padding: '7px 14px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
-            title="Share My Itinerary"
-          >
-            <Share2 size={14} />
-            Share
-          </button>
-
           {/* Contact Us Button - Desktop Only */}
           <button 
             onClick={onOpenContact}
@@ -202,37 +191,6 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
           >
             <PhoneCall size={14} />
             Contact Us
-          </button>
-
-
-          {/* Admin Portal Access Button */}
-          <button 
-            onClick={onOpenAdmin}
-            style={{
-              padding: '7px 14px',
-              fontSize: '0.82rem',
-              whiteSpace: 'nowrap',
-              background: isAdmin ? 'rgba(16, 185, 129, 0.2)' : 'rgba(229, 193, 88, 0.12)',
-              border: isAdmin ? '1px solid #10B981' : '1px solid var(--border-gold)',
-              color: isAdmin ? '#6EE7B7' : 'var(--color-gold-bright)',
-              borderRadius: 'var(--radius-sm)',
-              cursor: 'pointer',
-              fontWeight: 700,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.25s ease'
-            }}
-            className="desktop-only"
-            title="Manage User Flight Reservations & Bookings"
-          >
-            <ShieldCheck size={14} color={isAdmin ? "#10B981" : "var(--color-gold)"} />
-            {isAdmin ? 'Admin Portal' : 'Admin Access'}
-            {isAdmin && (
-              <span style={{ fontSize: '0.62rem', background: '#10B981', color: '#070B14', padding: '1px 5px', borderRadius: '8px', fontWeight: 900 }}>
-                ADMIN
-              </span>
-            )}
           </button>
 
           {/* Track Reservation Button */}
@@ -318,21 +276,6 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
           <div style={{ height: '1px', background: 'rgba(229,193,88,0.15)', margin: '8px 0' }} />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <button 
-              onClick={() => { setMobileMenuOpen(false); onOpenAdmin && onOpenAdmin(); }}
-              className="btn-outline-gold"
-              style={{
-                width: '100%',
-                padding: '12px',
-                background: isAdmin ? 'rgba(16, 185, 129, 0.2)' : 'rgba(229, 193, 88, 0.15)',
-                borderColor: isAdmin ? '#10B981' : 'var(--border-gold)',
-                color: isAdmin ? '#6EE7B7' : 'var(--color-gold-bright)'
-              }}
-            >
-              <ShieldCheck size={16} color={isAdmin ? "#10B981" : "var(--color-gold)"} />
-              {isAdmin ? 'Executive Admin Portal (Verified)' : 'Admin Access Portal'}
-            </button>
-
             <button 
               onClick={() => { setMobileMenuOpen(false); onOpenContact(); }}
               className="btn-gold"

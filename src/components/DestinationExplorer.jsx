@@ -171,11 +171,53 @@ export default function DestinationExplorer({ onSelectDestination, currency = 'U
           </div>
         </div>
 
-        {/* Loading Spinner */}
+        {/* Loading Skeleton Screen */}
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '60px', color: 'var(--color-gold)' }}>
-            <RefreshCw className="animate-spin" size={28} style={{ marginRight: '12px' }} />
-            <span style={{ fontSize: '1rem', fontWeight: 600 }}>Loading global route inventory and insights...</span>
+          <div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              padding: '16px',
+              marginBottom: '24px',
+              background: 'rgba(229, 193, 88, 0.08)',
+              border: '1px solid rgba(229, 193, 88, 0.25)',
+              borderRadius: 'var(--radius-md)',
+              color: 'var(--color-gold-bright)',
+              fontSize: '0.9rem',
+              fontWeight: 700
+            }}>
+              <RefreshCw className="animate-spin" size={18} />
+              <span>Fetching Live Destinations & Route Inventory from Firestore...</span>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              gap: '24px'
+            }}>
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div 
+                  key={i} 
+                  className="glass-card"
+                  style={{
+                    borderRadius: 'var(--radius-lg)',
+                    overflow: 'hidden',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    background: 'rgba(13, 20, 36, 0.6)'
+                  }}
+                >
+                  <div style={{ height: '180px', background: 'rgba(255,255,255,0.06)' }} className="animate-pulse" />
+                  <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ height: '16px', width: '40%', background: 'rgba(255,255,255,0.08)', borderRadius: '4px' }} className="animate-pulse" />
+                    <div style={{ height: '24px', width: '70%', background: 'rgba(229,193,88,0.15)', borderRadius: '4px' }} className="animate-pulse" />
+                    <div style={{ height: '14px', width: '90%', background: 'rgba(255,255,255,0.06)', borderRadius: '4px' }} className="animate-pulse" />
+                    <div style={{ height: '40px', width: '100%', background: 'rgba(255,255,255,0.08)', borderRadius: 'var(--radius-sm)', marginTop: '8px' }} className="animate-pulse" />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : filteredDestinations.length === 0 ? (
           <div className="glass-card" style={{ padding: '40px', textAlign: 'center', color: '#94A3B8' }}>

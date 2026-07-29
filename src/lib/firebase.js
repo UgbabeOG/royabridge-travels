@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { 
   getAuth, 
   signInAnonymously, 
@@ -15,7 +15,7 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 
 export { 
-  doc, setDoc, getDoc, collection, query, where, getDocs, limit,
+  doc, setDoc, getDoc, deleteDoc, collection, query, where, getDocs, limit,
   signInAnonymously, onAuthStateChanged, getIdToken, getIdTokenResult, signOut
 };
 

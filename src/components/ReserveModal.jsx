@@ -202,8 +202,65 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, onO
         background: '#0E1526',
         border: '1.5px solid var(--border-gold-glow)',
         borderRadius: 'var(--radius-lg)',
-        padding: '28px'
+        padding: '28px',
+        position: 'relative'
       }}>
+        
+        {/* Firestore Submission Loading Overlay */}
+        {saving && (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 300,
+            background: 'rgba(7, 11, 20, 0.95)',
+            backdropFilter: 'blur(16px)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '32px',
+            borderRadius: 'var(--radius-lg)',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: 'rgba(229, 193, 88, 0.15)',
+              border: '2px solid var(--color-gold)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '20px'
+            }}>
+              <Activity className="animate-spin" size={32} color="var(--color-gold-bright)" />
+            </div>
+
+            <h3 style={{ fontSize: '1.4rem', color: '#FFF', fontWeight: 800, margin: '0 0 8px 0' }}>
+              Submitting Booking Request to Firestore...
+            </h3>
+            <p style={{ fontSize: '0.88rem', color: '#94A3B8', maxWidth: '440px', margin: '0 0 24px 0' }}>
+              Registering PNR reference <strong style={{ color: 'var(--color-gold-bright)' }}>{pnr}</strong> and locking your 24-hour price freeze in database.
+            </p>
+
+            {/* Skeleton Card Preview */}
+            <div style={{
+              width: '100%',
+              maxWidth: '460px',
+              background: 'rgba(15, 23, 42, 0.8)',
+              border: '1px solid rgba(229, 193, 88, 0.3)',
+              borderRadius: 'var(--radius-md)',
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}>
+              <div style={{ height: '20px', width: '50%', background: 'rgba(229, 193, 88, 0.2)', borderRadius: '4px' }} className="animate-pulse" />
+              <div style={{ height: '32px', width: '80%', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '4px' }} className="animate-pulse" />
+              <div style={{ height: '16px', width: '90%', background: 'rgba(255, 255, 255, 0.06)', borderRadius: '4px' }} className="animate-pulse" />
+            </div>
+          </div>
+        )}
         
         {/* Header Bar */}
         <div className="reserve-modal-header" style={{

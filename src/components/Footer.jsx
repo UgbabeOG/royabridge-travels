@@ -1,7 +1,7 @@
 import React from 'react';
-import { Phone, Mail, MapPin, ArrowUp, Facebook, Instagram, Twitter, MessageCircle } from 'lucide-react';
+import { Phone, Mail, MapPin, ArrowUp, Facebook, Instagram, Twitter, MessageCircle, Lock } from 'lucide-react';
 
-export default function Footer({ onOpenChat, onOpenContact }) {
+export default function Footer({ onOpenChat, onOpenContact, onOpenAdmin }) {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -166,10 +166,33 @@ export default function Footer({ onOpenChat, onOpenContact }) {
             © {new Date().getFullYear()} <strong>RoyaBridge Travels</strong>. All Rights Reserved. Discover the World, Save Big and Travel Better.
           </div>
 
-          <div style={{ display: 'flex', gap: '16px' }}>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
             <a href="/sitemap.xml" style={{ color: '#64748B', textDecoration: 'none' }}>Sitemap</a>
             <a href="#" style={{ color: '#64748B', textDecoration: 'none' }}>Privacy Policy</a>
             <a href="#" style={{ color: '#64748B', textDecoration: 'none' }}>Terms of Service</a>
+            {onOpenAdmin && (
+              <button 
+                type="button"
+                onClick={onOpenAdmin}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#475569',
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: 0,
+                  transition: 'color 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.color = 'var(--color-gold)'}
+                onMouseLeave={(e) => e.target.style.color = '#475569'}
+                title="Executive Staff Admin Portal"
+              >
+                <Lock size={12} /> Staff Access
+              </button>
+            )}
           </div>
 
           <button 

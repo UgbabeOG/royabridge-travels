@@ -1,4 +1,4 @@
-import { db, doc, setDoc, getDoc, collection, getDocs, query } from './firebase';
+import { db, doc, setDoc, getDoc, deleteDoc, collection, getDocs, query } from './firebase';
 import { DESTINATIONS as SEED_DESTINATIONS, POPULAR_AIRPORTS as SEED_AIRPORTS } from '../data/destinations';
 
 /**
@@ -34,6 +34,80 @@ export async function seedDestinationsToFirestore() {
   }
 
   return { destinationsSeeded, airportsSeeded };
+}
+
+/**
+ * Creates a new destination in Firebase Firestore
+ */
+export async function createDestinationInFirestore(destinationData) {
+  const id = destinationData.id || `dest_${Date.now()}`;
+  const retailPrice = Number(destinationData.retailPrice) || 1000;
+  const royaPrice = Number(destinationData.royaPrice) || Math.round(retailPrice * 0.7);
+  const discount = destinationData.discount || `${Math.round(((retailPrice - royaPrice) / retailPrice) * 100)}%`;
+
+  const record = {
+    id,
+    name: destinationData.name || 'New Destination',
+    airport: destinationData.airport || 'JFK',
+    region: destinationData.region || 'Americas',
+    image: destinationData.image || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
+    retailPrice,
+    royaPrice,
+    discount,
+    popular: Boolean(destinationData.popular),
+    tagline: destinationData.tagline || 'Experience luxury flight deals.',
+    bestTimeToVisit: destinationData.bestTimeToVisit || 'Year-round',
+    visaRequirement: destinationData.visaRequirement || 'Visa on arrival / Electronic ETA',
+    currency: destinationData.currency || 'USD',
+    language: destinationData.language || 'English',
+    averageFlightDuration: destinationData.averageFlightDuration || '7h 30m',
+    highlights: Array.isArray(destinationData.highlights) ? destinationData.highlights : (destinationData.highlights ? destinationData.highlights.split(',').map(s => s.trim()) : ['Luxury Hotels', 'Concierge Perks']),
+    createdAt: new Date().toISOString()
+  };
+
+  try {
+    const docRef = doc(db, 'destinations', id);
+    await setDoc(docRef, record, { merge: true });
+    console.log(`[Firestore] Destination created successfully: ${id}`);
+  } catch (err) {
+    console.warn('[Firestore Create Destination Error]:', err);
+  }
+
+  return record;
+}
+
+/**
+ * Updates an existing destination in Firebase Firestore
+ */
+export async function updateDestinationInFirestore(id, updateData) {
+  if (!id) return null;
+
+  try {
+    const docRef = doc(db, 'destinations', id);
+    await setDoc(docRef, { ...updateData, updatedAt: new Date().toISOString() }, { merge: true });
+    console.log(`[Firestore] Destination ${id} updated successfully.`);
+    return { id, ...updateData };
+  } catch (err) {
+    console.warn(`[Firestore Update Destination Error]:`, err);
+    throw err;
+  }
+}
+
+/**
+ * Deletes a destination record from Firebase Firestore
+ */
+export async function deleteDestinationFromFirestore(id) {
+  if (!id) return false;
+
+  try {
+    const docRef = doc(db, 'destinations', id);
+    await deleteDoc(docRef);
+    console.log(`[Firestore] Destination ${id} deleted successfully.`);
+    return true;
+  } catch (err) {
+    console.warn(`[Firestore Delete Destination Error]:`, err);
+    throw err;
+  }
 }
 
 /**
