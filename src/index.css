@@ -292,44 +292,117 @@ h1, h2, h3, .font-royal {
 }
 
 /* ==========================================================================
-   Section Transition & Scroll Entrance Animations
+   Section Layout & Static Display Rules (Transition Animations Removed)
    ========================================================================== */
 .animated-section {
-  opacity: 0;
-  transform: translateY(18px);
-  transition: opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1), transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
+  opacity: 1 !important;
+  transform: none !important;
+  transition: none !important;
 }
 
-.animated-section.is-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.animated-section.fade-in {
-  transform: translateY(0);
-}
-
-.animated-section.slide-up {
-  transform: translateY(20px);
-}
-.animated-section.slide-up.is-visible {
-  transform: translateY(0);
-}
-
-.animated-section.slide-right {
-  transform: translateX(-20px);
-}
-.animated-section.slide-right.is-visible {
-  transform: translateX(0);
-}
-
+.animated-section.is-visible,
+.animated-section.fade-in,
+.animated-section.slide-up,
+.animated-section.slide-right,
 .animated-section.scale-up {
-  transform: scale(0.98) translateY(12px);
+  opacity: 1 !important;
+  transform: none !important;
 }
-.animated-section.scale-up.is-visible {
-  transform: scale(1) translateY(0);
+
+/* ==========================================================================
+   Mobile Responsive Modal & Card Enhancements
+   ========================================================================== */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 12px;
+  }
+
+  .section-header {
+    margin-bottom: 24px;
+  }
+
+  .section-header h2 {
+    font-size: 1.4rem;
+  }
+
+  .glass-card {
+    border-radius: var(--radius-md) !important;
+  }
+
+  /* Responsive Reserve Modal Container Expansion & Content Scaling */
+  .reserve-modal-container {
+    padding: 4px !important;
+    align-items: flex-start !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+
+  .reserve-modal-card {
+    padding: 14px 10px !important;
+    max-height: 97vh !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 12px !important;
+  }
+
+  .reserve-modal-header {
+    padding-bottom: 10px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .reserve-modal-title {
+    font-size: 1.15rem !important;
+    line-height: 1.25 !important;
+    margin-top: 2px !important;
+  }
+
+  .reserve-modal-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .reserve-sidebar {
+    position: relative !important;
+    top: 0 !important;
+    padding: 12px 10px !important;
+    gap: 12px !important;
+  }
+
+  .reserve-modal-input {
+    font-size: 14px !important; /* Compact readable font */
+    padding: 8px 10px !important;
+    border-radius: 6px !important;
+  }
+
+  /* Scale down inner card padding and font sizes for mobile view */
+  .reserve-modal-card div[style*="padding: 18px"] {
+    padding: 10px 12px !important;
+  }
+
+  .reserve-modal-card div[style*="padding: 20px"] {
+    padding: 12px 10px !important;
+  }
+
+  .reserve-modal-card div[style*="padding: 12px 14px"] {
+    padding: 8px 10px !important;
+  }
+
+  .reserve-modal-card h3 {
+    font-size: 0.95rem !important;
+    margin-bottom: 6px !important;
+  }
+
+  .reserve-modal-card label {
+    font-size: 0.78rem !important;
+    margin-bottom: 4px !important;
+  }
+
+  .reserve-modal-card button {
+    padding: 8px 12px !important;
+    font-size: 0.82rem !important;
+  }
 }
+
 
 @keyframes fadeInUp {
   from {

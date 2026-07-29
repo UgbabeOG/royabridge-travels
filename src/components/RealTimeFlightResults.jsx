@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plane, Clock, ShieldCheck, Sparkles, Luggage, AlertCircle, ArrowRight, Filter, TrendingDown, Check, Columns, Layers, Trash2, X } from 'lucide-react';
+import { Plane, Clock, ShieldCheck, Sparkles, Luggage, AlertCircle, ArrowRight, Filter, TrendingDown, Check, Columns, Layers, Trash2, X, Share2 } from 'lucide-react';
 import { formatCurrency } from '../utils/pnrGenerator';
 import AirlineLogo from './AirlineLogo';
 import FlightComparisonModal from './FlightComparisonModal';
@@ -12,8 +12,10 @@ export default function RealTimeFlightResults({
   onSelectFlight,
   priceTrend,
   onCheckStatus,
+  onOpenShare,
   currency = 'USD'
 }) {
+
   const [sortBy, setSortBy] = useState('price'); // 'price' | 'duration' | 'departure'
   const [selectedAirline, setSelectedAirline] = useState('ALL');
   const [nonStopOnly, setNonStopOnly] = useState(false);
@@ -242,7 +244,29 @@ export default function RealTimeFlightResults({
                   </h2>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => {
+                      if (onOpenShare) {
+                        onOpenShare({
+                          type: 'search',
+                          origin: searchQuery?.origin || 'JFK',
+                          destination: searchQuery?.destination || 'LHR',
+                          departDate: searchQuery?.departDate || '2026-08-15',
+                          returnDate: searchQuery?.returnDate,
+                          cabinClass: searchQuery?.cabinClass || 'Business',
+                          passengers: searchQuery?.passengers || 1,
+                          segments: searchQuery?.segments || null
+                        });
+                      }
+                    }}
+                    className="btn-outline-gold"
+                    style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                  >
+                    <Share2 size={16} />
+                    Share Search Itinerary
+                  </button>
+
                   <button
                     onClick={() => setShowTrend(!showTrend)}
                     className="btn-outline-gold"
@@ -252,6 +276,7 @@ export default function RealTimeFlightResults({
                     {showTrend ? 'Hide Price Trends' : 'View 7-Day Price Trends'}
                   </button>
                 </div>
+
               </div>
 
               {/* Price Trend Interactive Graph */}

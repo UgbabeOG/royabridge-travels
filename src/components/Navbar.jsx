@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, MessageSquare, PhoneCall, Menu, X, Phone, Mail } from 'lucide-react';
+import { ShieldCheck, MessageSquare, PhoneCall, Menu, X, Phone, Mail, Share2 } from 'lucide-react';
 
-export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpenContact }) {
+export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpenContact, onOpenShare }) {
+
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('');
@@ -180,6 +181,17 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
         {/* Action Buttons & Hamburger Menu */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           
+          {/* Share Itinerary Button */}
+          <button 
+            onClick={() => onOpenShare && onOpenShare()}
+            className="btn-outline-gold desktop-only"
+            style={{ padding: '7px 14px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
+            title="Share My Itinerary"
+          >
+            <Share2 size={14} />
+            Share
+          </button>
+
           {/* Contact Us Button - Desktop Only */}
           <button 
             onClick={onOpenContact}
@@ -189,6 +201,7 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
             <PhoneCall size={14} />
             Contact Us
           </button>
+
 
           {/* Track Reservation Button */}
           <button 

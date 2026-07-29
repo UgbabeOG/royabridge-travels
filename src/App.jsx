@@ -8,6 +8,7 @@ import DestinationExplorer from './components/DestinationExplorer';
 import FlightStatusSection from './components/FlightStatusSection';
 import UserReviews from './components/UserReviews';
 import ReserveModal from './components/ReserveModal';
+import ShareItineraryModal from './components/ShareItineraryModal';
 import BookingTracker from './components/BookingTracker';
 import ConciergeChat from './components/ConciergeChat';
 import ContactModal from './components/ContactModal';
@@ -23,6 +24,11 @@ export default function App() {
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
+  
+  // Share Itinerary State
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareData, setShareData] = useState(null);
+
   const [toasts, setToasts] = useState([]);
 
   const showToast = ({ type = 'success', title, message, pnr, duration = 5000 }) => {
@@ -48,6 +54,23 @@ export default function App() {
   const [priceTrend, setPriceTrend] = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState('');
+
+  // Handle Share Modal Trigger
+  const handleOpenShare = (customData) => {
+    const payload = customData || {
+      type: 'search',
+      origin: searchQuery.origin,
+      destination: searchQuery.destination,
+      departDate: searchQuery.departDate,
+      returnDate: searchQuery.returnDate,
+      cabinClass: searchQuery.cabinClass,
+      passengers: searchQuery.passengers,
+      segments: searchQuery.segments
+    };
+    setShareData(payload);
+    setIsShareModalOpen(true);
+  };
+
 
   // Perform initial search on load
   useEffect(() => {
@@ -160,6 +183,7 @@ export default function App() {
         onOpenChat={() => setIsChatOpen(true)}
         onOpenTracker={() => setIsTrackerOpen(true)}
         onOpenContact={() => setIsContactOpen(true)}
+        onOpenShare={handleOpenShare}
       />
 
       {/* Main Hero */}
@@ -189,6 +213,7 @@ export default function App() {
           error={searchError}
           priceTrend={priceTrend}
           onSelectFlight={handleSelectFlight}
+          onOpenShare={handleOpenShare}
           currency={currency}
         />
       </AnimatedSection>
@@ -201,7 +226,7 @@ export default function App() {
         />
       </AnimatedSection>
 
-      {/* Destination & Savings Visualizer */}
+      {/* Destination & Savings Visualizer + Integrated Travel Insights */}
       <AnimatedSection animation="slide-up">
         <DestinationExplorer 
           onSelectDestination={handleSelectDestination}
@@ -241,12 +266,22 @@ export default function App() {
           currency={currency}
           showToast={showToast}
           onClose={() => setReserveModalData(null)}
+          onOpenShare={handleOpenShare}
           onOpenChat={() => {
             setReserveModalData(null);
             setIsChatOpen(true);
           }}
         />
       )}
+
+      {/* Share Itinerary Modal */}
+      <ShareItineraryModal 
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        shareData={shareData}
+        currency={currency}
+      />
+
 
       {/* PNR Booking Tracker & Live Flight Status Modal */}
       <BookingTracker 

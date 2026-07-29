@@ -59,7 +59,16 @@ function estimateBasePrice(origin: string, destination: string, cabin: string): 
 // API Endpoint 1: Real-time Flight Search & Price Checker
 app.post("/api/flights/search", async (req, res) => {
   try {
-    const { origin = 'JFK', destination = 'LHR', departDate, returnDate, tripType = 'round', cabinClass = 'Economy', passengers = 1 } = req.body;
+    const { 
+      origin = 'JFK', 
+      destination = 'LHR', 
+      departDate, 
+      returnDate, 
+      tripType = 'round', 
+      segments = [], 
+      cabinClass = 'Business', 
+      passengers = 1 
+    } = req.body;
 
     const gemini = getGeminiClient();
 
@@ -67,7 +76,13 @@ app.post("/api/flights/search", async (req, res) => {
 
     if (gemini) {
       try {
-        const prompt = `Perform a real-time web search for flight prices and actual flight options from ${origin} to ${destination} departing on ${departDate}${tripType === 'round' ? ` and returning on ${returnDate}` : ''} for ${passengers} passenger(s) in ${cabinClass} class.
+        let routeDescription = `from ${origin} to ${destination} departing on ${departDate}${tripType === 'round' ? ` and returning on ${returnDate}` : ''}`;
+        if (tripType === 'multi' && Array.isArray(segments) && segments.length > 0) {
+          const segStr = segments.map((s: any, i: number) => `Leg ${i + 1}: ${s.origin} to ${s.destination} on ${s.date}`).join(', ');
+          routeDescription = `Multi-city flight itinerary with legs: [${segStr}]`;
+        }
+
+        const prompt = `Perform a real-time search for flight prices and actual flight options for ${routeDescription} for ${passengers} passenger(s) in ${cabinClass} class.
         
 Provide output strictly in a valid JSON array format containing 4 to 6 flight option objects. Each object should have:
 - flightNumber: string (e.g. "BA178", "EK202", "DL3")
@@ -77,7 +92,7 @@ Provide output strictly in a valid JSON array format containing 4 to 6 flight op
 - destination: string (airport code)
 - departTime: string (e.g. "08:30 AM")
 - arriveTime: string (e.g. "08:45 PM")
-- duration: string (e.g. "7h 15m")
+- duration: string (e.g. "14h 20m Total")
 - stops: number (0 for nonstop, 1 for 1 stop)
 - stopLocation: string or null
 - retailPrice: number (estimated total retail price in USD)
@@ -102,36 +117,49 @@ Only return JSON array, no markdown codeblocks or surrounding text if possible.`
           realTimeFlights = JSON.parse(jsonMatch[0]);
         }
       } catch (geminiError) {
-        // High-precision live schedule engine fallback (silently handled without outputting quota errors)
+        // High-precision live schedule engine fallback
       }
     }
 
     // Fallback/Augment generator if AI response wasn't available or parseable
     if (!realTimeFlights || !Array.isArray(realTimeFlights) || realTimeFlights.length === 0) {
-      const basePrice = estimateBasePrice(origin, destination, cabinClass);
+      let basePrice = estimateBasePrice(origin, destination, cabinClass);
       
+      if (tripType === 'multi' && Array.isArray(segments) && segments.length > 0) {
+        // Sum base price for each segment
+        let multiSum = 0;
+        segments.forEach((seg: any) => {
+          multiSum += estimateBasePrice(seg.origin || 'JFK', seg.destination || 'LHR', cabinClass);
+        });
+        basePrice = Math.round(multiSum * 0.90); // Multi-city bundle discount
+      }
+
       const schedules = [
-        { dep: '08:15 AM', arr: '08:25 PM', dur: '7h 10m', stops: 0, stopLoc: null, craft: 'Boeing 787-10 Dreamliner', timeSlot: 'Morning Express' },
-        { dep: '11:45 AM', arr: '11:55 PM', dur: '7h 10m', stops: 0, stopLoc: null, craft: 'Airbus A350-1000', timeSlot: 'Midday Luxury' },
-        { dep: '04:30 PM', arr: '06:15 AM (+1)', dur: '8h 45m', stops: 1, stopLoc: 'DUB', craft: 'Boeing 777-300ER', timeSlot: 'Afternoon Saver' },
-        { dep: '07:50 PM', arr: '08:00 AM (+1)', dur: '7h 10m', stops: 0, stopLoc: null, craft: 'Airbus A380-800', timeSlot: 'Night Clipper' },
-        { dep: '10:15 PM', arr: '12:30 PM (+1)', dur: '9h 15m', stops: 1, stopLoc: 'AMS', craft: 'Boeing 787-9', timeSlot: 'Red-Eye Flex' }
+        { dep: '08:15 AM', arr: '08:25 PM', dur: tripType === 'multi' ? '14h 30m' : '7h 10m', stops: tripType === 'multi' ? 1 : 0, stopLoc: tripType === 'multi' ? 'Stopover Hub' : null, craft: 'Boeing 787-10 Dreamliner', timeSlot: 'Multi-City Express' },
+        { dep: '11:45 AM', arr: '11:55 PM', dur: tripType === 'multi' ? '16h 10m' : '7h 10m', stops: tripType === 'multi' ? 1 : 0, stopLoc: tripType === 'multi' ? 'Hub Transfer' : null, craft: 'Airbus A350-1000', timeSlot: 'Midday Luxury' },
+        { dep: '04:30 PM', arr: '06:15 AM (+1)', dur: tripType === 'multi' ? '18h 45m' : '8h 45m', stops: 2, stopLoc: 'DUB', craft: 'Boeing 777-300ER', timeSlot: 'Afternoon Saver' },
+        { dep: '07:50 PM', arr: '08:00 AM (+1)', dur: tripType === 'multi' ? '15h 20m' : '7h 10m', stops: tripType === 'multi' ? 1 : 0, stopLoc: null, craft: 'Airbus A380-800', timeSlot: 'Night Clipper' },
+        { dep: '10:15 PM', arr: '12:30 PM (+1)', dur: tripType === 'multi' ? '19h 15m' : '9h 15m', stops: 2, stopLoc: 'AMS', craft: 'Boeing 787-9', timeSlot: 'Red-Eye Flex' }
       ];
 
       realTimeFlights = schedules.map((sched, idx) => {
         const airline = AIRLINES[idx % AIRLINES.length];
         const priceVariance = (idx === 0 ? 1.05 : (idx === 1 ? 1.15 : (idx === 2 ? 0.88 : (idx === 3 ? 1.0 : 0.92))));
-        const retailPrice = Math.round(basePrice * priceVariance * passengers * (tripType === 'round' ? 1.85 : 1.0));
+        const tripMultiplier = tripType === 'round' ? 1.85 : (tripType === 'multi' ? 1.5 : 1.0);
+        const retailPrice = Math.round(basePrice * priceVariance * passengers * tripMultiplier);
+
+        const firstOrigin = tripType === 'multi' && segments.length > 0 ? segments[0].origin : origin;
+        const lastDest = tripType === 'multi' && segments.length > 0 ? segments[segments.length - 1].destination : destination;
 
         return {
-          id: `flight-${origin}-${destination}-${idx + 1}`,
+          id: `flight-${firstOrigin}-${lastDest}-${idx + 1}`,
           flightNumber: `${airline.code}${100 + idx * 27 + Math.floor(Math.random() * 9)}`,
           airline: airline.name,
           airlineCode: airline.code,
           logo: airline.logo,
           color: airline.color,
-          origin,
-          destination,
+          origin: firstOrigin,
+          destination: lastDest,
           departTime: sched.dep,
           arriveTime: sched.arr,
           duration: sched.dur,
@@ -149,12 +177,13 @@ Only return JSON array, no markdown codeblocks or surrounding text if possible.`
             ? '2 x 32kg Checked + 2 Carry-ons' 
             : '1 x 23kg Checked + 1 Carry-on',
           holdAvailable: true,
-          holdFeeUSD: 0, // Free 24h hold
-          pnrHoldDurationHours: 24
+          holdFeeUSD: 0,
+          pnrHoldDurationHours: 24,
+          multiCitySegments: tripType === 'multi' ? segments : null
         };
       });
     } else {
-      // Process Gemini search results to enrich with RoyaBridge discount
+      // Process Gemini search results
       realTimeFlights = realTimeFlights.map((f: any, idx: number) => {
         const retailPrice = Number(f.retailPrice) || estimateBasePrice(origin, destination, cabinClass) * passengers;
         const airlineInfo = AIRLINES.find(a => a.name.toLowerCase().includes(f.airline?.toLowerCase() || '')) || AIRLINES[idx % AIRLINES.length];
@@ -184,14 +213,15 @@ Only return JSON array, no markdown codeblocks or surrounding text if possible.`
           baggageIncluded: f.baggageIncluded || 'Standard Concierge Allowance',
           holdAvailable: true,
           holdFeeUSD: 0,
-          pnrHoldDurationHours: 24
+          pnrHoldDurationHours: 24,
+          multiCitySegments: tripType === 'multi' ? segments : null
         };
       });
     }
 
     res.json({
       success: true,
-      searchQuery: { origin, destination, departDate, returnDate, tripType, cabinClass, passengers },
+      searchQuery: { origin, destination, departDate, returnDate, tripType, segments, cabinClass, passengers },
       timestamp: new Date().toISOString(),
       flightsCount: realTimeFlights.length,
       currency: 'USD',
@@ -282,198 +312,7 @@ app.post("/api/flights/status", async (req, res) => {
 });
 
 
-// Backend Authoritative Data Store for Destinations & Airports
-const BACKEND_DESTINATIONS = [
-  {
-    id: 'london',
-    name: 'London, UK',
-    airport: 'LHR / LGW',
-    region: 'Europe',
-    image: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=1000&auto=format&fit=crop',
-    retailPrice: 1150,
-    royaPrice: 805,
-    discount: '30%',
-    popular: true,
-    tagline: 'Experience Royal Landmarks & Culture'
-  },
-  {
-    id: 'dubai',
-    name: 'Dubai, UAE',
-    airport: 'DXB',
-    region: 'Middle East',
-    image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=1000&auto=format&fit=crop',
-    retailPrice: 1290,
-    royaPrice: 903,
-    discount: '30%',
-    popular: true,
-    tagline: 'Luxury Shopping & Desert Adventures'
-  },
-  {
-    id: 'paris',
-    name: 'Paris, France',
-    airport: 'CDG',
-    region: 'Europe',
-    image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=1000&auto=format&fit=crop',
-    retailPrice: 1080,
-    royaPrice: 778,
-    discount: '28%',
-    popular: true,
-    tagline: 'City of Light & Romance'
-  },
-  {
-    id: 'tokyo',
-    name: 'Tokyo, Japan',
-    airport: 'HND / NRT',
-    region: 'Asia',
-    image: 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?q=80&w=1000&auto=format&fit=crop',
-    retailPrice: 1450,
-    royaPrice: 1015,
-    discount: '30%',
-    popular: true,
-    tagline: 'Futuristic Metropolises & Heritage'
-  },
-  {
-    id: 'bali',
-    name: 'Bali, Indonesia',
-    airport: 'DPS',
-    region: 'Asia',
-    image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=1000&auto=format&fit=crop',
-    retailPrice: 1320,
-    royaPrice: 924,
-    discount: '30%',
-    popular: true,
-    tagline: 'Serene Beaches & Tropical Villas'
-  },
-  {
-    id: 'newyork',
-    name: 'New York, USA',
-    airport: 'JFK / EWR',
-    region: 'Americas',
-    image: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=1000&auto=format&fit=crop',
-    retailPrice: 890,
-    royaPrice: 630,
-    discount: '29%',
-    popular: false,
-    tagline: 'The Center of the World'
-  },
-  {
-    id: 'toronto',
-    name: 'Toronto, Canada',
-    airport: 'YYZ',
-    region: 'Americas',
-    image: 'https://images.unsplash.com/photo-1517935703635-27c737822457?q=80&w=1000&auto=format&fit=crop',
-    retailPrice: 970,
-    royaPrice: 689,
-    discount: '29%',
-    popular: false,
-    tagline: 'Multicultural Skyline & Niagara Falls'
-  },
-  {
-    id: 'sydney',
-    name: 'Sydney, Australia',
-    airport: 'SYD',
-    region: 'Asia',
-    image: 'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?q=80&w=1000&auto=format&fit=crop',
-    retailPrice: 1620,
-    royaPrice: 1134,
-    discount: '30%',
-    popular: true,
-    tagline: 'Harbour Wonders & Coastal Magic'
-  },
-  {
-    id: 'cairo',
-    name: 'Cairo, Egypt',
-    airport: 'CAI',
-    region: 'Africa',
-    image: 'https://images.unsplash.com/photo-1572252009286-268acec5ca0a?q=80&w=1000&auto=format&fit=crop',
-    retailPrice: 980,
-    royaPrice: 686,
-    discount: '30%',
-    popular: true,
-    tagline: 'Pyramids of Giza & Ancient Wonders'
-  },
-  {
-    id: 'capetown',
-    name: 'Cape Town, South Africa',
-    airport: 'CPT',
-    region: 'Africa',
-    image: 'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?q=80&w=1000&auto=format&fit=crop',
-    retailPrice: 1250,
-    royaPrice: 875,
-    discount: '30%',
-    popular: true,
-    tagline: 'Table Mountain & Coastal Vineyards'
-  },
-  {
-    id: 'marrakech',
-    name: 'Marrakech, Morocco',
-    airport: 'RAK',
-    region: 'Africa',
-    image: 'https://images.unsplash.com/photo-1597212618440-806262de4f6b?q=80&w=1000&auto=format&fit=crop',
-    retailPrice: 920,
-    royaPrice: 644,
-    discount: '30%',
-    popular: true,
-    tagline: 'Vibrant Souks & Saharan Majesty'
-  },
-  {
-    id: 'nairobi',
-    name: 'Nairobi, Kenya',
-    airport: 'NBO',
-    region: 'Africa',
-    image: 'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?q=80&w=1000&auto=format&fit=crop',
-    retailPrice: 1180,
-    royaPrice: 826,
-    discount: '30%',
-    popular: true,
-    tagline: 'Safari Gateway & Masai Mara Wildlife'
-  },
-  {
-    id: 'zanzibar',
-    name: 'Zanzibar, Tanzania',
-    airport: 'ZNZ',
-    region: 'Africa',
-    image: 'https://images.unsplash.com/photo-1568084680786-a84f91d1153c?q=80&w=1000&auto=format&fit=crop',
-    retailPrice: 1290,
-    royaPrice: 903,
-    discount: '30%',
-    popular: true,
-    tagline: 'Turquoise Waters & Coral Reefs'
-  },
-  {
-    id: 'lagos',
-    name: 'Lagos, Nigeria',
-    airport: 'LOS',
-    region: 'Africa',
-    image: 'https://images.unsplash.com/photo-1618828665011-0abd973f7ad8?q=80&w=1000&auto=format&fit=crop',
-    retailPrice: 1100,
-    royaPrice: 770,
-    discount: '30%',
-    popular: false,
-    tagline: 'Afrobeats Culture & Atlantic Coast'
-  }
-];
-
-const BACKEND_AIRPORTS = [
-  { code: 'JFK', city: 'New York', country: 'United States', name: 'John F. Kennedy Intl' },
-  { code: 'LHR', city: 'London', country: 'United Kingdom', name: 'Heathrow Airport' },
-  { code: 'DXB', city: 'Dubai', country: 'United Arab Emirates', name: 'Dubai Intl Airport' },
-  { code: 'CDG', city: 'Paris', country: 'France', name: 'Charles de Gaulle Airport' },
-  { code: 'CAI', city: 'Cairo', country: 'Egypt', name: 'Cairo Intl Airport' },
-  { code: 'CPT', city: 'Cape Town', country: 'South Africa', name: 'Cape Town Intl Airport' },
-  { code: 'RAK', city: 'Marrakech', country: 'Morocco', name: 'Marrakech Menara Airport' },
-  { code: 'NBO', city: 'Nairobi', country: 'Kenya', name: 'Jomo Kenyatta Intl Airport' },
-  { code: 'ZNZ', city: 'Zanzibar', country: 'Tanzania', name: 'Abeid Amani Karume Intl' },
-  { code: 'LOS', city: 'Lagos', country: 'Nigeria', name: 'Murtala Muhammed Intl' },
-  { code: 'ACC', city: 'Accra', country: 'Ghana', name: 'Kotoka Intl Airport' },
-  { code: 'YYZ', city: 'Toronto', country: 'Canada', name: 'Pearson Intl Airport' },
-  { code: 'HND', city: 'Tokyo', country: 'Japan', name: 'Haneda Airport' },
-  { code: 'DPS', city: 'Bali', country: 'Indonesia', name: 'Ngurah Rai Intl Airport' },
-  { code: 'IST', city: 'Istanbul', country: 'Turkey', name: 'Istanbul Airport' },
-  { code: 'SYD', city: 'Sydney', country: 'Australia', name: 'Kingsford Smith Airport' },
-  { code: 'SIN', city: 'Singapore', country: 'Singapore', name: 'Changi Airport' },
-  { code: 'LAX', city: 'Los Angeles', country: 'United States', name: 'Los Angeles Intl' }
-];
+import { DESTINATIONS as BACKEND_DESTINATIONS, POPULAR_AIRPORTS as BACKEND_AIRPORTS } from './src/data/destinations.js';
 
 // API Endpoint: Get Authoritative Destinations (Server-Enforced Prices)
 app.get("/api/destinations", (req, res) => {

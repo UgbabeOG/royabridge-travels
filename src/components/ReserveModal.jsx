@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, ShieldCheck, Download, Printer, MessageCircle, Clock, CheckCircle2, Copy, Plane, Activity, AlertCircle, Shield, Sparkles, Check, Luggage, PlusCircle, FileText, Lock, HeartHandshake } from 'lucide-react';
+import { X, ShieldCheck, Download, Printer, MessageCircle, Clock, CheckCircle2, Copy, Plane, Activity, AlertCircle, Shield, Sparkles, Check, Luggage, PlusCircle, FileText, Lock, HeartHandshake, Share2 } from 'lucide-react';
 import { generatePNR, formatCurrency } from '../utils/pnrGenerator';
 import { saveBookingToDatabase } from '../lib/bookingsService';
 import { validateEmail, validatePhone, validateName } from '../utils/validation';
 
-export default function ReserveModal({ data, onClose, onOpenChat, showToast, currency = 'USD' }) {
+export default function ReserveModal({ data, onClose, onOpenChat, showToast, onOpenShare, currency = 'USD' }) {
+
   const [passengerName, setPassengerName] = useState('');
   const [passengerEmail, setPassengerEmail] = useState('');
   const [passengerPhone, setPassengerPhone] = useState('');
@@ -181,7 +182,7 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
   if (!data) return null;
 
   return (
-    <div style={{
+    <div className="reserve-modal-container" style={{
       position: 'fixed',
       inset: 0,
       zIndex: 200,
@@ -193,7 +194,7 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
       padding: '20px',
       overflowY: 'auto'
     }}>
-      <div className="glass-card" style={{
+      <div className="glass-card reserve-modal-card" style={{
         maxWidth: '1100px',
         width: '100%',
         maxHeight: '92vh',
@@ -205,7 +206,7 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
       }}>
         
         {/* Header Bar */}
-        <div style={{
+        <div className="reserve-modal-header" style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -218,7 +219,7 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
               <ShieldCheck size={14} color="var(--color-gold)" />
               Reserve Before Payment Confirmed
             </span>
-            <h2 className="font-royal" style={{ color: '#FFF', fontSize: '1.6rem', marginTop: '4px' }}>
+            <h2 className="font-royal reserve-modal-title" style={{ color: '#FFF', fontSize: '1.6rem', marginTop: '4px' }}>
               Official Flight Reservation Hold
             </h2>
           </div>
@@ -242,7 +243,7 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
         </div>
 
         {/* 2-Column Checkout Layout */}
-        <div style={{
+        <div className="reserve-modal-grid" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
           gap: '28px',
@@ -694,7 +695,7 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
 
 
           {/* RIGHT COLUMN: STICKY REAL-TIME BOOKING SUMMARY SIDEBAR */}
-          <div style={{
+          <div className="reserve-sidebar" style={{
             position: 'sticky',
             top: '0px',
             background: 'linear-gradient(180deg, #131B2E 0%, #0A0F1D 100%)',
@@ -886,6 +887,33 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
 
               <button 
                 type="button"
+                onClick={() => {
+                  if (onOpenShare) {
+                    onOpenShare({
+                      type: 'pnr',
+                      pnrNumber: pnr,
+                      origin: data.origin?.code || data.origin || 'JFK',
+                      destination: data.destination?.code || data.destination || 'LHR',
+                      departDate: data.departDate,
+                      returnDate: data.returnDate,
+                      cabinClass: selectedCabin,
+                      passengers: passengersCount,
+                      airline: data.airline,
+                      flightNumber: data.flightNumber,
+                      royaPrice: totalFinalPrice,
+                      savings: totalSavings
+                    });
+                  }
+                }}
+                className="btn-outline-gold"
+                style={{ width: '100%', padding: '10px', fontSize: '0.85rem' }}
+              >
+                <Share2 size={15} />
+                Share My Itinerary (Email / Link)
+              </button>
+
+              <button 
+                type="button"
                 onClick={handlePrint}
                 className="btn-outline-gold"
                 style={{ width: '100%', padding: '10px', fontSize: '0.85rem' }}
@@ -894,6 +922,7 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
                 Print / Save Itinerary PDF
               </button>
             </div>
+
 
             {/* Guarantees */}
             <div style={{ fontSize: '0.72rem', color: '#94A3B8', textAlign: 'center', lineHeight: 1.4 }}>
