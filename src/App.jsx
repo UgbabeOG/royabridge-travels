@@ -14,6 +14,7 @@ import ContactModal from './components/ContactModal';
 import FAQSection from './components/FAQSection';
 import Footer from './components/Footer';
 import ToastNotification from './components/ToastNotification';
+import AnimatedSection from './components/AnimatedSection';
 import { POPULAR_AIRPORTS } from './data/destinations';
 
 export default function App() {
@@ -161,50 +162,66 @@ export default function App() {
       />
 
       {/* Main Hero */}
-      <Hero 
-        onStartSearch={scrollToSearch}
-        onOpenChat={() => setIsChatOpen(true)}
-      />
+      <AnimatedSection animation="fade-in">
+        <Hero 
+          onStartSearch={scrollToSearch}
+          onOpenChat={() => setIsChatOpen(true)}
+        />
+      </AnimatedSection>
 
       {/* Core Concierge Booking Search Engine */}
-      <FlightSearchForm 
-        onSearchFlights={handleSearchFlights}
-        loading={searchLoading}
-      />
+      <AnimatedSection animation="slide-up">
+        <FlightSearchForm 
+          onSearchFlights={handleSearchFlights}
+          loading={searchLoading}
+        />
+      </AnimatedSection>
 
       {/* Real-Time Live Flight Search Results & Price Comparison */}
-      <RealTimeFlightResults 
-        flights={flights}
-        searchQuery={searchQuery}
-        loading={searchLoading}
-        error={searchError}
-        priceTrend={priceTrend}
-        onSelectFlight={handleSelectFlight}
-      />
+      <AnimatedSection animation="scale-up">
+        <RealTimeFlightResults 
+          flights={flights}
+          searchQuery={searchQuery}
+          loading={searchLoading}
+          error={searchError}
+          priceTrend={priceTrend}
+          onSelectFlight={handleSelectFlight}
+        />
+      </AnimatedSection>
 
       {/* Brand Value Grid (Save up to 30%, Reserve before payment, etc.) */}
-      <FeatureGrid 
-        onOpenSearch={scrollToSearch}
-        onOpenChat={() => setIsChatOpen(true)}
-      />
+      <AnimatedSection animation="slide-up">
+        <FeatureGrid 
+          onOpenSearch={scrollToSearch}
+          onOpenChat={() => setIsChatOpen(true)}
+        />
+      </AnimatedSection>
 
       {/* Destination & Savings Visualizer */}
-      <DestinationExplorer 
-        onSelectDestination={handleSelectDestination}
-      />
+      <AnimatedSection animation="slide-up">
+        <DestinationExplorer 
+          onSelectDestination={handleSelectDestination}
+        />
+      </AnimatedSection>
 
       {/* Flight Status Lookup Section */}
-      <FlightStatusSection 
-        onSelectFlight={handleSelectFlight}
-      />
+      <AnimatedSection animation="slide-up">
+        <FlightStatusSection 
+          onSelectFlight={handleSelectFlight}
+        />
+      </AnimatedSection>
 
       {/* Customer Feedback & Reviews Section */}
-      <UserReviews 
-        onOpenChat={() => setIsChatOpen(true)}
-      />
+      <AnimatedSection animation="slide-up">
+        <UserReviews 
+          onOpenChat={() => setIsChatOpen(true)}
+        />
+      </AnimatedSection>
 
       {/* FAQ Section with SEO JSON-LD Microdata support */}
-      <FAQSection />
+      <AnimatedSection animation="slide-up">
+        <FAQSection />
+      </AnimatedSection>
 
       {/* Footer */}
       <Footer 

@@ -4,22 +4,94 @@ import { ShieldCheck, MessageSquare, PhoneCall, Menu, X, Phone, Mail } from 'luc
 export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpenContact }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState('');
+
+  const NAV_ITEMS = [
+    { id: 'reserve', label: 'Reserve Flight' },
+    { id: 'about', label: 'About Us' },
+    { id: 'destinations', label: 'Destinations' },
+    { id: 'reviews', label: 'Reviews' },
+    { id: 'faq', label: 'FAQ' }
+  ];
 
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 40);
+
+      // Scroll Spy Logic
+      const scrollPosition = window.scrollY + 200;
+      let currentSection = '';
+
+      for (const item of NAV_ITEMS) {
+        const el = document.getElementById(item.id);
+        if (el) {
+          const top = el.offsetTop;
+          const height = el.offsetHeight;
+          if (scrollPosition >= top && scrollPosition < top + height) {
+            currentSection = item.id;
+          }
+        }
+      }
+
+      setActiveSection(currentSection);
     };
-    window.addEventListener('scroll', handleScroll);
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleMobileNavClick = (href) => {
+  const handleNavClick = (e, targetId) => {
+    if (e) e.preventDefault();
     setMobileMenuOpen(false);
-    if (href) {
-      const el = document.querySelector(href);
-      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    setActiveSection(targetId);
+
+    const el = document.getElementById(targetId);
+    if (el) {
+      const headerOffset = 90;
+      const elementPosition = el.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
     }
   };
+
+  const getNavLinkStyle = (isActive) => ({
+    color: isActive ? 'var(--color-gold-bright)' : '#CBD5E1',
+    textDecoration: 'none',
+    fontSize: '0.84rem',
+    fontWeight: isActive ? 800 : 600,
+    letterSpacing: '0.01em',
+    whiteSpace: 'nowrap',
+    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+    padding: '6px 14px',
+    borderRadius: '20px',
+    background: isActive ? 'rgba(229, 193, 88, 0.16)' : 'transparent',
+    border: isActive ? '1px solid var(--color-gold)' : '1px solid transparent',
+    boxShadow: isActive ? '0 0 12px rgba(229, 193, 88, 0.25)' : 'none',
+    position: 'relative',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px'
+  });
+
+  const getMobileNavLinkStyle = (isActive) => ({
+    color: isActive ? 'var(--color-gold-bright)' : '#F8FAFC',
+    textDecoration: 'none',
+    fontSize: '1.05rem',
+    fontWeight: isActive ? 800 : 600,
+    padding: '10px 14px',
+    borderRadius: 'var(--radius-sm)',
+    background: isActive ? 'rgba(229, 193, 88, 0.15)' : 'transparent',
+    borderLeft: isActive ? '3px solid var(--color-gold-bright)' : '3px solid transparent',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    transition: 'all 0.2s ease'
+  });
 
   return (
     <nav style={{
@@ -90,11 +162,19 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
 
         {/* Desktop Navigation Links */}
         <div className="desktop-links">
-          <a href="#about" style={navLinkStyle}>About</a>
-          <a href="#destinations" style={navLinkStyle}>Destinations</a>
-          <a href="#reserve" style={navLinkStyle}>Reserve Flight</a>
-          <a href="#reviews" style={navLinkStyle}>Reviews</a>
-          <a href="#faq" style={navLinkStyle}>FAQ</a>
+          {NAV_ITEMS.map((item) => {
+            const isActive = activeSection === item.id;
+            return (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                onClick={(e) => handleNavClick(e, item.id)}
+                style={getNavLinkStyle(isActive)}
+              >
+                {item.label}
+              </a>
+            );
+          })}
         </div>
 
         {/* Action Buttons & Hamburger Menu */}
@@ -170,11 +250,24 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
           gap: '16px',
           boxShadow: '0 20px 40px rgba(0,0,0,0.8)'
         }}>
-          <a href="#about" onClick={() => handleMobileNavClick('#about')} style={mobileNavLinkStyle}>About Us</a>
-          <a href="#destinations" onClick={() => handleMobileNavClick('#destinations')} style={mobileNavLinkStyle}>Worldwide Destinations</a>
-          <a href="#reserve" onClick={() => handleMobileNavClick('#reserve')} style={mobileNavLinkStyle}>Reserve Before Payment</a>
-          <a href="#reviews" onClick={() => handleMobileNavClick('#reviews')} style={mobileNavLinkStyle}>User Reviews</a>
-          <a href="#faq" onClick={() => handleMobileNavClick('#faq')} style={mobileNavLinkStyle}>FAQ</a>
+          {NAV_ITEMS.map((item) => {
+            const isActive = activeSection === item.id;
+            return (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                onClick={(e) => handleNavClick(e, item.id)}
+                style={getMobileNavLinkStyle(isActive)}
+              >
+                <span>{item.label}</span>
+                {isActive && (
+                  <span style={{ fontSize: '0.72rem', background: 'var(--color-gold-bright)', color: '#070B14', padding: '2px 8px', borderRadius: '10px', fontWeight: 800 }}>
+                    ACTIVE
+                  </span>
+                )}
+              </a>
+            );
+          })}
 
           <div style={{ height: '1px', background: 'rgba(229,193,88,0.15)', margin: '8px 0' }} />
 
@@ -233,23 +326,3 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
     </nav>
   );
 }
-
-const navLinkStyle = {
-  color: 'var(--color-text-main)',
-  textDecoration: 'none',
-  fontSize: '0.84rem',
-  fontWeight: '600',
-  letterSpacing: '0.01em',
-  whiteSpace: 'nowrap',
-  transition: 'color 0.2s ease',
-  padding: '4px 6px'
-};
-
-const mobileNavLinkStyle = {
-  color: '#F8FAFC',
-  textDecoration: 'none',
-  fontSize: '1.05rem',
-  fontWeight: '600',
-  padding: '6px 0',
-  borderBottom: '1px solid rgba(255,255,255,0.05)'
-};

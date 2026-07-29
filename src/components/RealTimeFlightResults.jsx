@@ -510,21 +510,18 @@ export default function RealTimeFlightResults({
                           borderTop: '1px dashed rgba(229,193,88,0.2)',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'space-between'
+                          justifyContent: 'center'
                         }}>
                           <span style={{
                             fontSize: '0.75rem',
                             background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
                             color: '#FFF',
-                            padding: '3px 10px',
+                            padding: '3px 12px',
                             borderRadius: '12px',
                             fontWeight: 800,
                             boxShadow: '0 2px 8px rgba(16,185,129,0.3)'
                           }}>
                             SAVE {formatCurrency(flight.retailPrice - flight.royaPrice)} (30% OFF)
-                          </span>
-                          <span style={{ fontSize: '0.72rem', color: '#6EE7B7', fontWeight: 600 }}>
-                            ✓ $0 Paid Today
                           </span>
                         </div>
                       </div>

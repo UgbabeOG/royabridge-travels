@@ -282,6 +282,194 @@ app.post("/api/flights/status", async (req, res) => {
 });
 
 
+// Backend Authoritative Data Store for Destinations & Airports
+const BACKEND_DESTINATIONS = [
+  {
+    id: 'london',
+    name: 'London, UK',
+    airport: 'LHR / LGW',
+    region: 'Europe',
+    image: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1150,
+    royaPrice: 805,
+    discount: '30%',
+    popular: true,
+    tagline: 'Experience Royal Landmarks & Culture'
+  },
+  {
+    id: 'dubai',
+    name: 'Dubai, UAE',
+    airport: 'DXB',
+    region: 'Middle East',
+    image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1290,
+    royaPrice: 903,
+    discount: '30%',
+    popular: true,
+    tagline: 'Luxury Shopping & Desert Adventures'
+  },
+  {
+    id: 'paris',
+    name: 'Paris, France',
+    airport: 'CDG',
+    region: 'Europe',
+    image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1080,
+    royaPrice: 778,
+    discount: '28%',
+    popular: true,
+    tagline: 'City of Light & Romance'
+  },
+  {
+    id: 'tokyo',
+    name: 'Tokyo, Japan',
+    airport: 'HND / NRT',
+    region: 'Asia',
+    image: 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1450,
+    royaPrice: 1015,
+    discount: '30%',
+    popular: true,
+    tagline: 'Futuristic Metropolises & Heritage'
+  },
+  {
+    id: 'bali',
+    name: 'Bali, Indonesia',
+    airport: 'DPS',
+    region: 'Asia',
+    image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1320,
+    royaPrice: 924,
+    discount: '30%',
+    popular: true,
+    tagline: 'Serene Beaches & Tropical Villas'
+  },
+  {
+    id: 'newyork',
+    name: 'New York, USA',
+    airport: 'JFK / EWR',
+    region: 'Americas',
+    image: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 890,
+    royaPrice: 630,
+    discount: '29%',
+    popular: false,
+    tagline: 'The Center of the World'
+  },
+  {
+    id: 'toronto',
+    name: 'Toronto, Canada',
+    airport: 'YYZ',
+    region: 'Americas',
+    image: 'https://images.unsplash.com/photo-1517935703635-27c737822457?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 970,
+    royaPrice: 689,
+    discount: '29%',
+    popular: false,
+    tagline: 'Multicultural Skyline & Niagara Falls'
+  },
+  {
+    id: 'sydney',
+    name: 'Sydney, Australia',
+    airport: 'SYD',
+    region: 'Asia',
+    image: 'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1620,
+    royaPrice: 1134,
+    discount: '30%',
+    popular: true,
+    tagline: 'Harbour Wonders & Coastal Magic'
+  }
+];
+
+const BACKEND_AIRPORTS = [
+  { code: 'JFK', city: 'New York', country: 'United States', name: 'John F. Kennedy Intl' },
+  { code: 'LHR', city: 'London', country: 'United Kingdom', name: 'Heathrow Airport' },
+  { code: 'DXB', city: 'Dubai', country: 'United Arab Emirates', name: 'Dubai Intl Airport' },
+  { code: 'CDG', city: 'Paris', country: 'France', name: 'Charles de Gaulle Airport' },
+  { code: 'YYZ', city: 'Toronto', country: 'Canada', name: 'Pearson Intl Airport' },
+  { code: 'HND', city: 'Tokyo', country: 'Japan', name: 'Haneda Airport' },
+  { code: 'DPS', city: 'Bali', country: 'Indonesia', name: 'Ngurah Rai Intl Airport' },
+  { code: 'IST', city: 'Istanbul', country: 'Turkey', name: 'Istanbul Airport' },
+  { code: 'SYD', city: 'Sydney', country: 'Australia', name: 'Kingsford Smith Airport' },
+  { code: 'SIN', city: 'Singapore', country: 'Singapore', name: 'Changi Airport' },
+  { code: 'LAX', city: 'Los Angeles', country: 'United States', name: 'Los Angeles Intl' }
+];
+
+// API Endpoint: Get Authoritative Destinations (Server-Enforced Prices)
+app.get("/api/destinations", (req, res) => {
+  try {
+    const { region, popular } = req.query;
+    let list = [...BACKEND_DESTINATIONS];
+
+    if (popular === 'true') {
+      list = list.filter(d => d.popular);
+    }
+    if (region && region !== 'All') {
+      list = list.filter(d => d.region.toLowerCase() === (region as string).toLowerCase());
+    }
+
+    res.json({
+      success: true,
+      source: 'server_database',
+      verified: true,
+      count: list.length,
+      destinations: list
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API Endpoint: Get Airfield / Airport Inventory
+app.get("/api/airports", (req, res) => {
+  res.json({
+    success: true,
+    airports: BACKEND_AIRPORTS
+  });
+});
+
+// API Endpoint: Authoritative Server Price Validation
+app.post("/api/destinations/validate-price", (req, res) => {
+  try {
+    const { destinationId, passengers = 1, cabinClass = 'Business' } = req.body;
+
+    const dest = BACKEND_DESTINATIONS.find(d => d.id === destinationId);
+    if (!dest) {
+      return res.status(404).json({ success: false, error: "Destination not found in authoritative database" });
+    }
+
+    let multiplier = 1;
+    if (cabinClass === 'Premium Economy') multiplier = 1.35;
+    if (cabinClass === 'Business') multiplier = 1.0; // standard base rate in dest
+    if (cabinClass === 'First') multiplier = 2.2;
+    if (cabinClass === 'Economy') multiplier = 0.55;
+
+    const serverRetailPrice = Math.round(dest.retailPrice * multiplier * passengers);
+    const serverRoyaPrice = Math.round(dest.royaPrice * multiplier * passengers);
+    const serverSavings = serverRetailPrice - serverRoyaPrice;
+    const discountPercentage = Math.round((serverSavings / serverRetailPrice) * 100);
+
+    res.json({
+      success: true,
+      verifiedByBackend: true,
+      destination: dest,
+      pricing: {
+        passengers,
+        cabinClass,
+        retailPrice: serverRetailPrice,
+        royaPrice: serverRoyaPrice,
+        savingsAmount: serverSavings,
+        discountPercentage: `${discountPercentage}%`,
+        currency: 'USD',
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // API Endpoint 3: Real-Time Price Insight & Trend API
 app.post("/api/flights/price-trend", async (req, res) => {
   try {

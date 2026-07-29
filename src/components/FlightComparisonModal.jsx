@@ -212,9 +212,6 @@ export default function FlightComparisonModal({
                       <div style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--color-gold-bright)' }}>
                         {formatCurrency(flight.royaPrice)}
                       </div>
-                      <div style={{ fontSize: '0.72rem', color: '#6EE7B7' }}>
-                        $0 upfront today
-                      </div>
                     </td>
                   );
                 })}
