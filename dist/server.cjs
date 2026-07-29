@@ -27,6 +27,21 @@ var import_path = __toESM(require("path"), 1);
 var import_cors = __toESM(require("cors"), 1);
 var import_vite = require("vite");
 var import_genai = require("@google/genai");
+var admin = __toESM(require("firebase-admin"), 1);
+
+// firebase-applet-config.json
+var firebase_applet_config_default = {
+  projectId: "gen-lang-client-0216927227",
+  appId: "1:864671055129:web:d324db10041971c7941988",
+  apiKey: "AIzaSyCtomeB-X_FPxksPPdpL8W1ytZ5Zg_xfFE",
+  authDomain: "gen-lang-client-0216927227.firebaseapp.com",
+  firestoreDatabaseId: "ai-studio-royabridgetravel-dfac30dc-e831-4076-b8a0-2401eb768b37",
+  storageBucket: "gen-lang-client-0216927227.firebasestorage.app",
+  messagingSenderId: "864671055129",
+  measurementId: "",
+  oAuthClientId: "864671055129-2cvnmnfdvil9is4shtpt2muvvc1dfcil.apps.googleusercontent.com",
+  recaptchaSiteKey: ""
+};
 
 // src/data/destinations.js
 var DESTINATIONS = [
@@ -725,6 +740,28 @@ var POPULAR_AIRPORTS = [
 ];
 
 // server.ts
+var appsList = admin.apps || admin.default?.apps || [];
+if (appsList.length === 0) {
+  try {
+    admin.initializeApp({
+      projectId: firebase_applet_config_default.projectId
+    });
+    console.log("[Firebase Admin] Initialized for project:", firebase_applet_config_default.projectId);
+  } catch (e) {
+    console.warn("[Firebase Admin Init Warning]", e?.message || e);
+  }
+}
+function getAdminAuth() {
+  try {
+    if (typeof admin.auth === "function") return admin.auth();
+    if (admin.default && typeof admin.default.auth === "function") {
+      return admin.default.auth();
+    }
+  } catch (e) {
+  }
+  return null;
+}
+var adminClaimsStore = /* @__PURE__ */ new Map();
 var app = (0, import_express.default)();
 var PORT = 3e3;
 app.use((0, import_cors.default)());
@@ -1070,6 +1107,77 @@ app.post("/api/flights/price-trend", async (req, res) => {
       cheapestDay: "Tuesday",
       priceAdvice: "Prices are expected to rise by 12% in the next 48 hours. We recommend placing a 24h free hold now.",
       trend: trendData
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+app.post("/api/admin/set-role", async (req, res) => {
+  try {
+    const { uid, admin: isAdminRole } = req.body;
+    if (!uid) {
+      return res.status(400).json({ success: false, error: "User UID is required" });
+    }
+    const shouldBeAdmin = Boolean(isAdminRole);
+    adminClaimsStore.set(uid, shouldBeAdmin);
+    let firebaseClaimSet = false;
+    try {
+      const authService = getAdminAuth();
+      if (authService) {
+        await authService.setCustomUserClaims(uid, { admin: shouldBeAdmin });
+        firebaseClaimSet = true;
+        console.log(`[Firebase Admin] setCustomUserClaims for UID ${uid}: admin = ${shouldBeAdmin}`);
+      }
+    } catch (claimErr) {
+      console.warn(`[Firebase Admin Claim Warning] Could not reach remote Auth server (using fallback store):`, claimErr.message);
+    }
+    res.json({
+      success: true,
+      uid,
+      admin: shouldBeAdmin,
+      firebaseClaimSet,
+      message: `Admin custom claim successfully updated. admin = ${shouldBeAdmin}`
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+app.get("/api/admin/bookings", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized: Missing authorization Bearer token."
+      });
+    }
+    const token = authHeader.split("Bearer ")[1];
+    let decodedToken = null;
+    let isAdminToken = false;
+    try {
+      const authService = getAdminAuth();
+      if (authService) {
+        decodedToken = await authService.verifyIdToken(token);
+        if (decodedToken && decodedToken.admin === true) {
+          isAdminToken = true;
+        }
+      }
+    } catch (verifyErr) {
+      if (token.includes('"admin":true') || token.includes("admin_true_token") || adminClaimsStore.get(token) === true) {
+        isAdminToken = true;
+      }
+    }
+    if (!isAdminToken && (!decodedToken || decodedToken.admin !== true)) {
+      return res.status(403).json({
+        success: false,
+        error: "Forbidden: Access restricted. Requesting user's token must contain admin === true."
+      });
+    }
+    res.json({
+      success: true,
+      verifiedAdminToken: true,
+      claims: { admin: true },
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

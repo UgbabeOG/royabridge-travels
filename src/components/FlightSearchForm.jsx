@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Plane, Calendar, Users, Shield, ArrowRightLeft, Sparkles, Activity, Search, History, Clock, ArrowRight, Tag, Globe, Plus, Trash2 } from 'lucide-react';
-import { POPULAR_AIRPORTS } from '../data/destinations';
+import { POPULAR_AIRPORTS as SEED_AIRPORTS } from '../data/destinations';
+import { fetchAirportsFromFirestore } from '../lib/destinationsService';
 import { calculateSavings, formatCurrency } from '../utils/pnrGenerator';
 
 export default function FlightSearchForm({ onSearchFlights, loading, currency = 'USD', onCurrencyChange }) {
+  const [airports, setAirports] = useState(SEED_AIRPORTS);
   const [tripType, setTripType] = useState('round');
   const [origin, setOrigin] = useState('JFK');
   const [destination, setDestination] = useState('LHR');
@@ -24,6 +26,18 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
   const [recentSearches, setRecentSearches] = useState([]);
 
   useEffect(() => {
+    async function loadAirports() {
+      try {
+        const fetched = await fetchAirportsFromFirestore();
+        if (Array.isArray(fetched) && fetched.length > 0) {
+          setAirports(fetched);
+        }
+      } catch (e) {
+        console.warn('Error loading airports from Firebase Store:', e);
+      }
+    }
+    loadAirports();
+
     try {
       const stored = localStorage.getItem('royabridge_recent_searches');
       if (stored) {
@@ -36,6 +50,7 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
       console.warn('Failed to load recent searches:', err);
     }
   }, []);
+
 
   const saveRecentSearch = (searchItem) => {
     try {
@@ -306,7 +321,7 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                       onChange={(e) => setOrigin(e.target.value)}
                       style={selectStyle}
                     >
-                      {POPULAR_AIRPORTS.map(ap => (
+                      {airports.map(ap => (
                         <option key={ap.code} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
                           {ap.city} ({ap.code}) - {ap.country}
                         </option>
@@ -349,7 +364,7 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                       onChange={(e) => setDestination(e.target.value)}
                       style={selectStyle}
                     >
-                      {POPULAR_AIRPORTS.map(ap => (
+                      {airports.map(ap => (
                         <option key={ap.code} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
                           {ap.city} ({ap.code}) - {ap.country}
                         </option>
@@ -479,7 +494,7 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                         onChange={(e) => handleSegmentChange(idx, 'origin', e.target.value)}
                         style={{ ...selectStyle, background: 'rgba(7,11,20,0.9)', border: '1px solid var(--border-gold)', borderRadius: '6px', padding: '8px' }}
                       >
-                        {POPULAR_AIRPORTS.map(ap => (
+                        {airports.map(ap => (
                           <option key={ap.code} value={ap.code} style={{ background: '#0F172A' }}>
                             {ap.city} ({ap.code})
                           </option>
@@ -495,7 +510,7 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                         onChange={(e) => handleSegmentChange(idx, 'destination', e.target.value)}
                         style={{ ...selectStyle, background: 'rgba(7,11,20,0.9)', border: '1px solid var(--border-gold)', borderRadius: '6px', padding: '8px' }}
                       >
-                        {POPULAR_AIRPORTS.map(ap => (
+                        {airports.map(ap => (
                           <option key={ap.code} value={ap.code} style={{ background: '#0F172A' }}>
                             {ap.city} ({ap.code})
                           </option>

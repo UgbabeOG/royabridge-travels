@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { DESTINATIONS } from '../data/destinations';
+import { fetchDestinationsFromFirestore } from '../lib/destinationsService';
 import { formatCurrency } from '../utils/pnrGenerator';
-import { Plane, Calendar, FileCheck, Coins, Clock, Search, RefreshCw, Info, MapPin, CheckCircle2, X, Compass, Sparkles } from 'lucide-react';
+import { Plane, Calendar, FileCheck, Coins, Clock, Search, RefreshCw, Info, MapPin, CheckCircle2, X, Compass, Sparkles, Database } from 'lucide-react';
 
 export default function DestinationExplorer({ onSelectDestination, currency = 'USD' }) {
   const [destinations, setDestinations] = useState([]);
@@ -11,26 +11,23 @@ export default function DestinationExplorer({ onSelectDestination, currency = 'U
   const [selectedInsightsModal, setSelectedInsightsModal] = useState(null);
 
   useEffect(() => {
-    async function fetchServerDestinations() {
+    async function loadStoreDestinations() {
       try {
         setLoading(true);
-        const res = await fetch('/api/destinations');
-        const data = await res.json();
-        if (data.success && Array.isArray(data.destinations)) {
-          setDestinations(data.destinations);
-        } else {
-          setDestinations(DESTINATIONS);
+        const data = await fetchDestinationsFromFirestore();
+        if (Array.isArray(data) && data.length > 0) {
+          setDestinations(data);
         }
       } catch (err) {
-        console.warn('Failed to fetch backend destination database, using fallback:', err);
-        setDestinations(DESTINATIONS);
+        console.warn('Error loading destinations from Firebase Store:', err);
       } finally {
         setLoading(false);
       }
     }
 
-    fetchServerDestinations();
+    loadStoreDestinations();
   }, []);
+
 
   const handleSelectWithValidation = async (dest) => {
     try {

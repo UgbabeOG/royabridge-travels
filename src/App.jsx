@@ -12,18 +12,38 @@ import ShareItineraryModal from './components/ShareItineraryModal';
 import BookingTracker from './components/BookingTracker';
 import ConciergeChat from './components/ConciergeChat';
 import ContactModal from './components/ContactModal';
+import AdminPortal from './components/AdminPortal';
 import FAQSection from './components/FAQSection';
 import Footer from './components/Footer';
 import ToastNotification from './components/ToastNotification';
 import AnimatedSection from './components/AnimatedSection';
-import { POPULAR_AIRPORTS } from './data/destinations';
+import { POPULAR_AIRPORTS as SEED_AIRPORTS } from './data/destinations';
+import { fetchAirportsFromFirestore } from './lib/destinationsService';
 
 export default function App() {
+  const [airports, setAirports] = useState(SEED_AIRPORTS);
   const [currency, setCurrency] = useState('USD');
   const [reserveModalData, setReserveModalData] = useState(null);
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+
+  useEffect(() => {
+    async function loadAirports() {
+      try {
+        const fetched = await fetchAirportsFromFirestore();
+        if (Array.isArray(fetched) && fetched.length > 0) {
+          setAirports(fetched);
+        }
+      } catch (e) {
+        console.warn('Error fetching airports in App.jsx:', e);
+      }
+    }
+    loadAirports();
+  }, []);
+
+
   
   // Share Itinerary State
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -129,8 +149,9 @@ export default function App() {
   };
 
   const handleSelectFlight = (flight) => {
-    const originObj = POPULAR_AIRPORTS.find(a => a.code === flight.origin) || { code: flight.origin, city: flight.origin, name: flight.origin };
-    const destObj = POPULAR_AIRPORTS.find(a => a.code === flight.destination) || { code: flight.destination, city: flight.destination, name: flight.destination };
+    const originObj = airports.find(a => a.code === flight.origin) || { code: flight.origin, city: flight.origin, name: flight.origin };
+    const destObj = airports.find(a => a.code === flight.destination) || { code: flight.destination, city: flight.destination, name: flight.destination };
+
 
     setReserveModalData({
       tripType: searchQuery.tripType || 'round',
@@ -184,7 +205,9 @@ export default function App() {
         onOpenTracker={() => setIsTrackerOpen(true)}
         onOpenContact={() => setIsContactOpen(true)}
         onOpenShare={handleOpenShare}
+        onOpenAdmin={() => setIsAdminOpen(true)}
       />
+
 
       {/* Main Hero */}
       <AnimatedSection animation="fade-in">
@@ -311,11 +334,20 @@ export default function App() {
         onClose={() => setIsChatOpen(false)}
       />
 
+      {/* Executive Concierge & Reservation Admin Portal Modal */}
+      <AdminPortal 
+        isOpen={isAdminOpen}
+        onClose={() => setIsAdminOpen(false)}
+        showToast={showToast}
+        currency={currency}
+      />
+
       {/* Toast Notification Container */}
       <ToastNotification 
         toasts={toasts} 
         onDismiss={handleDismissToast} 
       />
+
 
     </div>
   );

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, MessageSquare, PhoneCall, Menu, X, Phone, Mail, Share2 } from 'lucide-react';
+import { ShieldCheck, MessageSquare, PhoneCall, Menu, X, Phone, Mail, Share2, Lock } from 'lucide-react';
+import { useAuth } from '../lib/AuthContext';
 
-export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpenContact, onOpenShare }) {
+export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpenContact, onOpenShare, onOpenAdmin }) {
+  const { isAdmin } = useAuth();
 
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -203,6 +205,36 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
           </button>
 
 
+          {/* Admin Portal Access Button */}
+          <button 
+            onClick={onOpenAdmin}
+            style={{
+              padding: '7px 14px',
+              fontSize: '0.82rem',
+              whiteSpace: 'nowrap',
+              background: isAdmin ? 'rgba(16, 185, 129, 0.2)' : 'rgba(229, 193, 88, 0.12)',
+              border: isAdmin ? '1px solid #10B981' : '1px solid var(--border-gold)',
+              color: isAdmin ? '#6EE7B7' : 'var(--color-gold-bright)',
+              borderRadius: 'var(--radius-sm)',
+              cursor: 'pointer',
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.25s ease'
+            }}
+            className="desktop-only"
+            title="Manage User Flight Reservations & Bookings"
+          >
+            <ShieldCheck size={14} color={isAdmin ? "#10B981" : "var(--color-gold)"} />
+            {isAdmin ? 'Admin Portal' : 'Admin Access'}
+            {isAdmin && (
+              <span style={{ fontSize: '0.62rem', background: '#10B981', color: '#070B14', padding: '1px 5px', borderRadius: '8px', fontWeight: 900 }}>
+                ADMIN
+              </span>
+            )}
+          </button>
+
           {/* Track Reservation Button */}
           <button 
             onClick={onOpenTracker}
@@ -222,6 +254,7 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
             <MessageSquare size={14} />
             Message
           </button>
+
 
           {/* Hamburger Menu Toggle Button for Mobile/Tablet */}
           <button
@@ -286,6 +319,21 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <button 
+              onClick={() => { setMobileMenuOpen(false); onOpenAdmin && onOpenAdmin(); }}
+              className="btn-outline-gold"
+              style={{
+                width: '100%',
+                padding: '12px',
+                background: isAdmin ? 'rgba(16, 185, 129, 0.2)' : 'rgba(229, 193, 88, 0.15)',
+                borderColor: isAdmin ? '#10B981' : 'var(--border-gold)',
+                color: isAdmin ? '#6EE7B7' : 'var(--color-gold-bright)'
+              }}
+            >
+              <ShieldCheck size={16} color={isAdmin ? "#10B981" : "var(--color-gold)"} />
+              {isAdmin ? 'Executive Admin Portal (Verified)' : 'Admin Access Portal'}
+            </button>
+
+            <button 
               onClick={() => { setMobileMenuOpen(false); onOpenContact(); }}
               className="btn-gold"
               style={{ width: '100%', padding: '12px' }}
@@ -293,6 +341,7 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
               <PhoneCall size={16} />
               Contact Us (Email / Phone)
             </button>
+
 
             <button 
               onClick={() => { setMobileMenuOpen(false); onOpenTracker(); }}
