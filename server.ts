@@ -35,18 +35,33 @@ function handleGeminiError(err: any, contextLabel: string) {
   }
 }
 
-// In-Memory Search & Trend Cache
+// In-Memory Search & Trend Cache Engine with Metrics
 const serverCache = new Map<string, { data: any; expiry: number }>();
-function getCachedResponse(key: string): any | null {
+let cacheHitCount = 0;
+let cacheMissCount = 0;
+
+function getCachedResponse(key: string, res?: express.Response): any | null {
   const cached = serverCache.get(key);
-  if (!cached) return null;
+  if (!cached) {
+    cacheMissCount++;
+    if (res) res.setHeader('X-Cache', 'MISS');
+    return null;
+  }
   if (Date.now() > cached.expiry) {
     serverCache.delete(key);
+    cacheMissCount++;
+    if (res) res.setHeader('X-Cache', 'EXPIRED');
     return null;
+  }
+  cacheHitCount++;
+  if (res) {
+    res.setHeader('X-Cache', 'HIT');
+    res.setHeader('Cache-Control', 'public, max-age=900, s-maxage=3600, stale-while-revalidate=1800');
   }
   return cached.data;
 }
-function setCachedResponse(key: string, data: any, ttlMs = 15 * 60 * 1000) {
+
+function setCachedResponse(key: string, data: any, ttlMs = 30 * 60 * 1000) {
   serverCache.set(key, { data, expiry: Date.now() + ttlMs });
 }
 
@@ -93,7 +108,7 @@ app.post("/api/flights/search", async (req, res) => {
     const { origin = 'JFK', destination = 'LHR', departDate, returnDate, tripType = 'round', cabinClass = 'Economy', passengers = 1 } = req.body;
 
     const cacheKey = `search-${origin}-${destination}-${departDate}-${returnDate}-${tripType}-${cabinClass}-${passengers}`;
-    const cached = getCachedResponse(cacheKey);
+    const cached = getCachedResponse(cacheKey, res);
     if (cached) {
       return res.json(cached);
     }
@@ -981,7 +996,7 @@ app.post("/api/flights/price-trend", async (req, res) => {
     const { origin = 'JFK', destination = 'LHR', cabinClass = 'Business' } = req.body;
 
     const cacheKey = `trend-${origin}-${destination}-${cabinClass}`;
-    const cached = getCachedResponse(cacheKey);
+    const cached = getCachedResponse(cacheKey, res);
     if (cached) {
       return res.json(cached);
     }
@@ -1064,6 +1079,22 @@ Return a simple JSON object:
   }
 });
 
+// Cache Monitoring Diagnostic Endpoint
+app.get("/api/cache/stats", (req, res) => {
+  const totalRequests = cacheHitCount + cacheMissCount;
+  const hitRatio = totalRequests > 0 ? ((cacheHitCount / totalRequests) * 100).toFixed(1) + '%' : '0%';
+  
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({
+    status: 'ok',
+    cachedEntries: serverCache.size,
+    hits: cacheHitCount,
+    misses: cacheMissCount,
+    hitRatio,
+    uptimeSeconds: Math.round(process.uptime())
+  });
+});
+
 // Vite Middleware Integration for Dev & Production Static Serving
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
@@ -1074,8 +1105,13 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, {
+      maxAge: '7d',
+      etag: true,
+      lastModified: true
+    }));
     app.get('*', (req, res) => {
+      res.setHeader('Cache-Control', 'public, max-age=3600');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

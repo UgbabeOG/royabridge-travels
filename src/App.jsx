@@ -17,6 +17,7 @@ import ToastNotification from './components/ToastNotification';
 import AnimatedSection from './components/AnimatedSection';
 import { POPULAR_AIRPORTS } from './data/destinations';
 import { generateClientSideFlights, generateClientSidePriceTrend } from './utils/pnrGenerator';
+import { CacheManager } from './utils/cacheManager';
 
 export default function App() {
   const [currency, setCurrency] = useState('USD');
@@ -62,33 +63,22 @@ export default function App() {
     setSearchQuery(query);
 
     try {
-      // Parallel API requests to flight search & price trends
+      // Parallel cached API requests with 30-min TTL & Stale-While-Revalidate
       const [searchRes, trendRes] = await Promise.all([
-        fetch('/api/flights/search', {
+        CacheManager.cachedFetch('/api/flights/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(query)
-        }),
-        fetch('/api/flights/price-trend', {
+        }, 1800),
+        CacheManager.cachedFetch('/api/flights/price-trend', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ origin: query.origin, destination: query.destination, cabinClass: query.cabinClass })
-        })
+        }, 3600)
       ]);
 
-      let searchData;
-      try {
-        searchData = await searchRes.json();
-      } catch (jsonErr) {
-        throw new Error("Invalid search response format");
-      }
-
-      let trendData;
-      try {
-        trendData = await trendRes.json();
-      } catch (jsonErr) {
-        throw new Error("Invalid price trend response format");
-      }
+      const searchData = searchRes.data;
+      const trendData = trendRes.data;
 
       if (searchData && searchData.success && searchData.flights) {
         setFlights(searchData.flights);
