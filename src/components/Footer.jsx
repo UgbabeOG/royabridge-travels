@@ -174,6 +174,7 @@ export default function Footer({ onOpenChat, onOpenContact }) {
 
           <button 
             onClick={scrollToTop}
+            aria-label="Back to top"
             style={{
               background: 'rgba(229,193,88,0.1)',
               border: '1px solid var(--border-gold)',

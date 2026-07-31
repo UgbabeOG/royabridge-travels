@@ -34,6 +34,8 @@ export default function FAQSection() {
             >
               <button
                 onClick={() => toggle(idx)}
+                aria-expanded={openIndex === idx}
+                aria-controls={`faq-answer-${idx}`}
                 style={{
                   width: '100%',
                   padding: '20px 24px',
@@ -64,12 +66,15 @@ export default function FAQSection() {
               </button>
 
               {openIndex === idx && (
-                <div style={{
-                  padding: '0 24px 24px 54px',
-                  color: '#CBD5E1',
-                  fontSize: '0.98rem',
-                  lineHeight: 1.7
-                }}>
+                <div 
+                  id={`faq-answer-${idx}`}
+                  style={{
+                    padding: '0 24px 24px 54px',
+                    color: '#CBD5E1',
+                    fontSize: '0.98rem',
+                    lineHeight: 1.7
+                  }}
+                >
                   {faq.answer}
                 </div>
               )}

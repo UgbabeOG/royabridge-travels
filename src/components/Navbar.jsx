@@ -94,19 +94,43 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
   });
 
   return (
-    <nav style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 100,
-      transition: 'all 0.3s ease',
-      background: scrolled || mobileMenuOpen ? 'rgba(7, 11, 20, 0.95)' : 'rgba(7, 11, 20, 0.4)',
-      backdropFilter: 'blur(16px)',
-      borderBottom: scrolled || mobileMenuOpen ? '1px solid rgba(229, 193, 88, 0.25)' : '1px solid transparent',
-      padding: scrolled ? '12px 0' : '18px 0'
-    }}>
+    <nav 
+      aria-label="Main Navigation"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 100,
+        transition: 'all 0.3s ease',
+        background: scrolled || mobileMenuOpen ? 'rgba(7, 11, 20, 0.95)' : 'rgba(7, 11, 20, 0.4)',
+        backdropFilter: 'blur(16px)',
+        borderBottom: scrolled || mobileMenuOpen ? '1px solid rgba(229, 193, 88, 0.25)' : '1px solid transparent',
+        padding: scrolled ? '12px 0' : '18px 0'
+      }}
+    >
+      <a 
+        href="#main-content" 
+        style={{
+          position: 'absolute',
+          left: '-9999px',
+          top: '12px',
+          zIndex: 999,
+          background: 'var(--color-gold)',
+          color: '#070B14',
+          padding: '8px 16px',
+          fontWeight: 800,
+          borderRadius: '4px',
+          textDecoration: 'none'
+        }}
+        onFocus={(e) => e.currentTarget.style.left = '12px'}
+        onBlur={(e) => e.currentTarget.style.left = '-9999px'}
+      >
+        Skip to main content
+      </a>
+
       <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+
         
         {/* Brand Logo */}
         <a href="#" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', minWidth: 0 }}>

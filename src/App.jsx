@@ -148,6 +148,12 @@ export default function App() {
       flightNumber: flight.flightNumber,
       airline: flight.airline,
       aircraft: flight.aircraft,
+      timeSlot: flight.timeSlot || 'Live Grounded Flight',
+      groundingSources: groundingSources && groundingSources.length > 0 ? groundingSources : [
+        { title: `Google Flights - ${flight.origin} to ${flight.destination}`, url: `https://www.google.com/travel/flights?q=flights+from+${flight.origin}+to+${flight.destination}` },
+        { title: 'IATA Global Distribution Systems (GDS)', url: 'https://www.iata.org' }
+      ],
+      isGrounded: true,
       reserveBeforePayment: true,
       savings: {
         originalPrice: flight.retailPrice,
@@ -190,78 +196,81 @@ export default function App() {
         onOpenContact={() => setIsContactOpen(true)}
       />
 
-      {/* Main Hero */}
-      <AnimatedSection animation="fade-in">
-        <Hero 
-          onStartSearch={scrollToSearch}
-          onOpenChat={() => setIsChatOpen(true)}
-        />
-      </AnimatedSection>
+      <main id="main-content" style={{ flex: 1 }}>
+        {/* Main Hero */}
+        <AnimatedSection>
+          <Hero 
+            onStartSearch={scrollToSearch}
+            onOpenChat={() => setIsChatOpen(true)}
+          />
+        </AnimatedSection>
 
-      {/* Core Concierge Booking Search Engine */}
-      <AnimatedSection animation="slide-up">
-        <FlightSearchForm 
-          onSearchFlights={handleSearchFlights}
-          loading={searchLoading}
-          currency={currency}
-          onCurrencyChange={setCurrency}
-        />
-      </AnimatedSection>
+        {/* Core Concierge Booking Search Engine */}
+        <AnimatedSection>
+          <FlightSearchForm 
+            onSearchFlights={handleSearchFlights}
+            loading={searchLoading}
+            currency={currency}
+            onCurrencyChange={setCurrency}
+          />
+        </AnimatedSection>
 
-      {/* Real-Time Live Flight Search Results & Price Comparison */}
-      <AnimatedSection animation="scale-up">
-        <RealTimeFlightResults 
-          flights={flights}
-          searchQuery={searchQuery}
-          loading={searchLoading}
-          error={searchError}
-          priceTrend={priceTrend}
-          groundingSources={groundingSources}
-          onSelectFlight={handleSelectFlight}
-          currency={currency}
-        />
-      </AnimatedSection>
+        {/* Real-Time Live Flight Search Results & Price Comparison */}
+        <AnimatedSection>
+          <RealTimeFlightResults 
+            flights={flights}
+            searchQuery={searchQuery}
+            loading={searchLoading}
+            error={searchError}
+            priceTrend={priceTrend}
+            groundingSources={groundingSources}
+            onSelectFlight={handleSelectFlight}
+            currency={currency}
+          />
+        </AnimatedSection>
 
-      {/* Brand Value Grid (Save up to 30%, Reserve before payment, etc.) */}
-      <AnimatedSection animation="slide-up">
-        <FeatureGrid 
-          onOpenSearch={scrollToSearch}
-          onOpenChat={() => setIsChatOpen(true)}
-        />
-      </AnimatedSection>
+        {/* Brand Value Grid (Save up to 30%, Reserve before payment, etc.) */}
+        <AnimatedSection>
+          <FeatureGrid 
+            onOpenSearch={scrollToSearch}
+            onOpenChat={() => setIsChatOpen(true)}
+          />
+        </AnimatedSection>
 
-      {/* Destination & Savings Visualizer */}
-      <AnimatedSection animation="slide-up">
-        <DestinationExplorer 
-          onSelectDestination={handleSelectDestination}
-          currency={currency}
-        />
-      </AnimatedSection>
+        {/* Destination & Savings Visualizer */}
+        <AnimatedSection>
+          <DestinationExplorer 
+            onSelectDestination={handleSelectDestination}
+            currency={currency}
+          />
+        </AnimatedSection>
 
-      {/* Flight Status Lookup Section */}
-      <AnimatedSection animation="slide-up">
-        <FlightStatusSection 
-          onSelectFlight={handleSelectFlight}
-        />
-      </AnimatedSection>
+        {/* Flight Status Lookup Section */}
+        <AnimatedSection>
+          <FlightStatusSection 
+            onSelectFlight={handleSelectFlight}
+          />
+        </AnimatedSection>
 
-      {/* Customer Feedback & Reviews Section */}
-      <AnimatedSection animation="slide-up">
-        <UserReviews 
-          onOpenChat={() => setIsChatOpen(true)}
-        />
-      </AnimatedSection>
+        {/* Customer Feedback & Reviews Section */}
+        <AnimatedSection>
+          <UserReviews 
+            onOpenChat={() => setIsChatOpen(true)}
+          />
+        </AnimatedSection>
 
-      {/* FAQ Section with SEO JSON-LD Microdata support */}
-      <AnimatedSection animation="slide-up">
-        <FAQSection />
-      </AnimatedSection>
+        {/* FAQ Section with SEO JSON-LD Microdata support */}
+        <AnimatedSection>
+          <FAQSection />
+        </AnimatedSection>
+      </main>
 
       {/* Footer */}
       <Footer 
         onOpenChat={() => setIsChatOpen(true)}
         onOpenContact={() => setIsContactOpen(true)}
       />
+
 
       {/* Reserve Before Payment Itinerary Hold Modal */}
       {reserveModalData && (

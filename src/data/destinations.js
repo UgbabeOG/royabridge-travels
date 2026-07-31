@@ -1,4 +1,5 @@
 export const DESTINATIONS = [
+  // Europe
   {
     id: 'london',
     name: 'London, UK',
@@ -12,6 +13,80 @@ export const DESTINATIONS = [
     tagline: 'Experience Royal Landmarks & Culture'
   },
   {
+    id: 'paris',
+    name: 'Paris, France',
+    airport: 'CDG',
+    region: 'Europe',
+    image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1080,
+    royaPrice: 778,
+    discount: '28%',
+    popular: true,
+    tagline: 'City of Light & Romance'
+  },
+  {
+    id: 'rome',
+    name: 'Rome, Italy',
+    airport: 'FCO',
+    region: 'Europe',
+    image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1120,
+    royaPrice: 784,
+    discount: '30%',
+    popular: true,
+    tagline: 'Eternal History & Culinary Delights'
+  },
+  {
+    id: 'santorini',
+    name: 'Santorini & Athens, Greece',
+    airport: 'ATH / JTR',
+    region: 'Europe',
+    image: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1250,
+    royaPrice: 875,
+    discount: '30%',
+    popular: true,
+    tagline: 'Aegean Sunsets & Ancient Ruins'
+  },
+  {
+    id: 'barcelona',
+    name: 'Barcelona, Spain',
+    airport: 'BCN',
+    region: 'Europe',
+    image: 'https://images.unsplash.com/photo-1583422409516-2895a77efded?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1040,
+    royaPrice: 728,
+    discount: '30%',
+    popular: false,
+    tagline: 'Gothic Architecture & Mediterranean Coast'
+  },
+  {
+    id: 'zurich',
+    name: 'Zurich, Switzerland',
+    airport: 'ZRH',
+    region: 'Europe',
+    image: 'https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1380,
+    royaPrice: 966,
+    discount: '30%',
+    popular: false,
+    tagline: 'Alpine Lakes & Swiss Precision'
+  },
+  {
+    id: 'amsterdam',
+    name: 'Amsterdam, Netherlands',
+    airport: 'AMS',
+    region: 'Europe',
+    image: 'https://images.unsplash.com/photo-1512470876302-972faa2aa9a4?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1100,
+    royaPrice: 770,
+    discount: '30%',
+    popular: false,
+    tagline: 'Historic Canals & Art Heritage'
+  },
+
+  // Middle East
+  {
     id: 'dubai',
     name: 'Dubai, UAE',
     airport: 'DXB',
@@ -24,17 +99,67 @@ export const DESTINATIONS = [
     tagline: 'Luxury Shopping & Desert Adventures'
   },
   {
-    id: 'paris',
-    name: 'Paris, France',
-    airport: 'CDG',
-    region: 'Europe',
-    image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=1000&auto=format&fit=crop',
-    retailPrice: 1080,
-    royaPrice: 778,
-    discount: '28%',
+    id: 'abudhabi',
+    name: 'Abu Dhabi, UAE',
+    airport: 'AUH',
+    region: 'Middle East',
+    image: 'https://images.unsplash.com/photo-1512632578553-199e33170585?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1250,
+    royaPrice: 875,
+    discount: '30%',
     popular: true,
-    tagline: 'City of Light & Romance'
+    tagline: 'Grand Mosques & Louvre Cultural Haven'
   },
+  {
+    id: 'doha',
+    name: 'Doha, Qatar',
+    airport: 'DOH',
+    region: 'Middle East',
+    image: 'https://images.unsplash.com/photo-1578895210405-907db48a7111?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1310,
+    royaPrice: 917,
+    discount: '30%',
+    popular: true,
+    tagline: 'Futuristic Skyline & Souq Waqif'
+  },
+  {
+    id: 'istanbul',
+    name: 'Istanbul, Turkey',
+    airport: 'IST',
+    region: 'Middle East',
+    image: 'https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1050,
+    royaPrice: 735,
+    discount: '30%',
+    popular: true,
+    tagline: 'Where Europe Meets Asia Across the Bosphorus'
+  },
+  {
+    id: 'riyadh',
+    name: 'Riyadh, Saudi Arabia',
+    airport: 'RUH',
+    region: 'Middle East',
+    image: 'https://images.unsplash.com/photo-1586724237569-f3d0c1dee8c6?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1280,
+    royaPrice: 896,
+    discount: '30%',
+    popular: false,
+    tagline: 'Diriyah Heritage & Kingdom Center Tower'
+  },
+  {
+    id: 'muscat',
+    name: 'Muscat, Oman',
+    airport: 'MCT',
+    region: 'Middle East',
+    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1220,
+    royaPrice: 854,
+    discount: '30%',
+    popular: false,
+    tagline: 'Omani Fjords & Royal Opera House'
+  },
+
+  // Asia
   {
     id: 'tokyo',
     name: 'Tokyo, Japan',
@@ -60,28 +185,64 @@ export const DESTINATIONS = [
     tagline: 'Serene Beaches & Tropical Villas'
   },
   {
-    id: 'newyork',
-    name: 'New York, USA',
-    airport: 'JFK / EWR',
-    region: 'Americas',
-    image: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=1000&auto=format&fit=crop',
-    retailPrice: 890,
-    royaPrice: 630,
-    discount: '29%',
-    popular: false,
-    tagline: 'The Center of the World'
+    id: 'singapore',
+    name: 'Singapore',
+    airport: 'SIN',
+    region: 'Asia',
+    image: 'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1390,
+    royaPrice: 973,
+    discount: '30%',
+    popular: true,
+    tagline: 'Gardens by the Bay & Jewel Changi'
   },
   {
-    id: 'toronto',
-    name: 'Toronto, Canada',
-    airport: 'YYZ',
-    region: 'Americas',
-    image: 'https://images.unsplash.com/photo-1517935703635-27c737822457?q=80&w=1000&auto=format&fit=crop',
-    retailPrice: 970,
-    royaPrice: 689,
-    discount: '29%',
+    id: 'bangkok',
+    name: 'Bangkok, Thailand',
+    airport: 'BKK',
+    region: 'Asia',
+    image: 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1150,
+    royaPrice: 805,
+    discount: '30%',
+    popular: true,
+    tagline: 'Ornate Temples & Vibrant Street Cuisine'
+  },
+  {
+    id: 'seoul',
+    name: 'Seoul, South Korea',
+    airport: 'ICN',
+    region: 'Asia',
+    image: 'https://images.unsplash.com/photo-1538485399081-7191377e8241?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1420,
+    royaPrice: 994,
+    discount: '30%',
+    popular: true,
+    tagline: 'Palaces, K-Culture & High-Tech Life'
+  },
+  {
+    id: 'maldives',
+    name: 'Male, Maldives',
+    airport: 'MLE',
+    region: 'Asia',
+    image: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1650,
+    royaPrice: 1155,
+    discount: '30%',
+    popular: true,
+    tagline: 'Overwater Bungalows & Crystal Lagoons'
+  },
+  {
+    id: 'hongkong',
+    name: 'Hong Kong',
+    airport: 'HKG',
+    region: 'Asia',
+    image: 'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1380,
+    royaPrice: 966,
+    discount: '30%',
     popular: false,
-    tagline: 'Multicultural Skyline & Niagara Falls'
+    tagline: 'Victoria Harbour Skyline & Dim Sum'
   },
   {
     id: 'sydney',
@@ -95,6 +256,94 @@ export const DESTINATIONS = [
     popular: true,
     tagline: 'Harbour Wonders & Coastal Magic'
   },
+
+  // Americas
+  {
+    id: 'newyork',
+    name: 'New York, USA',
+    airport: 'JFK / EWR',
+    region: 'Americas',
+    image: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 890,
+    royaPrice: 630,
+    discount: '29%',
+    popular: true,
+    tagline: 'Broadway, Central Park & Iconic Skyline'
+  },
+  {
+    id: 'toronto',
+    name: 'Toronto, Canada',
+    airport: 'YYZ',
+    region: 'Americas',
+    image: 'https://images.unsplash.com/photo-1517935703635-27c737822457?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 970,
+    royaPrice: 689,
+    discount: '29%',
+    popular: true,
+    tagline: 'Multicultural Skyline & Niagara Falls'
+  },
+  {
+    id: 'losangeles',
+    name: 'Los Angeles, USA',
+    airport: 'LAX',
+    region: 'Americas',
+    image: 'https://images.unsplash.com/photo-1580655653885-65763b2597d0?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 950,
+    royaPrice: 665,
+    discount: '30%',
+    popular: true,
+    tagline: 'Hollywood Glamour & Malibu Beaches'
+  },
+  {
+    id: 'riodejaneiro',
+    name: 'Rio de Janeiro, Brazil',
+    airport: 'GIG',
+    region: 'Americas',
+    image: 'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1280,
+    royaPrice: 896,
+    discount: '30%',
+    popular: true,
+    tagline: 'Christ the Redeemer & Copacabana Shore'
+  },
+  {
+    id: 'cancun',
+    name: 'Cancun, Mexico',
+    airport: 'CUN',
+    region: 'Americas',
+    image: 'https://images.unsplash.com/photo-1510097467424-192d713be8b2?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 820,
+    royaPrice: 574,
+    discount: '30%',
+    popular: false,
+    tagline: 'Mayan Riviera & Caribbean Resorts'
+  },
+  {
+    id: 'buenosaires',
+    name: 'Buenos Aires, Argentina',
+    airport: 'EZE',
+    region: 'Americas',
+    image: 'https://images.unsplash.com/photo-1612294037637-ec328d0e075e?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1350,
+    royaPrice: 945,
+    discount: '30%',
+    popular: false,
+    tagline: 'Tango Heritage & Paris of South America'
+  },
+  {
+    id: 'miami',
+    name: 'Miami, USA',
+    airport: 'MIA',
+    region: 'Americas',
+    image: 'https://images.unsplash.com/photo-1506966953377-3f925a26eedc?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 880,
+    royaPrice: 616,
+    discount: '30%',
+    popular: false,
+    tagline: 'South Beach Art Deco & Vibrant Nightlife'
+  },
+
+  // Africa
   {
     id: 'cairo',
     name: 'Cairo, Egypt',
@@ -174,18 +423,37 @@ export const POPULAR_AIRPORTS = [
   { code: 'LHR', city: 'London', country: 'United Kingdom', name: 'Heathrow Airport' },
   { code: 'DXB', city: 'Dubai', country: 'United Arab Emirates', name: 'Dubai Intl Airport' },
   { code: 'CDG', city: 'Paris', country: 'France', name: 'Charles de Gaulle Airport' },
+  { code: 'FCO', city: 'Rome', country: 'Italy', name: 'Fiumicino Airport' },
+  { code: 'ATH', city: 'Athens', country: 'Greece', name: 'Eleftherios Venizelos Airport' },
+  { code: 'BCN', city: 'Barcelona', country: 'Spain', name: 'El Prat Airport' },
+  { code: 'ZRH', city: 'Zurich', country: 'Switzerland', name: 'Zurich Airport' },
+  { code: 'AMS', city: 'Amsterdam', country: 'Netherlands', name: 'Schiphol Airport' },
+  { code: 'AUH', city: 'Abu Dhabi', country: 'United Arab Emirates', name: 'Zayed Intl Airport' },
+  { code: 'DOH', city: 'Doha', country: 'Qatar', name: 'Hamad Intl Airport' },
+  { code: 'IST', city: 'Istanbul', country: 'Turkey', name: 'Istanbul Airport' },
+  { code: 'RUH', city: 'Riyadh', country: 'Saudi Arabia', name: 'King Khalid Intl Airport' },
+  { code: 'MCT', city: 'Muscat', country: 'Oman', name: 'Muscat Intl Airport' },
+  { code: 'HND', city: 'Tokyo', country: 'Japan', name: 'Haneda Airport' },
+  { code: 'NRT', city: 'Tokyo', country: 'Japan', name: 'Narita Intl Airport' },
+  { code: 'DPS', city: 'Bali', country: 'Indonesia', name: 'Ngurah Rai Intl Airport' },
+  { code: 'SIN', city: 'Singapore', country: 'Singapore', name: 'Changi Airport' },
+  { code: 'BKK', city: 'Bangkok', country: 'Thailand', name: 'Suvarnabhumi Airport' },
+  { code: 'ICN', city: 'Seoul', country: 'South Korea', name: 'Incheon Intl Airport' },
+  { code: 'MLE', city: 'Male', country: 'Maldives', name: 'Velana Intl Airport' },
+  { code: 'HKG', city: 'Hong Kong', country: 'Hong Kong', name: 'Hong Kong Intl Airport' },
+  { code: 'SYD', city: 'Sydney', country: 'Australia', name: 'Kingsford Smith Airport' },
+  { code: 'YYZ', city: 'Toronto', country: 'Canada', name: 'Pearson Intl Airport' },
+  { code: 'LAX', city: 'Los Angeles', country: 'United States', name: 'Los Angeles Intl' },
+  { code: 'GIG', city: 'Rio de Janeiro', country: 'Brazil', name: 'Galeão Intl Airport' },
+  { code: 'CUN', city: 'Cancun', country: 'Mexico', name: 'Cancun Intl Airport' },
+  { code: 'EZE', city: 'Buenos Aires', country: 'Argentina', name: 'Ezeiza Intl Airport' },
+  { code: 'MIA', city: 'Miami', country: 'United States', name: 'Miami Intl Airport' },
   { code: 'CAI', city: 'Cairo', country: 'Egypt', name: 'Cairo Intl Airport' },
   { code: 'CPT', city: 'Cape Town', country: 'South Africa', name: 'Cape Town Intl Airport' },
   { code: 'RAK', city: 'Marrakech', country: 'Morocco', name: 'Marrakech Menara Airport' },
   { code: 'NBO', city: 'Nairobi', country: 'Kenya', name: 'Jomo Kenyatta Intl Airport' },
   { code: 'ZNZ', city: 'Zanzibar', country: 'Tanzania', name: 'Abeid Amani Karume Intl' },
   { code: 'LOS', city: 'Lagos', country: 'Nigeria', name: 'Murtala Muhammed Intl' },
-  { code: 'ACC', city: 'Accra', country: 'Ghana', name: 'Kotoka Intl Airport' },
-  { code: 'YYZ', city: 'Toronto', country: 'Canada', name: 'Pearson Intl Airport' },
-  { code: 'HND', city: 'Tokyo', country: 'Japan', name: 'Haneda Airport' },
-  { code: 'DPS', city: 'Bali', country: 'Indonesia', name: 'Ngurah Rai Intl Airport' },
-  { code: 'IST', city: 'Istanbul', country: 'Turkey', name: 'Istanbul Airport' },
-  { code: 'SYD', city: 'Sydney', country: 'Australia', name: 'Kingsford Smith Airport' },
-  { code: 'SIN', city: 'Singapore', country: 'Singapore', name: 'Changi Airport' },
-  { code: 'LAX', city: 'Los Angeles', country: 'United States', name: 'Los Angeles Intl' }
+  { code: 'ACC', city: 'Accra', country: 'Ghana', name: 'Kotoka Intl Airport' }
 ];
+

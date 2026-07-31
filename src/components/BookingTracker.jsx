@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, ShieldCheck, X, Clock, Plane, Activity, CheckCircle2, AlertCircle, RefreshCw, User, Mail, Phone, Tag } from 'lucide-react';
+import { Search, ShieldCheck, X, Clock, Plane, Activity, CheckCircle2, AlertCircle, RefreshCw, User, Mail, Phone, Tag, Share2, Copy, Check } from 'lucide-react';
 import { formatCurrency } from '../utils/pnrGenerator';
 import { lookupBookingFromDatabase } from '../lib/bookingsService';
 
@@ -10,6 +10,53 @@ export default function BookingTracker({ isOpen, onClose, onOpenChat, showToast,
   const [flightStatus, setFlightStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [copiedPnr, setCopiedPnr] = useState(false);
+
+  const handleShareResult = async () => {
+    if (!result) return;
+    const shareText = `✈️ ROYA BRIDGE TRAVELS - FLIGHT RESERVATION HOLD
+📌 PNR Reference: ${result.pnr}
+👤 Lead Passenger: ${result.passenger}
+🛫 Flight: ${result.airline} (${result.flightNumber})
+📍 Route: ${result.route}
+📅 Depart Date: ${result.departDate}
+💰 Total Fare: ${formatCurrency(result.totalFare, currency)}
+⏱️ Status: ${result.status} (Hold Expires: ${result.holdExpires})
+
+Track Reservation:
+${window.location.origin}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Flight Itinerary Hold - PNR ${result.pnr}`,
+          text: shareText,
+          url: window.location.origin
+        });
+        if (showToast) {
+          showToast({
+            type: 'success',
+            title: 'Itinerary Shared!',
+            message: `PNR ${result.pnr} itinerary shared.`
+          });
+        }
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+
+    navigator.clipboard.writeText(shareText);
+    setCopiedPnr(true);
+    if (showToast) {
+      showToast({
+        type: 'success',
+        title: 'Itinerary Copied!',
+        message: `Flight itinerary details for PNR ${result.pnr} copied to clipboard.`
+      });
+    }
+    setTimeout(() => setCopiedPnr(false), 3000);
+  };
 
   if (!isOpen) return null;
 
@@ -333,7 +380,31 @@ export default function BookingTracker({ isOpen, onClose, onOpenChat, showToast,
                   </span>
                 </div>
 
-                <button onClick={onOpenChat} className="btn-gold" style={{ width: '100%', padding: '11px', fontSize: '0.9rem' }}>
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                  <button 
+                    onClick={handleShareResult} 
+                    className="btn-gold" 
+                    style={{ flex: 1, padding: '11px', fontSize: '0.88rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  >
+                    <Share2 size={16} /> Share Itinerary
+                  </button>
+
+                  <button 
+                    onClick={() => {
+                      const shareText = `✈️ ROYA BRIDGE TRAVELS - FLIGHT RESERVATION HOLD\n📌 PNR Reference: ${result.pnr}\n👤 Passenger: ${result.passenger}\n🛫 Flight: ${result.airline} (${result.flightNumber})\n📍 Route: ${result.route}\n📅 Depart Date: ${result.departDate}\n💰 Total Fare: ${formatCurrency(result.totalFare, currency)}`;
+                      navigator.clipboard.writeText(shareText);
+                      setCopiedPnr(true);
+                      setTimeout(() => setCopiedPnr(false), 2500);
+                    }}
+                    className="btn-outline-gold" 
+                    style={{ padding: '11px 16px', fontSize: '0.88rem' }}
+                    title="Copy Details to Clipboard"
+                  >
+                    {copiedPnr ? <Check size={16} color="#10B981" /> : <Copy size={16} />}
+                  </button>
+                </div>
+
+                <button onClick={onOpenChat} className="btn-outline-gold" style={{ width: '100%', padding: '11px', fontSize: '0.88rem' }}>
                   Message Concierge Regarding PNR {result.pnr}
                 </button>
               </div>

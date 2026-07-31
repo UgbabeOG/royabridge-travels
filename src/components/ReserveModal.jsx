@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ShieldCheck, Download, Printer, MessageCircle, Clock, CheckCircle2, Copy, Plane, Activity, AlertCircle, Shield, Sparkles, Check, Luggage, PlusCircle, FileText, Lock, HeartHandshake } from 'lucide-react';
+import { X, ShieldCheck, Download, Printer, MessageCircle, Clock, CheckCircle2, Copy, Plane, Activity, AlertCircle, Shield, Sparkles, Check, Luggage, PlusCircle, FileText, Lock, HeartHandshake, Search, Globe, ExternalLink, Share2, Mail, Send } from 'lucide-react';
 import { generatePNR, formatCurrency } from '../utils/pnrGenerator';
 import { saveBookingToDatabase } from '../lib/bookingsService';
 import { validateEmail, validatePhone, validateName } from '../utils/validation';
@@ -50,6 +50,82 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
     navigator.clipboard.writeText(pnr);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const [shareCopied, setShareCopied] = useState(false);
+
+  const generateItineraryText = () => {
+    const paxName = passengerName.trim() || 'Valued Passenger';
+    const orig = data.origin?.city || data.origin?.code || data.origin || 'JFK';
+    const dest = data.destination?.city || data.destination?.code || data.destination || 'LHR';
+    const flightNo = data.flightNumber || 'BA178';
+    const airln = data.airline || 'British Airways';
+    const depDate = data.departDate || '2026-08-20';
+    const retDate = data.returnDate ? ` | Return: ${data.returnDate}` : '';
+    const price = formatCurrency(totalFinalPrice, currency);
+
+    return `✈️ ROYA BRIDGE TRAVELS - FLIGHT ITINERARY HOLD
+📌 PNR Reference: ${pnr}
+👤 Lead Passenger: ${paxName}
+🛫 Flight: ${airln} (${flightNo})
+📍 Route: ${orig} ➔ ${dest}
+📅 Departure: ${depDate}${retDate}
+💺 Class: ${selectedCabin} (${seatPreference})
+👥 Passengers: ${passengersCount}
+💰 Locked Fare: ${price} ($0 Paid Today)
+⏱️ Status: 24-Hour Price Lock Confirmed
+
+Track or Manage Reservation:
+${window.location.origin}`;
+  };
+
+  const handleShareItinerary = async () => {
+    const text = generateItineraryText();
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `RoyaBridge Flight Itinerary - PNR ${pnr}`,
+          text: text,
+          url: window.location.origin
+        });
+        if (showToast) {
+          showToast({
+            type: 'success',
+            title: 'Itinerary Shared!',
+            message: `Flight itinerary PNR ${pnr} shared successfully.`
+          });
+        }
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+    copyItineraryToClipboard();
+  };
+
+  const copyItineraryToClipboard = () => {
+    const text = generateItineraryText();
+    navigator.clipboard.writeText(text);
+    setShareCopied(true);
+    if (showToast) {
+      showToast({
+        type: 'success',
+        title: 'Itinerary Copied to Clipboard!',
+        message: `PNR ${pnr} details & share link copied.`
+      });
+    }
+    setTimeout(() => setShareCopied(false), 3000);
+  };
+
+  const shareViaWhatsApp = () => {
+    const text = encodeURIComponent(generateItineraryText());
+    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const shareViaEmail = () => {
+    const subject = encodeURIComponent(`Flight Itinerary Hold - PNR ${pnr}`);
+    const body = encodeURIComponent(generateItineraryText());
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
   };
 
   const toggleAddOn = (key) => {
@@ -259,13 +335,15 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
               border: '1px solid rgba(255,255,255,0.08)',
               padding: '18px'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                 <span style={{ fontSize: '0.85rem', color: 'var(--color-gold-bright)', fontWeight: 700 }}>
                   Flight Route & Carrier
                 </span>
-                <span style={{ fontSize: '0.75rem', color: '#6EE7B7', fontWeight: 600 }}>
-                  {data.airline || 'British Airways'} • {data.flightNumber || 'BA178'}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#6EE7B7', fontWeight: 600 }}>
+                    {data.airline || 'British Airways'} • {data.flightNumber || 'BA178'}
+                  </span>
+                </div>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
@@ -311,6 +389,8 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
                 <div><strong>Aircraft:</strong> {data.aircraft || 'Boeing 787'}</div>
               </div>
             </div>
+
+
 
             {/* Interactive Cabin Class Selector */}
             <div>
@@ -563,16 +643,142 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
 
               {confirmedSuccess && (
                 <div style={{
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  border: '1px solid #10B981',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '12px 16px',
-                  color: '#6EE7B7',
-                  fontSize: '0.88rem',
-                  marginBottom: '12px',
-                  fontWeight: 700
+                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(7, 11, 20, 0.95) 100%)',
+                  border: '1.5px solid #10B981',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '18px 20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 8px 32px rgba(16, 185, 129, 0.25)'
                 }}>
-                  ✓ Flight Hold Confirmed for {passengerName}! Your PNR ({pnr}) details have been sent to {passengerEmail}.
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', marginBottom: '14px', borderBottom: '1px solid rgba(16, 185, 129, 0.3)', paddingBottom: '12px' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <CheckCircle2 size={22} color="#10B981" />
+                        <span style={{ fontSize: '1rem', fontWeight: 900, color: '#6EE7B7', letterSpacing: '0.02em' }}>
+                          FLIGHT HOLD RESERVED
+                        </span>
+                      </div>
+                      <p style={{ fontSize: '0.84rem', color: '#CBD5E1', margin: 0 }}>
+                        Confirmed for <strong style={{ color: '#FFF' }}>{passengerName}</strong> ({passengerEmail})
+                      </p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>PNR REFERENCE</span>
+                      <strong style={{ fontSize: '1.25rem', color: 'var(--color-gold-bright)', letterSpacing: '0.08em' }}>{pnr}</strong>
+                    </div>
+                  </div>
+
+                  {/* Flight Details Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', background: 'rgba(7, 11, 20, 0.7)', padding: '12px', borderRadius: 'var(--radius-sm)', marginBottom: '16px', fontSize: '0.82rem', color: '#CBD5E1' }}>
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>Airline & Flight</span>
+                      <strong>{data.airline || 'British Airways'} ({data.flightNumber || 'BA178'})</strong>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>Route</span>
+                      <strong>{data.origin?.code || data.origin || 'JFK'} ➔ {data.destination?.code || data.destination || 'LHR'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>Departure Date</span>
+                      <strong>{data.departDate || '2026-08-20'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>Class & Seat</span>
+                      <strong>{selectedCabin} ({seatPreference})</strong>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>Total Reserved</span>
+                      <strong style={{ color: 'var(--color-gold-bright)' }}>{formatCurrency(totalFinalPrice, currency)}</strong>
+                    </div>
+                  </div>
+
+                  {/* Share Itinerary Action Buttons */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#FFF', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Share2 size={16} color="var(--color-gold)" /> Share Reserved Itinerary
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: '#94A3B8' }}>
+                        Send confirmation & PNR to travel companions
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={handleShareItinerary}
+                        className="btn-gold"
+                        style={{ padding: '8px 12px', fontSize: '0.8rem', width: '100%', justifyContent: 'center' }}
+                      >
+                        <Share2 size={14} />
+                        Share Itinerary
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={shareViaWhatsApp}
+                        style={{
+                          background: 'rgba(37, 211, 102, 0.15)',
+                          border: '1px solid #25D366',
+                          color: '#25D366',
+                          padding: '8px 12px',
+                          borderRadius: 'var(--radius-sm)',
+                          fontWeight: 700,
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <MessageCircle size={14} /> WhatsApp
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={shareViaEmail}
+                        style={{
+                          background: 'rgba(59, 130, 246, 0.15)',
+                          border: '1px solid #3B82F6',
+                          color: '#60A5FA',
+                          padding: '8px 12px',
+                          borderRadius: 'var(--radius-sm)',
+                          fontWeight: 700,
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Mail size={14} /> Email
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={copyItineraryToClipboard}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          color: '#FFF',
+                          padding: '8px 12px',
+                          borderRadius: 'var(--radius-sm)',
+                          fontWeight: 600,
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        {shareCopied ? <Check size={14} color="#10B981" /> : <Copy size={14} />}
+                        {shareCopied ? 'Copied!' : 'Copy Details'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -723,20 +929,22 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
                   Booking Summary
                 </h3>
               </div>
-              <div style={{
-                background: 'rgba(16, 185, 129, 0.15)',
-                border: '1px solid #10B981',
-                padding: '3px 8px',
-                borderRadius: '12px',
-                fontSize: '0.7rem',
-                color: '#6EE7B7',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}>
-                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }} className="animate-pulse" />
-                Live Updated
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                <div style={{
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid #10B981',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.7rem',
+                  color: '#6EE7B7',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }} className="animate-pulse" />
+                  Live Updated
+                </div>
               </div>
             </div>
 
@@ -873,16 +1081,28 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
 
             {/* Actions */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <button 
-                type="button"
-                onClick={handleConfirm}
-                className="btn-gold"
-                disabled={saving}
-                style={{ width: '100%', padding: '12px', fontSize: '0.92rem', fontWeight: 800 }}
-              >
-                {saving ? <Activity className="animate-spin" size={16} /> : <MessageCircle size={16} />}
-                {saving ? 'Locking PNR in DB...' : 'Confirm Flight Hold ($0 Now)'}
-              </button>
+              {!confirmedSuccess ? (
+                <button 
+                  type="button"
+                  onClick={handleConfirm}
+                  className="btn-gold"
+                  disabled={saving}
+                  style={{ width: '100%', padding: '12px', fontSize: '0.92rem', fontWeight: 800 }}
+                >
+                  {saving ? <Activity className="animate-spin" size={16} /> : <MessageCircle size={16} />}
+                  {saving ? 'Locking PNR in DB...' : 'Confirm Flight Hold ($0 Now)'}
+                </button>
+              ) : (
+                <button 
+                  type="button"
+                  onClick={handleShareItinerary}
+                  className="btn-gold"
+                  style={{ width: '100%', padding: '12px', fontSize: '0.92rem', fontWeight: 800, background: '#10B981', color: '#070B14', border: 'none' }}
+                >
+                  <Share2 size={16} />
+                  Share Confirmed Itinerary
+                </button>
+              )}
 
               <button 
                 type="button"

@@ -237,19 +237,6 @@ export default function RealTimeFlightResults({
                     <span style={{ fontSize: '0.78rem', color: '#6EE7B7', fontWeight: 700, letterSpacing: '0.05em' }}>
                       REAL-TIME FLIGHT INVENTORY FOUND ({filtered.length} OPTIONS)
                     </span>
-                    <span style={{
-                      fontSize: '0.72rem',
-                      color: '#93C5FD',
-                      background: 'rgba(59, 130, 246, 0.15)',
-                      padding: '2px 8px',
-                      borderRadius: '10px',
-                      border: '1px solid rgba(96, 165, 250, 0.3)',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}>
-                      <Search size={11} /> Grounded via Google Search
-                    </span>
                   </div>
                   <h2 className="font-royal" style={{ color: '#FFF', fontSize: '1.6rem' }}>
                     {searchQuery?.origin || 'Origin'} → {searchQuery?.destination || 'Destination'}
@@ -271,55 +258,7 @@ export default function RealTimeFlightResults({
                 </div>
               </div>
 
-              {/* Google Search Grounded Web Sources Bar */}
-              {groundingSources && groundingSources.length > 0 && (
-                <div style={{
-                  marginTop: '16px',
-                  padding: '12px 16px',
-                  background: 'rgba(15, 23, 42, 0.7)',
-                  border: '1px solid rgba(59, 130, 246, 0.25)',
-                  borderRadius: 'var(--radius-md)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  flexWrap: 'wrap'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Search size={13} color="#60A5FA" />
-                    <span style={{ fontSize: '0.78rem', color: '#93C5FD', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      Real-Time Search Grounding Sources:
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
-                    {groundingSources.map((src, idx) => (
-                      <a
-                        key={idx}
-                        href={src.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          fontSize: '0.74rem',
-                          color: '#60A5FA',
-                          background: 'rgba(59, 130, 246, 0.1)',
-                          padding: '3px 10px',
-                          borderRadius: '6px',
-                          border: '1px solid rgba(96, 165, 250, 0.25)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          textDecoration: 'none',
-                          transition: 'all 0.2s ease'
-                        }}
-                        title={src.title}
-                      >
-                        <Globe size={11} />
-                        <span>{src.title.length > 35 ? src.title.slice(0, 35) + '...' : src.title}</span>
-                        <ExternalLink size={10} />
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
+
 
               {/* Price Trend Interactive Graph */}
               {showTrend && priceTrend && (
