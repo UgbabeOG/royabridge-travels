@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { DESTINATIONS } from '../data/destinations';
 import { formatCurrency } from '../utils/pnrGenerator';
-import { Plane, Tag, Sparkles, Database, ShieldCheck, RefreshCw, X, Sun, Compass, FileText, CheckCircle2, ExternalLink, Globe } from 'lucide-react';
+import { Plane, Tag, Sparkles, Database, ShieldCheck, RefreshCw, X, Sun, Compass, FileText, CheckCircle2, ExternalLink, Globe, Search } from 'lucide-react';
 
 export default function DestinationExplorer({ onSelectDestination, currency = 'USD' }) {
   const [destinations, setDestinations] = useState([]);
   const [filter, setFilter] = useState('All');
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [serverVerified, setServerVerified] = useState(false);
 
@@ -118,9 +119,19 @@ export default function DestinationExplorer({ onSelectDestination, currency = 'U
   };
 
   const filteredDestinations = destinations.filter(item => {
-    if (filter === 'All') return true;
-    if (filter === 'Popular') return item.popular;
-    return item.region === filter;
+    const matchesFilter = filter === 'All' ? true : filter === 'Popular' ? item.popular : item.region === filter;
+    if (!matchesFilter) return false;
+
+    if (!searchTerm.trim()) return true;
+    const q = searchTerm.toLowerCase().trim();
+    return (
+      (item.name && item.name.toLowerCase().includes(q)) ||
+      (item.city && item.city.toLowerCase().includes(q)) ||
+      (item.country && item.country.toLowerCase().includes(q)) ||
+      (item.airport && item.airport.toLowerCase().includes(q)) ||
+      (item.region && item.region.toLowerCase().includes(q)) ||
+      (item.description && item.description.toLowerCase().includes(q))
+    );
   });
 
   return (
@@ -133,6 +144,83 @@ export default function DestinationExplorer({ onSelectDestination, currency = 'U
           <p>
             Explore our curated luxury destinations with up to 30% concierge savings. Click any card to book or view grounded travel insights.
           </p>
+        </div>
+
+        {/* Global Route Search Bar */}
+        <div style={{
+          maxWidth: '680px',
+          margin: '0 auto 24px auto',
+          position: 'relative'
+        }}>
+          <div style={{
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            <Search 
+              size={18} 
+              color="var(--color-gold)" 
+              style={{
+                position: 'absolute',
+                left: '18px',
+                pointerEvents: 'none'
+              }} 
+            />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search global routes by city, country, or airport code (e.g., Tokyo, LHR, Paris)..."
+              style={{
+                width: '100%',
+                padding: '14px 44px 14px 48px',
+                background: 'rgba(15, 23, 42, 0.75)',
+                border: searchTerm ? '1.5px solid var(--color-gold)' : '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: 'var(--radius-full)',
+                color: '#FFF',
+                fontSize: '0.92rem',
+                outline: 'none',
+                boxShadow: searchTerm ? '0 0 16px rgba(229, 193, 88, 0.25)' : 'none',
+                transition: 'all 0.2s ease'
+              }}
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                style={{
+                  position: 'absolute',
+                  right: '16px',
+                  background: 'rgba(255,255,255,0.12)',
+                  border: 'none',
+                  color: '#CBD5E1',
+                  borderRadius: '50%',
+                  width: '24px',
+                  height: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+                title="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Search Result Indicator */}
+          {searchTerm && (
+            <div style={{
+              marginTop: '10px',
+              textAlign: 'center',
+              fontSize: '0.84rem',
+              color: 'var(--color-gold-bright)',
+              fontWeight: 600
+            }}>
+              Found {filteredDestinations.length} route{filteredDestinations.length === 1 ? '' : 's'} matching "{searchTerm}"
+            </div>
+          )}
         </div>
 
         {/* Region Filter Tabs */}
@@ -168,6 +256,31 @@ export default function DestinationExplorer({ onSelectDestination, currency = 'U
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '60px', color: 'var(--color-gold)' }}>
             <RefreshCw className="animate-spin" size={28} style={{ marginRight: '12px' }} />
             <span style={{ fontSize: '1rem', fontWeight: 600 }}>Loading backend price database...</span>
+          </div>
+        ) : filteredDestinations.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '50px 20px',
+            background: 'rgba(15, 23, 42, 0.6)',
+            border: '1px dashed rgba(229, 193, 88, 0.3)',
+            borderRadius: 'var(--radius-md)',
+            margin: '20px 0'
+          }}>
+            <Search size={38} color="var(--color-gold)" style={{ margin: '0 auto 12px auto', opacity: 0.8 }} />
+            <h3 style={{ fontSize: '1.25rem', color: '#FFF', marginBottom: '8px', fontWeight: 700 }}>
+              No Global Routes Found
+            </h3>
+            <p style={{ color: '#94A3B8', fontSize: '0.9rem', maxWidth: '440px', margin: '0 auto 20px auto' }}>
+              No routes match your search query "{searchTerm}" under the {filter === 'All' ? 'global' : filter} filter. Try searching by city name or airport code like DXB, HND, LHR, or JFK.
+            </p>
+            <button
+              type="button"
+              onClick={() => { setSearchTerm(''); setFilter('All'); }}
+              className="btn-gold"
+              style={{ padding: '9px 22px', fontSize: '0.88rem' }}
+            >
+              Reset Search & Filters
+            </button>
           </div>
         ) : (
           /* Destination Cards Grid */
@@ -251,22 +364,8 @@ export default function DestinationExplorer({ onSelectDestination, currency = 'U
                   </div>
                 </div>
 
-                {/* Price Details Body */}
-                <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '16px' }}>
-                    <div>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>
-                        Retail Fare: <strike>{formatCurrency(dest.retailPrice, currency)}</strike>
-                      </span>
-                      <span style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-gold-bright)' }}>
-                        {formatCurrency(dest.royaPrice, currency)}
-                      </span>
-                    </div>
-                    <span style={{ fontSize: '0.8rem', color: '#6EE7B7', fontWeight: 600 }}>
-                      Concierge Deal
-                    </span>
-                  </div>
-
+                {/* Card Actions Body */}
+                <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {/* Grounded Travel Insight Button */}
                     <button

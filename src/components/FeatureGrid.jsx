@@ -21,7 +21,7 @@ export default function FeatureGrid({ onOpenSearch, onOpenChat }) {
     {
       icon: <ShieldCheck size={28} color="var(--color-gold-bright)" />,
       title: "Reserve Your Flight Before Payment",
-      description: "Lock in your flight itinerary with a 24-48 hour valid airline PNR hold. Zero payment required until you confirm."
+      description: "Lock in your flight itinerary with a 24-hour valid airline PNR hold. Zero payment required until you confirm."
     },
     {
       icon: <Headphones size={28} color="var(--color-gold-bright)" />,
@@ -95,7 +95,7 @@ export default function FeatureGrid({ onOpenSearch, onOpenChat }) {
               Zero Risk Guarantee
             </span>
             <h3 className="font-royal" style={{ fontSize: '1.8rem', color: '#FFF', marginTop: '8px', marginBottom: '10px' }}>
-              Reserve Flight Holds Free For Up To 48 Hours
+              Reserve Flight Holds Free For Up To 24 Hours
             </h3>
             <p style={{ color: '#CBD5E1', fontSize: '1.02rem' }}>
               Need a valid flight reservation for visa processing or travel approval? We generate verified GDS / airline PNR itineraries with zero upfront payment required.

@@ -24,7 +24,7 @@ export const REVIEWS = [
     date: "June 2026",
     verified: true,
     title: "Perfect Reserve Before Payment for Visa Processing",
-    comment: "I needed a verifiable flight itinerary for a European visa application. RoyaBridge generated an official 48-hour PNR hold within 15 minutes. It passed embassy verification effortlessly, and I confirmed payment only after my visa was approved.",
+    comment: "I needed a verifiable flight itinerary for a European visa application. RoyaBridge generated an official 24-hour PNR hold within 15 minutes. It passed embassy verification effortlessly, and I confirmed payment only after my visa was approved.",
     route: "New York (JFK) → Paris (CDG)",
     airline: "Air France / Delta",
     savedAmount: "$1,450"

@@ -5,7 +5,6 @@ import FlightSearchForm from './components/FlightSearchForm';
 import RealTimeFlightResults from './components/RealTimeFlightResults';
 import FeatureGrid from './components/FeatureGrid';
 import DestinationExplorer from './components/DestinationExplorer';
-import FlightStatusSection from './components/FlightStatusSection';
 import UserReviews from './components/UserReviews';
 import ReserveModal from './components/ReserveModal';
 import BookingTracker from './components/BookingTracker';
@@ -232,13 +231,6 @@ export default function App() {
           <DestinationExplorer 
             onSelectDestination={handleSelectDestination}
             currency={currency}
-          />
-        </AnimatedSection>
-
-        {/* Flight Status Lookup Section */}
-        <AnimatedSection>
-          <FlightStatusSection 
-            onSelectFlight={handleSelectFlight}
           />
         </AnimatedSection>
 

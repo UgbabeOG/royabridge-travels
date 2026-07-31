@@ -98,7 +98,7 @@ export default function UserReviews({ onOpenChat }) {
           </span>
           <h2>What Global Travelers Say About RoyaBridge</h2>
           <p>
-            Experience authentic client reviews showcasing verified 24-48h flight holds, 30% airfare savings, and world-class concierge service.
+            Experience authentic client reviews showcasing verified 24h flight holds, 30% airfare savings, and world-class concierge service.
           </p>
         </div>
 
