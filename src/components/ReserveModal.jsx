@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, ShieldCheck, Download, Printer, MessageCircle, Clock, CheckCircle2, Copy, Plane, Activity, AlertCircle, Shield, Sparkles, Check, Luggage, PlusCircle, FileText, Lock, HeartHandshake, Share2 } from 'lucide-react';
+import { X, ShieldCheck, Download, Printer, MessageCircle, Clock, CheckCircle2, Copy, Plane, Activity, AlertCircle, Shield, Sparkles, Check, Luggage, PlusCircle, FileText, Lock, HeartHandshake } from 'lucide-react';
 import { generatePNR, formatCurrency } from '../utils/pnrGenerator';
 import { saveBookingToDatabase } from '../lib/bookingsService';
 import { validateEmail, validatePhone, validateName } from '../utils/validation';
 
-export default function ReserveModal({ data, onClose, onOpenChat, showToast, onOpenShare, currency = 'USD' }) {
-
+export default function ReserveModal({ data, onClose, onOpenChat, showToast, currency = 'USD' }) {
   const [passengerName, setPassengerName] = useState('');
   const [passengerEmail, setPassengerEmail] = useState('');
   const [passengerPhone, setPassengerPhone] = useState('');
@@ -182,7 +181,7 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, onO
   if (!data) return null;
 
   return (
-    <div className="reserve-modal-container" style={{
+    <div style={{
       position: 'fixed',
       inset: 0,
       zIndex: 200,
@@ -194,7 +193,7 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, onO
       padding: '20px',
       overflowY: 'auto'
     }}>
-      <div className="glass-card reserve-modal-card" style={{
+      <div className="glass-card" style={{
         maxWidth: '1100px',
         width: '100%',
         maxHeight: '92vh',
@@ -202,68 +201,11 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, onO
         background: '#0E1526',
         border: '1.5px solid var(--border-gold-glow)',
         borderRadius: 'var(--radius-lg)',
-        padding: '28px',
-        position: 'relative'
+        padding: '28px'
       }}>
         
-        {/* Firestore Submission Loading Overlay */}
-        {saving && (
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 300,
-            background: 'rgba(7, 11, 20, 0.95)',
-            backdropFilter: 'blur(16px)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '32px',
-            borderRadius: 'var(--radius-lg)',
-            textAlign: 'center'
-          }}>
-            <div style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '50%',
-              background: 'rgba(229, 193, 88, 0.15)',
-              border: '2px solid var(--color-gold)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '20px'
-            }}>
-              <Activity className="animate-spin" size={32} color="var(--color-gold-bright)" />
-            </div>
-
-            <h3 style={{ fontSize: '1.4rem', color: '#FFF', fontWeight: 800, margin: '0 0 8px 0' }}>
-              Submitting Booking Request to Firestore...
-            </h3>
-            <p style={{ fontSize: '0.88rem', color: '#94A3B8', maxWidth: '440px', margin: '0 0 24px 0' }}>
-              Registering PNR reference <strong style={{ color: 'var(--color-gold-bright)' }}>{pnr}</strong> and locking your 24-hour price freeze in database.
-            </p>
-
-            {/* Skeleton Card Preview */}
-            <div style={{
-              width: '100%',
-              maxWidth: '460px',
-              background: 'rgba(15, 23, 42, 0.8)',
-              border: '1px solid rgba(229, 193, 88, 0.3)',
-              borderRadius: 'var(--radius-md)',
-              padding: '20px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px'
-            }}>
-              <div style={{ height: '20px', width: '50%', background: 'rgba(229, 193, 88, 0.2)', borderRadius: '4px' }} className="animate-pulse" />
-              <div style={{ height: '32px', width: '80%', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '4px' }} className="animate-pulse" />
-              <div style={{ height: '16px', width: '90%', background: 'rgba(255, 255, 255, 0.06)', borderRadius: '4px' }} className="animate-pulse" />
-            </div>
-          </div>
-        )}
-        
         {/* Header Bar */}
-        <div className="reserve-modal-header" style={{
+        <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -276,7 +218,7 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, onO
               <ShieldCheck size={14} color="var(--color-gold)" />
               Reserve Before Payment Confirmed
             </span>
-            <h2 className="font-royal reserve-modal-title" style={{ color: '#FFF', fontSize: '1.6rem', marginTop: '4px' }}>
+            <h2 className="font-royal" style={{ color: '#FFF', fontSize: '1.6rem', marginTop: '4px' }}>
               Official Flight Reservation Hold
             </h2>
           </div>
@@ -300,7 +242,7 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, onO
         </div>
 
         {/* 2-Column Checkout Layout */}
-        <div className="reserve-modal-grid" style={{
+        <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
           gap: '28px',
@@ -752,7 +694,7 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, onO
 
 
           {/* RIGHT COLUMN: STICKY REAL-TIME BOOKING SUMMARY SIDEBAR */}
-          <div className="reserve-sidebar" style={{
+          <div style={{
             position: 'sticky',
             top: '0px',
             background: 'linear-gradient(180deg, #131B2E 0%, #0A0F1D 100%)',
@@ -944,33 +886,6 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, onO
 
               <button 
                 type="button"
-                onClick={() => {
-                  if (onOpenShare) {
-                    onOpenShare({
-                      type: 'pnr',
-                      pnrNumber: pnr,
-                      origin: data.origin?.code || data.origin || 'JFK',
-                      destination: data.destination?.code || data.destination || 'LHR',
-                      departDate: data.departDate,
-                      returnDate: data.returnDate,
-                      cabinClass: selectedCabin,
-                      passengers: passengersCount,
-                      airline: data.airline,
-                      flightNumber: data.flightNumber,
-                      royaPrice: totalFinalPrice,
-                      savings: totalSavings
-                    });
-                  }
-                }}
-                className="btn-outline-gold"
-                style={{ width: '100%', padding: '10px', fontSize: '0.85rem' }}
-              >
-                <Share2 size={15} />
-                Share My Itinerary (Email / Link)
-              </button>
-
-              <button 
-                type="button"
                 onClick={handlePrint}
                 className="btn-outline-gold"
                 style={{ width: '100%', padding: '10px', fontSize: '0.85rem' }}
@@ -979,7 +894,6 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, onO
                 Print / Save Itinerary PDF
               </button>
             </div>
-
 
             {/* Guarantees */}
             <div style={{ fontSize: '0.72rem', color: '#94A3B8', textAlign: 'center', lineHeight: 1.4 }}>

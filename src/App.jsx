@@ -8,47 +8,22 @@ import DestinationExplorer from './components/DestinationExplorer';
 import FlightStatusSection from './components/FlightStatusSection';
 import UserReviews from './components/UserReviews';
 import ReserveModal from './components/ReserveModal';
-import ShareItineraryModal from './components/ShareItineraryModal';
 import BookingTracker from './components/BookingTracker';
 import ConciergeChat from './components/ConciergeChat';
 import ContactModal from './components/ContactModal';
-import AdminPortal from './components/AdminPortal';
 import FAQSection from './components/FAQSection';
 import Footer from './components/Footer';
 import ToastNotification from './components/ToastNotification';
 import AnimatedSection from './components/AnimatedSection';
-import { POPULAR_AIRPORTS as SEED_AIRPORTS } from './data/destinations';
-import { fetchAirportsFromFirestore } from './lib/destinationsService';
+import { POPULAR_AIRPORTS } from './data/destinations';
+import { generateClientSideFlights, generateClientSidePriceTrend } from './utils/pnrGenerator';
 
 export default function App() {
-  const [airports, setAirports] = useState(SEED_AIRPORTS);
   const [currency, setCurrency] = useState('USD');
   const [reserveModalData, setReserveModalData] = useState(null);
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
-
-  useEffect(() => {
-    async function loadAirports() {
-      try {
-        const fetched = await fetchAirportsFromFirestore();
-        if (Array.isArray(fetched) && fetched.length > 0) {
-          setAirports(fetched);
-        }
-      } catch (e) {
-        console.warn('Error fetching airports in App.jsx:', e);
-      }
-    }
-    loadAirports();
-  }, []);
-
-
-  
-  // Share Itinerary State
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [shareData, setShareData] = useState(null);
-
   const [toasts, setToasts] = useState([]);
 
   const showToast = ({ type = 'success', title, message, pnr, duration = 5000 }) => {
@@ -72,25 +47,9 @@ export default function App() {
   });
   const [flights, setFlights] = useState([]);
   const [priceTrend, setPriceTrend] = useState(null);
+  const [groundingSources, setGroundingSources] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState('');
-
-  // Handle Share Modal Trigger
-  const handleOpenShare = (customData) => {
-    const payload = customData || {
-      type: 'search',
-      origin: searchQuery.origin,
-      destination: searchQuery.destination,
-      departDate: searchQuery.departDate,
-      returnDate: searchQuery.returnDate,
-      cabinClass: searchQuery.cabinClass,
-      passengers: searchQuery.passengers,
-      segments: searchQuery.segments
-    };
-    setShareData(payload);
-    setIsShareModalOpen(true);
-  };
-
 
   // Perform initial search on load
   useEffect(() => {
@@ -117,22 +76,48 @@ export default function App() {
         })
       ]);
 
-      const searchData = await searchRes.json();
-      const trendData = await trendRes.json();
-
-      if (searchData.success && searchData.flights) {
-        setFlights(searchData.flights);
-      } else {
-        setSearchError(searchData.error || 'No flights found for this route');
+      let searchData;
+      try {
+        searchData = await searchRes.json();
+      } catch (jsonErr) {
+        throw new Error("Invalid search response format");
       }
 
-      if (trendData.success) {
+      let trendData;
+      try {
+        trendData = await trendRes.json();
+      } catch (jsonErr) {
+        throw new Error("Invalid price trend response format");
+      }
+
+      if (searchData && searchData.success && searchData.flights) {
+        setFlights(searchData.flights);
+        if (searchData.groundingSources && Array.isArray(searchData.groundingSources)) {
+          setGroundingSources(searchData.groundingSources);
+        }
+      } else {
+        throw new Error(searchData?.error || 'No flights found for this route');
+      }
+
+      if (trendData && trendData.success) {
         setPriceTrend(trendData);
+        if ((!searchData?.groundingSources || searchData.groundingSources.length === 0) && trendData.groundingSources) {
+          setGroundingSources(trendData.groundingSources);
+        }
       }
 
     } catch (err) {
-      console.error("Flight search API failed:", err);
-      setSearchError("Failed to connect to real-time flight search API.");
+      console.warn("Flight search API failed, falling back to local simulation engine:", err);
+      try {
+        const fallbackFlights = generateClientSideFlights(query);
+        const fallbackTrend = generateClientSidePriceTrend(query.origin, query.destination, query.cabinClass);
+        setFlights(fallbackFlights);
+        setPriceTrend(fallbackTrend);
+        setGroundingSources(fallbackTrend.groundingSources || []);
+      } catch (fallbackErr) {
+        console.error("Fallback generator also failed:", fallbackErr);
+        setSearchError("Failed to connect to real-time flight search API.");
+      }
     } finally {
       setSearchLoading(false);
     }
@@ -149,9 +134,8 @@ export default function App() {
   };
 
   const handleSelectFlight = (flight) => {
-    const originObj = airports.find(a => a.code === flight.origin) || { code: flight.origin, city: flight.origin, name: flight.origin };
-    const destObj = airports.find(a => a.code === flight.destination) || { code: flight.destination, city: flight.destination, name: flight.destination };
-
+    const originObj = POPULAR_AIRPORTS.find(a => a.code === flight.origin) || { code: flight.origin, city: flight.origin, name: flight.origin };
+    const destObj = POPULAR_AIRPORTS.find(a => a.code === flight.destination) || { code: flight.destination, city: flight.destination, name: flight.destination };
 
     setReserveModalData({
       tripType: searchQuery.tripType || 'round',
@@ -204,10 +188,7 @@ export default function App() {
         onOpenChat={() => setIsChatOpen(true)}
         onOpenTracker={() => setIsTrackerOpen(true)}
         onOpenContact={() => setIsContactOpen(true)}
-        onOpenShare={handleOpenShare}
-        onOpenAdmin={() => setIsAdminOpen(true)}
       />
-
 
       {/* Main Hero */}
       <AnimatedSection animation="fade-in">
@@ -235,8 +216,8 @@ export default function App() {
           loading={searchLoading}
           error={searchError}
           priceTrend={priceTrend}
+          groundingSources={groundingSources}
           onSelectFlight={handleSelectFlight}
-          onOpenShare={handleOpenShare}
           currency={currency}
         />
       </AnimatedSection>
@@ -249,7 +230,7 @@ export default function App() {
         />
       </AnimatedSection>
 
-      {/* Destination & Savings Visualizer + Integrated Travel Insights */}
+      {/* Destination & Savings Visualizer */}
       <AnimatedSection animation="slide-up">
         <DestinationExplorer 
           onSelectDestination={handleSelectDestination}
@@ -276,23 +257,10 @@ export default function App() {
         <FAQSection />
       </AnimatedSection>
 
-      {/* Keyboard shortcut for Admin Access (Ctrl+Shift+A) */}
-      {useEffect(() => {
-        const handleKeyDown = (e) => {
-          if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
-            e.preventDefault();
-            setIsAdminOpen(true);
-          }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-      }, [])}
-
       {/* Footer */}
       <Footer 
         onOpenChat={() => setIsChatOpen(true)}
         onOpenContact={() => setIsContactOpen(true)}
-        onOpenAdmin={() => setIsAdminOpen(true)}
       />
 
       {/* Reserve Before Payment Itinerary Hold Modal */}
@@ -302,22 +270,12 @@ export default function App() {
           currency={currency}
           showToast={showToast}
           onClose={() => setReserveModalData(null)}
-          onOpenShare={handleOpenShare}
           onOpenChat={() => {
             setReserveModalData(null);
             setIsChatOpen(true);
           }}
         />
       )}
-
-      {/* Share Itinerary Modal */}
-      <ShareItineraryModal 
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        shareData={shareData}
-        currency={currency}
-      />
-
 
       {/* PNR Booking Tracker & Live Flight Status Modal */}
       <BookingTracker 
@@ -347,20 +305,11 @@ export default function App() {
         onClose={() => setIsChatOpen(false)}
       />
 
-      {/* Executive Concierge & Reservation Admin Portal Modal */}
-      <AdminPortal 
-        isOpen={isAdminOpen}
-        onClose={() => setIsAdminOpen(false)}
-        showToast={showToast}
-        currency={currency}
-      />
-
       {/* Toast Notification Container */}
       <ToastNotification 
         toasts={toasts} 
         onDismiss={handleDismissToast} 
       />
-
 
     </div>
   );

@@ -1,23 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Plane, Calendar, Users, Shield, ArrowRightLeft, Sparkles, Activity, Search, History, Clock, ArrowRight, Tag, Globe, Plus, Trash2 } from 'lucide-react';
-import { POPULAR_AIRPORTS as SEED_AIRPORTS } from '../data/destinations';
-import { fetchAirportsFromFirestore } from '../lib/destinationsService';
+import { Plane, Calendar, Users, Shield, ArrowRightLeft, Sparkles, Activity, Search, History, Clock, ArrowRight, Tag, Globe } from 'lucide-react';
+import { POPULAR_AIRPORTS } from '../data/destinations';
 import { calculateSavings, formatCurrency } from '../utils/pnrGenerator';
 
 export default function FlightSearchForm({ onSearchFlights, loading, currency = 'USD', onCurrencyChange }) {
-  const [airports, setAirports] = useState(SEED_AIRPORTS);
   const [tripType, setTripType] = useState('round');
   const [origin, setOrigin] = useState('JFK');
   const [destination, setDestination] = useState('LHR');
   const [departDate, setDepartDate] = useState('2026-08-15');
   const [returnDate, setReturnDate] = useState('2026-08-29');
-  
-  // Multi-city dynamic segments state
-  const [multiSegments, setMultiSegments] = useState([
-    { id: 'seg-1', origin: 'JFK', destination: 'LHR', date: '2026-08-15' },
-    { id: 'seg-2', origin: 'LHR', destination: 'DXB', date: '2026-08-22' }
-  ]);
-
   const [passengers, setPassengers] = useState(1);
   const [cabinClass, setCabinClass] = useState('Business');
   const [reserveBeforePayment, setReserveBeforePayment] = useState(true);
@@ -26,18 +17,6 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
   const [recentSearches, setRecentSearches] = useState([]);
 
   useEffect(() => {
-    async function loadAirports() {
-      try {
-        const fetched = await fetchAirportsFromFirestore();
-        if (Array.isArray(fetched) && fetched.length > 0) {
-          setAirports(fetched);
-        }
-      } catch (e) {
-        console.warn('Error loading airports from Firebase Store:', e);
-      }
-    }
-    loadAirports();
-
     try {
       const stored = localStorage.getItem('royabridge_recent_searches');
       if (stored) {
@@ -50,7 +29,6 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
       console.warn('Failed to load recent searches:', err);
     }
   }, []);
-
 
   const saveRecentSearch = (searchItem) => {
     try {
@@ -65,63 +43,18 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
     }
   };
 
-  // Multi-segment handlers
-  const handleAddSegment = () => {
-    if (multiSegments.length >= 5) return;
-    const lastSeg = multiSegments[multiSegments.length - 1];
-    
-    // Calculate default date (+5 days after last segment date)
-    let nextDate = '2026-08-28';
-    if (lastSeg?.date) {
-      const d = new Date(lastSeg.date);
-      d.setDate(d.getDate() + 5);
-      nextDate = d.toISOString().split('T')[0];
-    }
-
-    const nextOrigin = lastSeg?.destination || 'DXB';
-    const nextDest = nextOrigin === 'HND' ? 'JFK' : 'HND';
-
-    setMultiSegments([
-      ...multiSegments,
-      {
-        id: `seg-${Date.now()}`,
-        origin: nextOrigin,
-        destination: nextDest,
-        date: nextDate
-      }
-    ]);
-  };
-
-  const handleRemoveSegment = (index) => {
-    if (multiSegments.length <= 2) return;
-    setMultiSegments(multiSegments.filter((_, idx) => idx !== index));
-  };
-
-  const handleSegmentChange = (index, field, value) => {
-    const updated = [...multiSegments];
-    updated[index] = { ...updated[index], [field]: value };
-    
-    // Auto-chain origin of next segment if destination changes
-    if (field === 'destination' && index < updated.length - 1) {
-      updated[index + 1].origin = value;
-    }
-
-    setMultiSegments(updated);
-  };
-
   // Dynamic estimate calculation
-  const multiMultiplier = tripType === 'multi' ? multiSegments.length * 0.85 : 1;
-  const baseEstimate = cabinClass === 'Business' ? (1450 * multiMultiplier) : (cabinClass === 'First' ? (2800 * multiMultiplier) : (750 * multiMultiplier));
+  const baseEstimate = cabinClass === 'Business' ? 1450 : (cabinClass === 'First' ? 2800 : 750);
   const totalBase = baseEstimate * passengers;
   const savings = calculateSavings(totalBase, cabinClass);
 
   const executeSearch = (params) => {
-    const tType = params.tripType || tripType;
-    const originCode = params.origin || (tType === 'multi' ? multiSegments[0].origin : origin);
-    const destCode = params.destination || (tType === 'multi' ? multiSegments[multiSegments.length - 1].destination : destination);
+    const originCode = params.origin || origin;
+    const destCode = params.destination || destination;
     const cabin = params.cabinClass || cabinClass;
-    const depDate = params.departDate || (tType === 'multi' ? multiSegments[0].date : departDate);
+    const depDate = params.departDate || departDate;
     const retDate = params.returnDate || returnDate;
+    const tType = params.tripType || tripType;
     const pax = params.passengers || passengers;
 
     const originObj = POPULAR_AIRPORTS.find(a => a.code === originCode) || { code: originCode, city: originCode, name: originCode };
@@ -131,7 +64,6 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
       tripType: tType,
       origin: originCode,
       destination: destCode,
-      segments: tType === 'multi' ? multiSegments : null,
       originObj,
       destObj,
       departDate: depDate,
@@ -203,7 +135,7 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
             borderBottom: '1px solid rgba(229, 193, 88, 0.15)',
             paddingBottom: '20px'
           }}>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '12px' }}>
               <button
                 type="button"
                 onClick={() => setTripType('round')}
@@ -235,26 +167,6 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                 }}
               >
                 One Way
-              </button>
-              <button
-                type="button"
-                onClick={() => setTripType('multi')}
-                style={{
-                  padding: '8px 18px',
-                  borderRadius: 'var(--radius-full)',
-                  border: tripType === 'multi' ? '1px solid var(--color-gold)' : '1px solid rgba(255,255,255,0.1)',
-                  background: tripType === 'multi' ? 'rgba(229, 193, 88, 0.2)' : 'transparent',
-                  color: tripType === 'multi' ? 'var(--color-gold-bright)' : 'var(--color-text-muted)',
-                  fontWeight: '600',
-                  fontSize: '0.88rem',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <Globe size={14} color={tripType === 'multi' ? 'var(--color-gold)' : 'currentColor'} />
-                Multi-City
               </button>
             </div>
 
@@ -302,282 +214,134 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
           </div>
 
           <form onSubmit={handleSubmit}>
-            {/* Standard Round Trip / One Way Layout */}
-            {tripType !== 'multi' && (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                gap: '16px',
-                alignItems: 'center'
-              }}>
-                
-                {/* Origin */}
-                <div>
-                  <label style={labelStyle}>From (Origin)</label>
-                  <div style={inputContainerStyle}>
-                    <Plane size={18} color="var(--color-gold)" style={{ transform: 'rotate(-45deg)' }} />
-                    <select 
-                      value={origin} 
-                      onChange={(e) => setOrigin(e.target.value)}
-                      style={selectStyle}
-                    >
-                      {airports.map(ap => (
-                        <option key={ap.code} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
-                          {ap.city} ({ap.code}) - {ap.country}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Swap Button */}
-                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
-                  <button
-                    type="button"
-                    onClick={swapLocations}
-                    title="Swap Origin & Destination"
-                    style={{
-                      background: 'rgba(229, 193, 88, 0.15)',
-                      border: '1px solid var(--border-gold)',
-                      borderRadius: '50%',
-                      width: '40px',
-                      height: '40px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'var(--color-gold-bright)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
+            {/* Main Flight Fields */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '16px',
+              alignItems: 'center'
+            }}>
+              
+              {/* Origin */}
+              <div>
+                <label style={labelStyle}>From (Origin)</label>
+                <div style={inputContainerStyle}>
+                  <Plane size={18} color="var(--color-gold)" style={{ transform: 'rotate(-45deg)' }} />
+                  <select 
+                    value={origin} 
+                    onChange={(e) => setOrigin(e.target.value)}
+                    style={selectStyle}
                   >
-                    <ArrowRightLeft size={16} />
-                  </button>
+                    {POPULAR_AIRPORTS.map(ap => (
+                      <option key={ap.code} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
+                        {ap.city} ({ap.code}) - {ap.country}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+              </div>
 
-                {/* Destination */}
-                <div>
-                  <label style={labelStyle}>To (Destination)</label>
-                  <div style={inputContainerStyle}>
-                    <Plane size={18} color="var(--color-gold)" style={{ transform: 'rotate(45deg)' }} />
-                    <select 
-                      value={destination} 
-                      onChange={(e) => setDestination(e.target.value)}
-                      style={selectStyle}
-                    >
-                      {airports.map(ap => (
-                        <option key={ap.code} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
-                          {ap.city} ({ap.code}) - {ap.country}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+              {/* Swap Button */}
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
+                <button
+                  type="button"
+                  onClick={swapLocations}
+                  title="Swap Origin & Destination"
+                  style={{
+                    background: 'rgba(229, 193, 88, 0.15)',
+                    border: '1px solid var(--border-gold)',
+                    borderRadius: '50%',
+                    width: '40px',
+                    height: '40px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--color-gold-bright)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <ArrowRightLeft size={16} />
+                </button>
+              </div>
+
+              {/* Destination */}
+              <div>
+                <label style={labelStyle}>To (Destination)</label>
+                <div style={inputContainerStyle}>
+                  <Plane size={18} color="var(--color-gold)" style={{ transform: 'rotate(45deg)' }} />
+                  <select 
+                    value={destination} 
+                    onChange={(e) => setDestination(e.target.value)}
+                    style={selectStyle}
+                  >
+                    {POPULAR_AIRPORTS.map(ap => (
+                      <option key={ap.code} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
+                        {ap.city} ({ap.code}) - {ap.country}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+              </div>
 
-                {/* Departure Date */}
+              {/* Departure Date */}
+              <div>
+                <label style={labelStyle}>Departure Date</label>
+                <div style={inputContainerStyle}>
+                  <Calendar size={18} color="var(--color-gold)" />
+                  <input 
+                    type="date" 
+                    value={departDate} 
+                    onChange={(e) => setDepartDate(e.target.value)}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+
+              {/* Return Date */}
+              {tripType === 'round' && (
                 <div>
-                  <label style={labelStyle}>Departure Date</label>
+                  <label style={labelStyle}>Return Date</label>
                   <div style={inputContainerStyle}>
                     <Calendar size={18} color="var(--color-gold)" />
                     <input 
                       type="date" 
-                      value={departDate} 
-                      onChange={(e) => setDepartDate(e.target.value)}
+                      value={returnDate} 
+                      onChange={(e) => setReturnDate(e.target.value)}
                       style={inputStyle}
                     />
                   </div>
                 </div>
+              )}
 
-                {/* Return Date */}
-                {tripType === 'round' && (
-                  <div>
-                    <label style={labelStyle}>Return Date</label>
-                    <div style={inputContainerStyle}>
-                      <Calendar size={18} color="var(--color-gold)" />
-                      <input 
-                        type="date" 
-                        value={returnDate} 
-                        onChange={(e) => setReturnDate(e.target.value)}
-                        style={inputStyle}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Passengers & Cabin */}
-                <div>
-                  <label style={labelStyle}>Passengers & Cabin</label>
-                  <div style={inputContainerStyle}>
-                    <Users size={18} color="var(--color-gold)" />
-                    <select 
-                      value={passengers} 
-                      onChange={(e) => setPassengers(Number(e.target.value))}
-                      style={{ ...selectStyle, width: '45%' }}
-                    >
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-                        <option key={n} value={n} style={{ background: '#0F172A' }}>{n} {n === 1 ? 'Passenger' : 'Passengers'}</option>
-                      ))}
-                    </select>
-                    <select 
-                      value={cabinClass} 
-                      onChange={(e) => setCabinClass(e.target.value)}
-                      style={{ ...selectStyle, width: '55%' }}
-                    >
-                      <option value="Economy" style={{ background: '#0F172A' }}>Economy</option>
-                      <option value="Premium Economy" style={{ background: '#0F172A' }}>Premium Eco</option>
-                      <option value="Business" style={{ background: '#0F172A' }}>Business Class</option>
-                      <option value="First" style={{ background: '#0F172A' }}>First Class</option>
-                    </select>
-                  </div>
-                </div>
-
-              </div>
-            )}
-
-            {/* Dynamic Multi-City Segment Builder Layout */}
-            {tripType === 'multi' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--color-gold-bright)', fontWeight: 700 }}>
-                    Configure Multi-City Flight Segments ({multiSegments.length} Segments)
-                  </span>
-                  
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <label style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Passengers & Class:</label>
-                    <select 
-                      value={passengers} 
-                      onChange={(e) => setPassengers(Number(e.target.value))}
-                      style={{ background: 'rgba(7,11,20,0.8)', border: '1px solid var(--border-gold)', color: '#FFF', borderRadius: '6px', padding: '4px 8px', fontSize: '0.85rem' }}
-                    >
-                      {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n} Passenger{n > 1 ? 's' : ''}</option>)}
-                    </select>
-                    <select 
-                      value={cabinClass} 
-                      onChange={(e) => setCabinClass(e.target.value)}
-                      style={{ background: 'rgba(7,11,20,0.8)', border: '1px solid var(--border-gold)', color: '#FFF', borderRadius: '6px', padding: '4px 8px', fontSize: '0.85rem' }}
-                    >
-                      <option value="Economy">Economy</option>
-                      <option value="Premium Economy">Premium Eco</option>
-                      <option value="Business">Business Class</option>
-                      <option value="First">First Class</option>
-                    </select>
-                  </div>
-                </div>
-
-                {multiSegments.map((seg, idx) => (
-                  <div key={seg.id || idx} style={{
-                    background: 'rgba(15, 23, 42, 0.65)',
-                    border: '1px solid rgba(229, 193, 88, 0.25)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '16px',
-                    display: 'grid',
-                    gridTemplateColumns: 'auto 1fr 1fr 1fr auto',
-                    gap: '12px',
-                    alignItems: 'center'
-                  }}>
-                    <span style={{
-                      background: 'rgba(229, 193, 88, 0.2)',
-                      color: 'var(--color-gold-bright)',
-                      fontWeight: 800,
-                      fontSize: '0.8rem',
-                      padding: '4px 10px',
-                      borderRadius: 'var(--radius-full)',
-                      whiteSpace: 'nowrap'
-                    }}>
-                      Flight {idx + 1}
-                    </span>
-
-                    {/* Segment Origin */}
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>From</label>
-                      <select 
-                        value={seg.origin} 
-                        onChange={(e) => handleSegmentChange(idx, 'origin', e.target.value)}
-                        style={{ ...selectStyle, background: 'rgba(7,11,20,0.9)', border: '1px solid var(--border-gold)', borderRadius: '6px', padding: '8px' }}
-                      >
-                        {airports.map(ap => (
-                          <option key={ap.code} value={ap.code} style={{ background: '#0F172A' }}>
-                            {ap.city} ({ap.code})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Segment Destination */}
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>To</label>
-                      <select 
-                        value={seg.destination} 
-                        onChange={(e) => handleSegmentChange(idx, 'destination', e.target.value)}
-                        style={{ ...selectStyle, background: 'rgba(7,11,20,0.9)', border: '1px solid var(--border-gold)', borderRadius: '6px', padding: '8px' }}
-                      >
-                        {airports.map(ap => (
-                          <option key={ap.code} value={ap.code} style={{ background: '#0F172A' }}>
-                            {ap.city} ({ap.code})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Segment Date */}
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>Date</label>
-                      <input 
-                        type="date" 
-                        value={seg.date} 
-                        onChange={(e) => handleSegmentChange(idx, 'date', e.target.value)}
-                        style={{ ...inputStyle, background: 'rgba(7,11,20,0.9)', border: '1px solid var(--border-gold)', borderRadius: '6px', padding: '8px' }}
-                      />
-                    </div>
-
-                    {/* Remove Segment CTA */}
-                    <div>
-                      {multiSegments.length > 2 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSegment(idx)}
-                          title="Remove flight segment"
-                          style={{
-                            background: 'rgba(239, 68, 68, 0.15)',
-                            border: '1px solid rgba(239, 68, 68, 0.4)',
-                            color: '#F87171',
-                            borderRadius: '6px',
-                            padding: '8px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                {/* Add Segment Button */}
-                {multiSegments.length < 5 && (
-                  <button
-                    type="button"
-                    onClick={handleAddSegment}
-                    style={{
-                      background: 'rgba(229, 193, 88, 0.12)',
-                      border: '1px dashed var(--color-gold)',
-                      color: 'var(--color-gold-bright)',
-                      borderRadius: 'var(--radius-md)',
-                      padding: '12px',
-                      fontSize: '0.9rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px'
-                    }}
+              {/* Passengers & Cabin */}
+              <div>
+                <label style={labelStyle}>Passengers & Cabin</label>
+                <div style={inputContainerStyle}>
+                  <Users size={18} color="var(--color-gold)" />
+                  <select 
+                    value={passengers} 
+                    onChange={(e) => setPassengers(Number(e.target.value))}
+                    style={{ ...selectStyle, width: '45%' }}
                   >
-                    <Plus size={16} />
-                    Add Another Flight Segment (+ Segment {multiSegments.length + 1})
-                  </button>
-                )}
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+                      <option key={n} value={n} style={{ background: '#0F172A' }}>{n} {n === 1 ? 'Passenger' : 'Passengers'}</option>
+                    ))}
+                  </select>
+                  <select 
+                    value={cabinClass} 
+                    onChange={(e) => setCabinClass(e.target.value)}
+                    style={{ ...selectStyle, width: '55%' }}
+                  >
+                    <option value="Economy" style={{ background: '#0F172A' }}>Economy</option>
+                    <option value="Premium Economy" style={{ background: '#0F172A' }}>Premium Eco</option>
+                    <option value="Business" style={{ background: '#0F172A' }}>Business Class</option>
+                    <option value="First" style={{ background: '#0F172A' }}>First Class</option>
+                  </select>
+                </div>
               </div>
-            )}
+
+            </div>
 
             {/* Recent Searches Bar (horizontal scrollable, max 3 queries) */}
             {recentSearches && recentSearches.length > 0 && (
@@ -719,7 +483,7 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                 disabled={loading}
               >
                 {loading ? <Activity className="animate-spin" size={18} /> : <Search size={18} />}
-                {loading ? 'Searching Live Inventory...' : (tripType === 'multi' ? 'Search Multi-City Flights' : 'Search Real-Time Flights & Prices')}
+                {loading ? 'Searching Live Inventory...' : 'Search Real-Time Flights & Prices'}
               </button>
 
             </div>
@@ -774,4 +538,3 @@ const inputStyle = {
   width: '100%',
   colorScheme: 'dark'
 };
-

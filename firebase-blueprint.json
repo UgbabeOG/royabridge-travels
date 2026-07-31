@@ -24,39 +24,6 @@
         "createdAt": { "type": "string", "description": "ISO timestamp when hold was created" }
       },
       "required": ["pnr", "passengerName", "passengerEmail", "origin", "destination", "status"]
-    },
-    "destinations": {
-      "title": "Global Travel Destinations",
-      "description": "Stores curated travel routes, pricing, travel insights, visa requirements and imagery",
-      "properties": {
-        "id": { "type": "string", "description": "Destination unique identifier" },
-        "name": { "type": "string", "description": "City and Country name" },
-        "airport": { "type": "string", "description": "Airport code(s)" },
-        "region": { "type": "string", "description": "Geographic region (Europe, Middle East, Americas, Asia, Africa)" },
-        "image": { "type": "string", "description": "Cover photo URL" },
-        "retailPrice": { "type": "number", "description": "Standard retail airfare USD" },
-        "royaPrice": { "type": "number", "description": "Concierge airfare USD" },
-        "discount": { "type": "string", "description": "Discount percentage e.g. 30%" },
-        "popular": { "type": "boolean", "description": "Whether destination is featured as popular" },
-        "tagline": { "type": "string", "description": "Short descriptive tagline" },
-        "bestTimeToVisit": { "type": "string", "description": "Optimal travel months" },
-        "visaRequirement": { "type": "string", "description": "Visa policy summary" },
-        "currency": { "type": "string", "description": "Local currency" },
-        "language": { "type": "string", "description": "Local language(s)" },
-        "highlights": { "type": "array", "description": "Top landmark highlights" },
-        "averageFlightDuration": { "type": "string", "description": "Flight duration estimate" }
-      },
-      "required": ["id", "name", "airport", "region", "retailPrice", "royaPrice"]
-    }
-  },
-  "firestore": {
-    "/bookings/{bookingId}": {
-      "schema": "bookings",
-      "description": "Collection of passenger reservations and PNR holds"
-    },
-    "/destinations/{destinationId}": {
-      "schema": "destinations",
-      "description": "Collection of global destination routes and travel guides"
     }
   }
 }

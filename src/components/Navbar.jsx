@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, MessageSquare, PhoneCall, Menu, X, Phone, Mail, Share2, Lock } from 'lucide-react';
-import { useAuth } from '../lib/AuthContext';
+import { ShieldCheck, MessageSquare, PhoneCall, Menu, X, Phone, Mail } from 'lucide-react';
 
-export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpenContact, onOpenShare, onOpenAdmin }) {
-  const { isAdmin } = useAuth();
-
+export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpenContact }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('');
@@ -213,7 +210,6 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
             Message
           </button>
 
-
           {/* Hamburger Menu Toggle Button for Mobile/Tablet */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -284,7 +280,6 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
               <PhoneCall size={16} />
               Contact Us (Email / Phone)
             </button>
-
 
             <button 
               onClick={() => { setMobileMenuOpen(false); onOpenTracker(); }}
