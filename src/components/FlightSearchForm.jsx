@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plane, Calendar, Users, Shield, ArrowRightLeft, Sparkles, Activity, Search, History, Clock, ArrowRight, Tag, Globe, Plus, Trash2 } from 'lucide-react';
-import { POPULAR_AIRPORTS } from '../data/destinations';
+import { Plane, Calendar, Users, Shield, ArrowRightLeft, Sparkles, Activity, Search, History, Clock, ArrowRight, Tag, Globe, Plus, Trash2, MapPin } from 'lucide-react';
+import { POPULAR_AIRPORTS, INTERCITY_ROUTES } from '../data/destinations';
 import { calculateSavings, formatCurrency } from '../utils/pnrGenerator';
 
 export default function FlightSearchForm({ onSearchFlights, loading, currency = 'USD', onCurrencyChange }) {
@@ -300,6 +300,75 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
           </div>
 
           <form onSubmit={handleSubmit}>
+
+            {/* Popular Inter-City Quick Route Selector Bar */}
+            <div style={{
+              marginBottom: '18px',
+              padding: '12px 16px',
+              background: 'rgba(7, 11, 20, 0.6)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid rgba(229, 193, 88, 0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              flexWrap: 'wrap'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.8rem',
+                color: 'var(--color-gold-bright)',
+                fontWeight: 700,
+                whiteSpace: 'nowrap'
+              }}>
+                <MapPin size={14} color="var(--color-gold)" />
+                Inter-City Quick Routes:
+              </div>
+
+              <div className="no-scrollbar" style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                overflowX: 'auto',
+                width: '100%',
+                flex: 1,
+                paddingBottom: '2px'
+              }}>
+                {INTERCITY_ROUTES.map(route => {
+                  const isSelected = origin === route.origin && destination === route.destination;
+                  return (
+                    <button
+                      key={route.id}
+                      type="button"
+                      onClick={() => {
+                        setOrigin(route.origin);
+                        setDestination(route.destination);
+                      }}
+                      style={{
+                        background: isSelected ? 'rgba(229, 193, 88, 0.25)' : 'rgba(15, 23, 42, 0.9)',
+                        border: isSelected ? '1px solid var(--color-gold-bright)' : '1px solid rgba(255, 255, 255, 0.08)',
+                        color: isSelected ? 'var(--color-gold-bright)' : '#E2E8F0',
+                        padding: '5px 12px',
+                        borderRadius: 'var(--radius-full)',
+                        fontSize: '0.78rem',
+                        fontWeight: isSelected ? 700 : 500,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        transition: 'all 0.2s ease',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        flexShrink: 0
+                      }}
+                    >
+                      <Plane size={12} color={isSelected ? 'var(--color-gold-bright)' : '#94A3B8'} />
+                      <span>{route.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             
             {/* Standard Single/Round Form Fields */}
             {tripType !== 'multiCity' ? (
@@ -324,11 +393,20 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                       onChange={(e) => setOrigin(e.target.value)}
                       style={selectStyle}
                     >
-                      {airports.map(ap => (
-                        <option key={ap.code} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
-                          {ap.city} ({ap.code}) - {ap.country}
-                        </option>
-                      ))}
+                      <optgroup label="Inter-City & Regional Hubs">
+                        {airports.filter(ap => ap.isInterCity).map(ap => (
+                          <option key={`origin-ic-${ap.code}`} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
+                            {ap.city} ({ap.code}) - {ap.country}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="All International Destinations">
+                        {airports.filter(ap => !ap.isInterCity).map(ap => (
+                          <option key={`origin-intl-${ap.code}`} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
+                            {ap.city} ({ap.code}) - {ap.country}
+                          </option>
+                        ))}
+                      </optgroup>
                     </select>
                   </div>
                 </div>
@@ -367,11 +445,20 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                       onChange={(e) => setDestination(e.target.value)}
                       style={selectStyle}
                     >
-                      {airports.map(ap => (
-                        <option key={ap.code} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
-                          {ap.city} ({ap.code}) - {ap.country}
-                        </option>
-                      ))}
+                      <optgroup label="Inter-City & Regional Hubs">
+                        {airports.filter(ap => ap.isInterCity).map(ap => (
+                          <option key={`dest-ic-${ap.code}`} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
+                            {ap.city} ({ap.code}) - {ap.country}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="All International Destinations">
+                        {airports.filter(ap => !ap.isInterCity).map(ap => (
+                          <option key={`dest-intl-${ap.code}`} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
+                            {ap.city} ({ap.code}) - {ap.country}
+                          </option>
+                        ))}
+                      </optgroup>
                     </select>
                   </div>
                 </div>
@@ -495,11 +582,20 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                           onChange={(e) => handleUpdateLeg(leg.id, 'origin', e.target.value)}
                           style={selectStyle}
                         >
-                          {airports.map(ap => (
-                            <option key={ap.code} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
-                              {ap.city} ({ap.code})
-                            </option>
-                          ))}
+                          <optgroup label="Inter-City & Regional Hubs">
+                            {airports.filter(ap => ap.isInterCity).map(ap => (
+                              <option key={`leg-orig-ic-${ap.code}`} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
+                                {ap.city} ({ap.code})
+                              </option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="All International Destinations">
+                            {airports.filter(ap => !ap.isInterCity).map(ap => (
+                              <option key={`leg-orig-intl-${ap.code}`} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
+                                {ap.city} ({ap.code})
+                              </option>
+                            ))}
+                          </optgroup>
                         </select>
                       </div>
                     </div>
@@ -514,11 +610,20 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                           onChange={(e) => handleUpdateLeg(leg.id, 'destination', e.target.value)}
                           style={selectStyle}
                         >
-                          {airports.map(ap => (
-                            <option key={ap.code} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
-                              {ap.city} ({ap.code})
-                            </option>
-                          ))}
+                          <optgroup label="Inter-City & Regional Hubs">
+                            {airports.filter(ap => ap.isInterCity).map(ap => (
+                              <option key={`leg-dest-ic-${ap.code}`} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
+                                {ap.city} ({ap.code})
+                              </option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="All International Destinations">
+                            {airports.filter(ap => !ap.isInterCity).map(ap => (
+                              <option key={`leg-dest-intl-${ap.code}`} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
+                                {ap.city} ({ap.code})
+                              </option>
+                            ))}
+                          </optgroup>
                         </select>
                       </div>
                     </div>

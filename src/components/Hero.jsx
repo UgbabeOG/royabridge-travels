@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { Plane, ShieldCheck, Sparkles, Clock, DollarSign, MessageCircle, ArrowRight, Star, Globe2 } from 'lucide-react';
 import AirlineLogos from './AirlineLogos';
 
@@ -122,16 +123,21 @@ export default function Hero({ onStartSearch, onOpenChat }) {
           borderRadius: 'var(--radius-lg)',
           boxShadow: '0 16px 40px rgba(0, 0, 0, 0.6)'
         }}>
-          <h2 style={{
-            fontSize: 'clamp(1.05rem, 3.2vw, 1.85rem)',
-            fontWeight: 800,
-            color: 'var(--color-gold-bright)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.03em',
-            lineHeight: 1.3
-          }}>
+          <motion.h2
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              fontSize: 'clamp(1.05rem, 3.2vw, 1.85rem)',
+              fontWeight: 800,
+              color: 'var(--color-gold-bright)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.03em',
+              lineHeight: 1.3
+            }}
+          >
             SAVE UP TO 30% ON FLIGHTS TO ANY DESTINATION WORLDWIDE.
-          </h2>
+          </motion.h2>
           <p style={{
             color: '#CBD5E1',
             fontSize: 'clamp(0.88rem, 2vw, 1.05rem)',

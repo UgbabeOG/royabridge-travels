@@ -863,7 +863,40 @@ const BACKEND_AIRPORTS = [
   { code: 'BOM', city: 'Mumbai', country: 'India', name: 'Chhatrapati Shivaji Maharaj Intl' },
   { code: 'PEK', city: 'Beijing', country: 'China', name: 'Beijing Capital Intl Airport' },
   { code: 'AKL', city: 'Auckland', country: 'New Zealand', name: 'Auckland Airport' },
-  { code: 'MEL', city: 'Melbourne', country: 'Australia', name: 'Melbourne Airport' }
+  { code: 'MEL', city: 'Melbourne', country: 'Australia', name: 'Melbourne Airport' },
+
+  // Dedicated Inter-City & Regional Destination Additions
+  { code: 'SFO', city: 'San Francisco', country: 'United States', name: 'San Francisco Intl' },
+  { code: 'LAS', city: 'Las Vegas', country: 'United States', name: 'Harry Reid Intl' },
+  { code: 'BOS', city: 'Boston', country: 'United States', name: 'Logan Intl Airport' },
+  { code: 'IAD', city: 'Washington D.C.', country: 'United States', name: 'Dulles Intl Airport' },
+  { code: 'ATL', city: 'Atlanta', country: 'United States', name: 'Hartsfield-Jackson Intl' },
+  { code: 'DFW', city: 'Dallas', country: 'United States', name: 'Dallas/Fort Worth Intl' },
+  { code: 'YVR', city: 'Vancouver', country: 'Canada', name: 'Vancouver Intl Airport' },
+  { code: 'YUL', city: 'Montreal', country: 'Canada', name: 'Montréal-Trudeau Intl' },
+  { code: 'LGW', city: 'London Gatwick', country: 'United Kingdom', name: 'Gatwick Airport' },
+  { code: 'MAN', city: 'Manchester', country: 'United Kingdom', name: 'Manchester Airport' },
+  { code: 'EDI', city: 'Edinburgh', country: 'United Kingdom', name: 'Edinburgh Airport' },
+  { code: 'ORY', city: 'Paris Orly', country: 'France', name: 'Orly Airport' },
+  { code: 'NCE', city: 'Nice', country: 'France', name: 'Côte d\'Azur Airport' },
+  { code: 'MXP', city: 'Milan', country: 'Italy', name: 'Malpensa Airport' },
+  { code: 'VCE', city: 'Venice', country: 'Italy', name: 'Marco Polo Airport' },
+  { code: 'MUC', city: 'Munich', country: 'Germany', name: 'Munich Airport' },
+  { code: 'MAD', city: 'Madrid', country: 'Spain', name: 'Adolfo Suárez Madrid-Barajas' },
+  { code: 'JED', city: 'Jeddah', country: 'Saudi Arabia', name: 'King Abdulaziz Intl' },
+  { code: 'SHJ', city: 'Sharjah', country: 'United Arab Emirates', name: 'Sharjah Intl Airport' },
+  { code: 'ABV', city: 'Abuja', country: 'Nigeria', name: 'Nnamdi Azikiwe Intl' },
+  { code: 'PHC', city: 'Port Harcourt', country: 'Nigeria', name: 'Port Harcourt Intl' },
+  { code: 'KIX', city: 'Osaka', country: 'Japan', name: 'Kansai Intl Airport' },
+  { code: 'HKT', city: 'Phuket', country: 'Thailand', name: 'Phuket Intl Airport' },
+  { code: 'CNX', city: 'Chiang Mai', country: 'Thailand', name: 'Chiang Mai Intl Airport' },
+  { code: 'KUL', city: 'Kuala Lumpur', country: 'Malaysia', name: 'Kuala Lumpur Intl' },
+  { code: 'CGK', city: 'Jakarta', country: 'Indonesia', name: 'Soekarno-Hatta Intl' },
+  { code: 'DEL', city: 'Delhi', country: 'India', name: 'Indira Gandhi Intl' },
+  { code: 'BLR', city: 'Bengaluru', country: 'India', name: 'Kempegowda Intl' },
+  { code: 'BNE', city: 'Brisbane', country: 'Australia', name: 'Brisbane Airport' },
+  { code: 'PER', city: 'Perth', country: 'Australia', name: 'Perth Airport' },
+  { code: 'LXR', city: 'Luxor', country: 'Egypt', name: 'Luxor Intl Airport' }
 ];
 
 // API Endpoint: Real-Time Grounded Travel Insights for Destinations
