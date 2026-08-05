@@ -3,6 +3,7 @@ import path from "path";
 import cors from "cors";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
+import fs from "fs";
 
 const app = express();
 const PORT = 3000;
@@ -787,6 +788,30 @@ const BACKEND_DESTINATIONS = [
     discount: '30%',
     popular: false,
     tagline: 'Afrobeats Culture & Atlantic Coast'
+  },
+  {
+    id: 'durban',
+    name: 'Durban, South Africa',
+    airport: 'DUR',
+    region: 'Africa',
+    image: 'https://images.unsplash.com/photo-1577705998148-6da4f39450f7?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1150,
+    royaPrice: 805,
+    discount: '30%',
+    popular: true,
+    tagline: 'Golden Mile Beaches & Warm Indian Ocean'
+  },
+  {
+    id: 'johannesburg',
+    name: 'Johannesburg, South Africa',
+    airport: 'JNB',
+    region: 'Africa',
+    image: 'https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?q=80&w=1000&auto=format&fit=crop',
+    retailPrice: 1200,
+    royaPrice: 840,
+    discount: '30%',
+    popular: true,
+    tagline: 'City of Gold & Rich Heritage'
   }
 ];
 
@@ -826,7 +851,19 @@ const BACKEND_AIRPORTS = [
   { code: 'NBO', city: 'Nairobi', country: 'Kenya', name: 'Jomo Kenyatta Intl Airport' },
   { code: 'ZNZ', city: 'Zanzibar', country: 'Tanzania', name: 'Abeid Amani Karume Intl' },
   { code: 'LOS', city: 'Lagos', country: 'Nigeria', name: 'Murtala Muhammed Intl' },
-  { code: 'ACC', city: 'Accra', country: 'Ghana', name: 'Kotoka Intl Airport' }
+  { code: 'ACC', city: 'Accra', country: 'Ghana', name: 'Kotoka Intl Airport' },
+  { code: 'DUR', city: 'Durban', country: 'South Africa', name: 'King Shaka Intl Airport' },
+  { code: 'JNB', city: 'Johannesburg', country: 'South Africa', name: 'O.R. Tambo Intl Airport' },
+  { code: 'CMN', city: 'Casablanca', country: 'Morocco', name: 'Mohammed V Intl Airport' },
+  { code: 'ADD', city: 'Addis Ababa', country: 'Ethiopia', name: 'Bole Intl Airport' },
+  { code: 'ORD', city: 'Chicago', country: 'United States', name: 'O\'Hare Intl Airport' },
+  { code: 'GRU', city: 'São Paulo', country: 'Brazil', name: 'Guarulhos Intl Airport' },
+  { code: 'FRA', city: 'Frankfurt', country: 'Germany', name: 'Frankfurt Airport' },
+  { code: 'DUB', city: 'Dublin', country: 'Ireland', name: 'Dublin Airport' },
+  { code: 'BOM', city: 'Mumbai', country: 'India', name: 'Chhatrapati Shivaji Maharaj Intl' },
+  { code: 'PEK', city: 'Beijing', country: 'China', name: 'Beijing Capital Intl Airport' },
+  { code: 'AKL', city: 'Auckland', country: 'New Zealand', name: 'Auckland Airport' },
+  { code: 'MEL', city: 'Melbourne', country: 'Australia', name: 'Melbourne Airport' }
 ];
 
 // API Endpoint: Real-Time Grounded Travel Insights for Destinations

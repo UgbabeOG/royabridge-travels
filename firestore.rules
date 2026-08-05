@@ -4,5 +4,13 @@ service cloud.firestore {
     match /bookings/{bookingId} {
       allow read, create, update: if true;
     }
+    match /airports/{airportCode} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /destinations/{destinationId} {
+      allow read: if true;
+      allow write: if false;
+    }
   }
 }

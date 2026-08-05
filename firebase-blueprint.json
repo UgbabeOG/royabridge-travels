@@ -24,6 +24,48 @@
         "createdAt": { "type": "string", "description": "ISO timestamp when hold was created" }
       },
       "required": ["pnr", "passengerName", "passengerEmail", "origin", "destination", "status"]
+    },
+    "airports": {
+      "title": "Airports Directory",
+      "description": "Inventory of global airports and airfield hubs supported",
+      "properties": {
+        "code": { "type": "string", "description": "3-letter IATA airport code" },
+        "city": { "type": "string", "description": "City name" },
+        "country": { "type": "string", "description": "Country name" },
+        "name": { "type": "string", "description": "Official airport name" }
+      },
+      "required": ["code", "city", "country", "name"]
+    },
+    "destinations": {
+      "title": "Worldwide Destinations",
+      "description": "Featured destinations with pricing and branding details",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier e.g. london" },
+        "name": { "type": "string", "description": "Display name of city/destination" },
+        "airport": { "type": "string", "description": "Associated airport codes" },
+        "region": { "type": "string", "description": "Geographical region" },
+        "image": { "type": "string", "description": "Unsplash image URL" },
+        "retailPrice": { "type": "number", "description": "Retail baseline price USD" },
+        "royaPrice": { "type": "number", "description": "Concierge baseline price USD" },
+        "discount": { "type": "string", "description": "Discount percentage e.g. 30%" },
+        "popular": { "type": "boolean", "description": "Is listed in popular recommendations" },
+        "tagline": { "type": "string", "description": "Branding slogan or marketing copy" }
+      },
+      "required": ["id", "name", "airport", "region"]
+    }
+  },
+  "firestore": {
+    "/bookings/{bookingId}": {
+      "schema": "bookings",
+      "description": "Flight booking documents"
+    },
+    "/airports/{airportCode}": {
+      "schema": "airports",
+      "description": "Global airport entries"
+    },
+    "/destinations/{destinationId}": {
+      "schema": "destinations",
+      "description": "Worldwide flight destination profiles"
     }
   }
 }

@@ -21,6 +21,7 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
 
   // Recent Searches state (last 3 queries persisted in localStorage)
   const [recentSearches, setRecentSearches] = useState([]);
+  const [airports, setAirports] = useState(POPULAR_AIRPORTS);
 
   useEffect(() => {
     try {
@@ -34,6 +35,21 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
     } catch (err) {
       console.warn('Failed to load recent searches:', err);
     }
+  }, []);
+
+  useEffect(() => {
+    async function loadAirports() {
+      try {
+        const res = await fetch('/api/airports');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.airports)) {
+          setAirports(data.airports);
+        }
+      } catch (err) {
+        console.warn('Failed to load dynamic airports database, falling back to static roster:', err);
+      }
+    }
+    loadAirports();
   }, []);
 
   const saveRecentSearch = (searchItem) => {
@@ -94,8 +110,8 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
 
     if (tType === 'multiCity') {
       legsPayload = multiCityLegs.map(leg => {
-        const oObj = POPULAR_AIRPORTS.find(a => a.code === leg.origin) || { code: leg.origin, city: leg.origin };
-        const dObj = POPULAR_AIRPORTS.find(a => a.code === leg.destination) || { code: leg.destination, city: leg.destination };
+        const oObj = airports.find(a => a.code === leg.origin) || { code: leg.origin, city: leg.origin };
+        const dObj = airports.find(a => a.code === leg.destination) || { code: leg.destination, city: leg.destination };
         return {
           ...leg,
           originObj: oObj,
@@ -107,8 +123,8 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
       depDate = legsPayload[0].date;
     }
 
-    const originObj = POPULAR_AIRPORTS.find(a => a.code === originCode) || { code: originCode, city: originCode, name: originCode };
-    const destObj = POPULAR_AIRPORTS.find(a => a.code === destCode) || { code: destCode, city: destCode, name: destCode };
+    const originObj = airports.find(a => a.code === originCode) || { code: originCode, city: originCode, name: originCode };
+    const destObj = airports.find(a => a.code === destCode) || { code: destCode, city: destCode, name: destCode };
 
     const searchPayload = {
       tripType: tType,
@@ -171,10 +187,12 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
       <div className="container">
         
         <div className="glass-card" style={{
-          padding: '36px 32px',
-          background: 'linear-gradient(180deg, rgba(14, 21, 38, 0.95) 0%, rgba(7, 11, 20, 0.95) 100%)',
-          border: '1.5px solid var(--border-gold-glow)',
-          borderRadius: 'var(--radius-lg)'
+          padding: '32px',
+          background: 'rgba(15, 23, 42, 0.85)',
+          backdropFilter: 'blur(16px)',
+          border: '1px solid rgba(229, 193, 88, 0.2)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: '0 12px 40px 0 rgba(0, 0, 0, 0.5)'
         }}>
 
           <div style={{
@@ -288,8 +306,12 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                gap: '16px',
-                alignItems: 'center'
+                gap: '20px',
+                alignItems: 'center',
+                background: 'rgba(15, 23, 42, 0.4)',
+                padding: '24px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid rgba(255, 255, 255, 0.03)'
               }}>
                 
                 {/* Origin */}
@@ -302,7 +324,7 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                       onChange={(e) => setOrigin(e.target.value)}
                       style={selectStyle}
                     >
-                      {POPULAR_AIRPORTS.map(ap => (
+                      {airports.map(ap => (
                         <option key={ap.code} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
                           {ap.city} ({ap.code}) - {ap.country}
                         </option>
@@ -345,7 +367,7 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                       onChange={(e) => setDestination(e.target.value)}
                       style={selectStyle}
                     >
-                      {POPULAR_AIRPORTS.map(ap => (
+                      {airports.map(ap => (
                         <option key={ap.code} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
                           {ap.city} ({ap.code}) - {ap.country}
                         </option>
@@ -473,7 +495,7 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                           onChange={(e) => handleUpdateLeg(leg.id, 'origin', e.target.value)}
                           style={selectStyle}
                         >
-                          {POPULAR_AIRPORTS.map(ap => (
+                          {airports.map(ap => (
                             <option key={ap.code} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
                               {ap.city} ({ap.code})
                             </option>
@@ -492,7 +514,7 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                           onChange={(e) => handleUpdateLeg(leg.id, 'destination', e.target.value)}
                           style={selectStyle}
                         >
-                          {POPULAR_AIRPORTS.map(ap => (
+                          {airports.map(ap => (
                             <option key={ap.code} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
                               {ap.city} ({ap.code})
                             </option>
