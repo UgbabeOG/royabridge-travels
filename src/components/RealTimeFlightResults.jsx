@@ -240,8 +240,14 @@ export default function RealTimeFlightResults({
                   </div>
                   <h2 className="font-royal" style={{ color: '#FFF', fontSize: '1.6rem' }}>
                     {searchQuery?.origin || 'Origin'} → {searchQuery?.destination || 'Destination'}
-                    <span style={{ fontSize: '1rem', color: 'var(--color-gold-bright)', marginLeft: '12px', fontWeight: 400 }}>
+                    <span style={{ fontSize: '0.95rem', color: 'var(--color-gold-bright)', marginLeft: '12px', fontWeight: 500, display: 'inline-block' }}>
                       • {searchQuery?.cabinClass || 'Business'} Class
+                      {searchQuery?.departDate && (
+                        <span> • 📅 Depart: {searchQuery.departDate}</span>
+                      )}
+                      {searchQuery?.returnDate && (
+                        <span> | Return: {searchQuery.returnDate}</span>
+                      )}
                     </span>
                   </h2>
                 </div>
@@ -458,8 +464,15 @@ export default function RealTimeFlightResults({
                         </div>
                       </div>
 
+                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '6px', fontSize: '0.75rem', color: 'var(--color-gold-bright)', fontWeight: 600, background: 'rgba(229,193,88,0.08)', padding: '3px 10px', borderRadius: '12px' }}>
+                        <span>📅 Depart: {flight.departDate || searchQuery?.departDate || 'Direct'}</span>
+                        {(flight.returnDate || searchQuery?.returnDate) && (
+                          <span>| Return: {flight.returnDate || searchQuery?.returnDate}</span>
+                        )}
+                      </div>
+
                       {flight.seatsRemaining && (
-                        <span style={{ fontSize: '0.75rem', color: '#F87171', fontWeight: 600 }}>
+                        <span style={{ fontSize: '0.75rem', color: '#F87171', fontWeight: 600, display: 'block', marginTop: '4px' }}>
                           🔥 Only {flight.seatsRemaining} seats left at this price
                         </span>
                       )}

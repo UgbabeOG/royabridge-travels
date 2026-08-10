@@ -1,23 +1,50 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plane, Calendar, Users, Shield, ArrowRightLeft, Sparkles, Activity, Search, History, Clock, ArrowRight, Tag, Globe, Plus, Trash2, MapPin } from 'lucide-react';
 import { POPULAR_AIRPORTS, INTERCITY_ROUTES } from '../data/destinations';
 import { calculateSavings, formatCurrency } from '../utils/pnrGenerator';
+import { useDateGroundedFlightSearch } from '../hooks/useDateGroundedFlightSearch';
 
 export default function FlightSearchForm({ onSearchFlights, loading, currency = 'USD', onCurrencyChange }) {
+  const getTodayStr = () => new Date().toISOString().split('T')[0];
+  const todayStr = getTodayStr();
+
   const [tripType, setTripType] = useState('round'); // 'round' | 'oneWay' | 'multiCity'
   const [origin, setOrigin] = useState('JFK');
   const [destination, setDestination] = useState('LHR');
-  const [departDate, setDepartDate] = useState('2026-08-15');
-  const [returnDate, setReturnDate] = useState('2026-08-29');
+  const [departDate, setDepartDate] = useState(() => {
+    const defaultDate = '2026-08-15';
+    return defaultDate < todayStr ? todayStr : defaultDate;
+  });
+  const [returnDate, setReturnDate] = useState(() => {
+    const defaultReturn = '2026-08-29';
+    const minDep = '2026-08-15' < todayStr ? todayStr : '2026-08-15';
+    return defaultReturn < minDep ? minDep : defaultReturn;
+  });
   const [passengers, setPassengers] = useState(1);
   const [cabinClass, setCabinClass] = useState('Business');
   const [reserveBeforePayment, setReserveBeforePayment] = useState(true);
 
   // Multi-city legs state
   const [multiCityLegs, setMultiCityLegs] = useState([
-    { id: 1, origin: 'JFK', destination: 'LHR', date: '2026-08-15' },
-    { id: 2, origin: 'LHR', destination: 'DXB', date: '2026-08-22' }
+    { id: 1, origin: 'JFK', destination: 'LHR', date: '2026-08-15' < todayStr ? todayStr : '2026-08-15' },
+    { id: 2, origin: 'LHR', destination: 'DXB', date: '2026-08-22' < todayStr ? todayStr : '2026-08-22' }
   ]);
+
+  const handleDepartDateChange = (val) => {
+    if (!val) return;
+    const chosen = val < todayStr ? todayStr : val;
+    setDepartDate(chosen);
+    if (returnDate < chosen) {
+      setReturnDate(chosen);
+    }
+  };
+
+  const handleReturnDateChange = (val) => {
+    if (!val) return;
+    const minRet = departDate || todayStr;
+    const chosen = val < minRet ? minRet : val;
+    setReturnDate(chosen);
+  };
 
   // Recent Searches state (last 3 queries persisted in localStorage)
   const [recentSearches, setRecentSearches] = useState([]);
@@ -52,18 +79,20 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
     loadAirports();
   }, []);
 
-  const saveRecentSearch = (searchItem) => {
+  const saveRecentSearch = useCallback((searchItem) => {
     try {
-      const updated = [
-        searchItem,
-        ...recentSearches.filter(s => !(s.origin === searchItem.origin && s.destination === searchItem.destination && s.cabinClass === searchItem.cabinClass))
-      ].slice(0, 3);
-      setRecentSearches(updated);
-      localStorage.setItem('royabridge_recent_searches', JSON.stringify(updated));
+      setRecentSearches(prev => {
+        const updated = [
+          searchItem,
+          ...prev.filter(s => !(s.origin === searchItem.origin && s.destination === searchItem.destination && s.cabinClass === searchItem.cabinClass))
+        ].slice(0, 3);
+        localStorage.setItem('royabridge_recent_searches', JSON.stringify(updated));
+        return updated;
+      });
     } catch (err) {
       console.warn('Failed to persist recent search:', err);
     }
-  };
+  }, []);
 
   // Dynamic estimate calculation
   const legMultiplier = tripType === 'multiCity' ? multiCityLegs.length : (tripType === 'round' ? 2 : 1);
@@ -97,7 +126,7 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
     }));
   };
 
-  const executeSearch = (params) => {
+  const executeSearch = useCallback((params = {}) => {
     const tType = params.tripType || tripType;
     const cabin = params.cabinClass || cabinClass;
     const pax = params.passengers || passengers;
@@ -138,7 +167,9 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
       cabinClass: cabin,
       reserveBeforePayment,
       savings,
-      legs: legsPayload
+      legs: legsPayload,
+      forceFresh: params.forceFresh || false,
+      triggerReason: params.triggerReason || 'manual_submit'
     };
 
     // Persist to recent searches
@@ -157,7 +188,22 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
     });
 
     onSearchFlights(searchPayload);
-  };
+  }, [tripType, cabinClass, passengers, origin, destination, departDate, returnDate, multiCityLegs, airports, reserveBeforePayment, savings, onSearchFlights, saveRecentSearch]);
+
+  // Request hook that triggers a fresh grounded search whenever departure or return date updates
+  useDateGroundedFlightSearch({
+    departDate,
+    returnDate,
+    origin,
+    destination,
+    tripType,
+    cabinClass,
+    passengers,
+    multiCityLegs,
+    onSearchFlights: executeSearch,
+    debounceMs: 350,
+    enabled: true
+  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -470,8 +516,9 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                     <Calendar size={18} color="var(--color-gold)" />
                     <input 
                       type="date" 
+                      min={todayStr}
                       value={departDate} 
-                      onChange={(e) => setDepartDate(e.target.value)}
+                      onChange={(e) => handleDepartDateChange(e.target.value)}
                       style={inputStyle}
                     />
                   </div>
@@ -485,8 +532,9 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                       <Calendar size={18} color="var(--color-gold)" />
                       <input 
                         type="date" 
+                        min={departDate || todayStr}
                         value={returnDate} 
-                        onChange={(e) => setReturnDate(e.target.value)}
+                        onChange={(e) => handleReturnDateChange(e.target.value)}
                         style={inputStyle}
                       />
                     </div>
@@ -635,8 +683,13 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                         <Calendar size={15} color="var(--color-gold)" />
                         <input
                           type="date"
+                          min={index === 0 ? todayStr : (multiCityLegs[index - 1]?.date || todayStr)}
                           value={leg.date}
-                          onChange={(e) => handleUpdateLeg(leg.id, 'date', e.target.value)}
+                          onChange={(e) => {
+                            const minLeg = index === 0 ? todayStr : (multiCityLegs[index - 1]?.date || todayStr);
+                            const val = e.target.value < minLeg ? minLeg : e.target.value;
+                            handleUpdateLeg(leg.id, 'date', val);
+                          }}
                           style={inputStyle}
                         />
                       </div>

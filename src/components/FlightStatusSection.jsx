@@ -164,8 +164,12 @@ export default function FlightStatusSection({ onSelectFlight }) {
                 <Clock size={18} color="var(--color-gold)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                 <input 
                   type="date"
+                  min={new Date().toISOString().split('T')[0]}
                   value={flightDate}
-                  onChange={(e) => setFlightDate(e.target.value)}
+                  onChange={(e) => {
+                    const today = new Date().toISOString().split('T')[0];
+                    setFlightDate(e.target.value < today ? today : e.target.value);
+                  }}
                   style={{
                     width: '100%',
                     padding: '12px 14px 12px 42px',

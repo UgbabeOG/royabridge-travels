@@ -106,20 +106,20 @@ export default function ContactModal({ isOpen, onClose, onOpenChat }) {
               </div>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <span style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block' }}>Call Toll-Free (24/7)</span>
-                <strong style={{ fontSize: '1.02rem', color: '#FFF', display: 'block' }}>+1 (800) 769-2274</strong>
+                <strong style={{ fontSize: '1.02rem', color: '#FFF', display: 'block' }}>+1 (402) 882-2524</strong>
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
               <a 
-                href="tel:+18007692274"
+                href="tel:+14028822524"
                 className="btn-gold"
                 style={{ padding: '8px 14px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
               >
                 Call Now
               </a>
               <button
-                onClick={() => copyToClipboard('+18007692274', 'phone')}
+                onClick={() => copyToClipboard('+14028822524', 'phone')}
                 style={{
                   background: 'transparent',
                   border: '1px solid rgba(255,255,255,0.15)',

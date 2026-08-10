@@ -80,7 +80,7 @@ const AIRLINES = [
 ];
 
 // Helper to estimate price base by airport codes & cabin class
-function estimateBasePrice(origin: string, destination: string, cabin: string): number {
+function estimateBasePrice(origin: string, destination: string, cabin: string, departDate?: string, returnDate?: string): number {
   let base = 650;
   
   // Distance estimate pairs
@@ -100,18 +100,45 @@ function estimateBasePrice(origin: string, destination: string, cabin: string): 
   if (cabin === 'Business') base *= 2.6;
   if (cabin === 'First') base *= 4.5;
 
+  if (departDate) {
+    try {
+      const dep = new Date(departDate);
+      if (!isNaN(dep.getTime())) {
+        const today = new Date();
+        const diffDays = Math.max(0, Math.floor((dep.getTime() - today.getTime()) / (1000 * 3600 * 24)));
+        const dayOfWeek = dep.getUTCDay();
+        if (dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0) {
+          base *= 1.18; // Weekend departure surge
+        } else if (dayOfWeek === 2 || dayOfWeek === 3) {
+          base *= 0.92; // Mid-week discount
+        }
+        if (diffDays < 7) {
+          base *= 1.35; // Last-minute booking surge
+        } else if (diffDays > 45) {
+          base *= 0.90; // Early bird advance purchase discount
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
   return Math.round(base);
 }
 
 // API Endpoint 1: Real-time Flight Search & Price Checker Grounded with Google Search
 app.post("/api/flights/search", async (req, res) => {
   try {
-    const { origin = 'JFK', destination = 'LHR', departDate, returnDate, tripType = 'round', cabinClass = 'Economy', passengers = 1 } = req.body;
+    const { origin = 'JFK', destination = 'LHR', departDate, returnDate, tripType = 'round', cabinClass = 'Economy', passengers = 1, forceFresh = false } = req.body;
 
     const cacheKey = `search-${origin}-${destination}-${departDate}-${returnDate}-${tripType}-${cabinClass}-${passengers}`;
-    const cached = getCachedResponse(cacheKey, res);
-    if (cached) {
-      return res.json(cached);
+    if (!forceFresh) {
+      const cached = getCachedResponse(cacheKey, res);
+      if (cached) {
+        return res.json(cached);
+      }
+    } else {
+      cacheStore.delete(cacheKey);
     }
 
     const gemini = getGeminiClient();
@@ -123,22 +150,24 @@ app.post("/api/flights/search", async (req, res) => {
 
     if (gemini && !isQuotaExhausted()) {
       try {
-        const prompt = `Perform a real-time web search for current flight prices, actual airline schedules, and live seat availability from ${origin} to ${destination} departing on ${departDate || 'next week'}${tripType === 'round' ? ` and returning on ${returnDate || 'two weeks later'}` : ''} for ${passengers} passenger(s) in ${cabinClass} class.
+        const prompt = `Perform a real-time web search for current live flight prices, actual airline schedules, and fare availability on Google Flights and official airline booking engines from ${origin} to ${destination} departing on ${departDate || 'requested departure date'}${tripType === 'round' ? ` and returning on ${returnDate || 'requested return date'}` : ''} for ${passengers} passenger(s) in ${cabinClass} class.
 
-Use Google Search to locate actual current prices and flight times across major carriers (e.g. British Airways, Emirates, Delta Air Lines, United Airlines, Qatar Airways, Air France, Lufthansa, Virgin Atlantic, Singapore Airlines, etc.).
+Target Google Flights search query: "Google Flights ${origin} to ${destination} ${departDate || ''} ${returnDate || ''} ${cabinClass}"
 
-Provide output strictly in a valid JSON array format containing 4 to 6 realistic flight options found. Each object should have:
+Provide output strictly in a valid JSON array format containing 4 to 6 realistic flight options found. Each object MUST have:
 - flightNumber: string (e.g. "BA178", "EK202", "DL3")
 - airline: string (e.g. "British Airways", "Emirates", "Delta Air Lines")
 - airlineCode: string (2-letter IATA code, e.g. "BA", "EK", "DL")
 - origin: string (${origin})
 - destination: string (${destination})
+- departDate: string ("${departDate || ''}")
+- returnDate: string ("${returnDate || ''}")
 - departTime: string (e.g. "08:30 AM")
 - arriveTime: string (e.g. "08:45 PM")
 - duration: string (e.g. "7h 15m")
 - stops: number (0 for nonstop, 1 for 1 stop)
 - stopLocation: string or null
-- retailPrice: number (actual/realistic current market price found in USD for this route and cabin class)
+- retailPrice: number (actual real-time market price found on Google Flights in USD for this route, exact departure date ${departDate}, return date ${returnDate || 'N/A'}, cabin class ${cabinClass}, and ${passengers} passenger(s))
 - aircraft: string (e.g. "Boeing 787-9", "Airbus A350-1000")
 - seatsRemaining: number (e.g. 3, 5, 8)
 - cabinClass: string ("${cabinClass}")
@@ -183,15 +212,15 @@ Only return the JSON array, no markdown codeblocks or surrounding conversational
     // Default/Fallback search grounding sources if none returned or fallback used
     if (groundingSources.length === 0) {
       groundingSources = [
-        { title: `Google Flights - ${origin} to ${destination}`, url: `https://www.google.com/travel/flights?q=flights+from+${origin}+to+${destination}` },
+        { title: `Google Flights (${origin} → ${destination}, ${departDate || 'Live dates'})`, url: `https://www.google.com/travel/flights?q=flights+from+${origin}+to+${destination}+on+${departDate}${returnDate ? '+returning+' + returnDate : ''}` },
         { title: 'IATA & Global Distribution Systems (GDS)', url: 'https://www.iata.org' },
-        { title: 'Kayak Real-time Flight Matrix', url: `https://www.kayak.com/flights/${origin}-${destination}` }
+        { title: 'Kayak Real-time Flight Matrix', url: `https://www.kayak.com/flights/${origin}-${destination}/${departDate || ''}${returnDate ? '/' + returnDate : ''}` }
       ];
     }
 
     // Fallback/Augment generator if AI response wasn't available or parseable
     if (!realTimeFlights || !Array.isArray(realTimeFlights) || realTimeFlights.length === 0) {
-      const basePrice = estimateBasePrice(origin, destination, cabinClass);
+      const basePrice = estimateBasePrice(origin, destination, cabinClass, departDate, returnDate);
       
       const schedules = [
         { dep: '08:15 AM', arr: '08:25 PM', dur: '7h 10m', stops: 0, stopLoc: null, craft: 'Boeing 787-10 Dreamliner', timeSlot: 'Morning Express' },
@@ -215,6 +244,8 @@ Only return the JSON array, no markdown codeblocks or surrounding conversational
           color: airline.color,
           origin,
           destination,
+          departDate: departDate || '',
+          returnDate: tripType === 'round' ? (returnDate || '') : null,
           departTime: sched.dep,
           arriveTime: sched.arr,
           duration: sched.dur,
@@ -239,7 +270,7 @@ Only return the JSON array, no markdown codeblocks or surrounding conversational
     } else {
       // Process Gemini search results to enrich with RoyaBridge discount
       realTimeFlights = realTimeFlights.map((f: any, idx: number) => {
-        const retailPrice = Number(f.retailPrice) || estimateBasePrice(origin, destination, cabinClass) * passengers;
+        const retailPrice = Number(f.retailPrice) || estimateBasePrice(origin, destination, cabinClass, departDate, returnDate) * passengers;
         const airlineInfo = AIRLINES.find(a => a.name.toLowerCase().includes(f.airline?.toLowerCase() || '')) || AIRLINES[idx % AIRLINES.length];
 
         return {
@@ -251,6 +282,8 @@ Only return the JSON array, no markdown codeblocks or surrounding conversational
           color: airlineInfo.color,
           origin: f.origin || origin,
           destination: f.destination || destination,
+          departDate: f.departDate || departDate || '',
+          returnDate: f.returnDate || (tripType === 'round' ? (returnDate || '') : null),
           departTime: f.departTime || '09:00 AM',
           arriveTime: f.arriveTime || '09:15 PM',
           duration: f.duration || '7h 15m',
@@ -1063,27 +1096,31 @@ app.post("/api/destinations/validate-price", (req, res) => {
 // API Endpoint 3: Real-Time Price Insight & Trend API Grounded with Google Search
 app.post("/api/flights/price-trend", async (req, res) => {
   try {
-    const { origin = 'JFK', destination = 'LHR', cabinClass = 'Business' } = req.body;
+    const { origin = 'JFK', destination = 'LHR', cabinClass = 'Business', departDate, returnDate, forceFresh = false } = req.body;
 
-    const cacheKey = `trend-${origin}-${destination}-${cabinClass}`;
-    const cached = getCachedResponse(cacheKey, res);
-    if (cached) {
-      return res.json(cached);
+    const cacheKey = `trend-${origin}-${destination}-${cabinClass}-${departDate || ''}-${returnDate || ''}`;
+    if (!forceFresh) {
+      const cached = getCachedResponse(cacheKey, res);
+      if (cached) {
+        return res.json(cached);
+      }
+    } else {
+      cacheStore.delete(cacheKey);
     }
 
     const gemini = getGeminiClient();
-    let priceAdvice = 'Prices are expected to rise by 12% in the next 48 hours. We recommend placing a 24h free hold now.';
+    let priceAdvice = `Prices for departure on ${departDate || 'your selected dates'} are expected to fluctuate. We recommend securing a 24h free hold now.`;
     let cheapestDay = 'Tuesday';
     let groundingSources: Array<{ title: string; url: string }> = [];
 
     if (gemini && !isQuotaExhausted()) {
       try {
-        const trendPrompt = `Perform a real-time web search for airfare price trends and flight booking tips from ${origin} to ${destination} in ${cabinClass} class.
-Find out what days of the week are typically cheapest and whether prices are rising or falling.
+        const trendPrompt = `Perform a real-time web search for airfare price trends and flight booking tips from ${origin} to ${destination} in ${cabinClass} class departing on ${departDate || 'requested departure date'}${returnDate ? ` and returning on ${returnDate}` : ''}.
+Find out whether airfares for this travel window (${departDate || 'current season'}) are rising, falling, or stable, and what day of the week is cheapest.
 Return a simple JSON object:
 {
   "cheapestDay": string (e.g. "Tuesday" or "Wednesday"),
-  "priceAdvice": string (1-2 sentence real-time price trend advice for travelers)
+  "priceAdvice": string (1-2 sentence real-time price trend advice specifically for travel on ${departDate || 'this date'})
 }`;
         const response = await gemini.models.generateContent({
           model: 'gemini-3.6-flash',
@@ -1116,7 +1153,7 @@ Return a simple JSON object:
       ];
     }
 
-    const basePrice = estimateBasePrice(origin, destination, cabinClass);
+    const basePrice = estimateBasePrice(origin, destination, cabinClass, departDate, returnDate);
     
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const trendData = days.map((day, i) => {

@@ -113,31 +113,37 @@ export const CacheManager = {
   async cachedFetch(url, options = {}, ttlSeconds = DEFAULT_TTL_SECONDS) {
     const method = (options.method || 'GET').toUpperCase();
     const bodyStr = options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : '';
+    const isForceFresh = options.forceFresh || bodyStr.includes('"forceFresh":true') || ttlSeconds === 0;
     const cacheKey = `fetch_${method}_${url}_${bodyStr}`;
 
-    const cached = this.get(cacheKey);
+    if (!isForceFresh) {
+      const cached = this.get(cacheKey);
 
-    // Fresh hit - return instantly!
-    if (cached && !cached.isStale) {
-      return { data: cached.data, fromCache: true, cacheSource: cached.source };
+      // Fresh hit - return instantly!
+      if (cached && !cached.isStale) {
+        return { data: cached.data, fromCache: true, cacheSource: cached.source };
+      }
+
+      // Stale hit - return stale data immediately and revalidate in background
+      if (cached && cached.isStale) {
+        // Trigger background revalidation fetch
+        fetch(url, options)
+          .then(res => res.json())
+          .then(newData => {
+            if (newData && (newData.success || newData.status === 'ok' || Array.isArray(newData))) {
+              this.set(cacheKey, newData, ttlSeconds);
+            }
+          })
+          .catch(err => console.warn('[CacheManager] Background revalidation failed:', err));
+
+        return { data: cached.data, fromCache: true, cacheSource: 'stale-while-revalidate' };
+      }
+    } else {
+      // Clear key if force fresh requested
+      this.remove(cacheKey);
     }
 
-    // Stale hit - return stale data immediately and revalidate in background
-    if (cached && cached.isStale) {
-      // Trigger background revalidation fetch
-      fetch(url, options)
-        .then(res => res.json())
-        .then(newData => {
-          if (newData && (newData.success || newData.status === 'ok' || Array.isArray(newData))) {
-            this.set(cacheKey, newData, ttlSeconds);
-          }
-        })
-        .catch(err => console.warn('[CacheManager] Background revalidation failed:', err));
-
-      return { data: cached.data, fromCache: true, cacheSource: 'stale-while-revalidate' };
-    }
-
-    // Cache Miss - perform network request
+    // Cache Miss or Force Fresh - perform network request
     const response = await fetch(url, options);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -145,10 +151,10 @@ export const CacheManager = {
 
     const data = await response.json();
     if (data) {
-      this.set(cacheKey, data, ttlSeconds);
+      this.set(cacheKey, data, ttlSeconds > 0 ? ttlSeconds : DEFAULT_TTL_SECONDS);
     }
 
-    return { data, fromCache: false, cacheSource: 'network' };
+    return { data, fromCache: false, cacheSource: isForceFresh ? 'network-force-fresh' : 'network' };
   },
 
   /**

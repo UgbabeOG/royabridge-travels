@@ -135,7 +135,7 @@ export default function Footer({ onOpenChat, onOpenContact }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.9rem', color: '#94A3B8' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Phone size={16} color="var(--color-gold)" />
-                <span>+1 (800) 769-2274 / 24/7 Phone</span>
+                <span>+1 (402) 882-2524 / 24/7 Phone</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Mail size={16} color="var(--color-gold)" />

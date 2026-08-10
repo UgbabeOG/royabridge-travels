@@ -62,18 +62,26 @@ export default function App() {
     setSearchQuery(query);
 
     try {
-      // Parallel cached API requests with 30-min TTL & Stale-While-Revalidate
+      // Parallel API requests with forceFresh bypass on date changes to guarantee fresh grounded Google Flights data
+      const isFresh = query.forceFresh || query.triggerReason === 'date_update';
       const [searchRes, trendRes] = await Promise.all([
         CacheManager.cachedFetch('/api/flights/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(query)
-        }, 1800),
+          body: JSON.stringify({ ...query, forceFresh: isFresh })
+        }, isFresh ? 0 : 60),
         CacheManager.cachedFetch('/api/flights/price-trend', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ origin: query.origin, destination: query.destination, cabinClass: query.cabinClass })
-        }, 3600)
+          body: JSON.stringify({
+            origin: query.origin,
+            destination: query.destination,
+            cabinClass: query.cabinClass,
+            departDate: query.departDate,
+            returnDate: query.returnDate,
+            forceFresh: isFresh
+          })
+        }, isFresh ? 0 : 300)
       ]);
 
       const searchData = searchRes.data;
