@@ -169,7 +169,7 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
       reserveBeforePayment,
       savings,
       legs: legsPayload,
-      forceFresh: params.forceFresh || false,
+      forceFresh: params.forceFresh !== undefined ? params.forceFresh : true,
       triggerReason: params.triggerReason || 'manual_submit'
     };
 

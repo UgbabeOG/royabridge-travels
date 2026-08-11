@@ -62,8 +62,8 @@ export default function App() {
     setSearchQuery(query);
 
     try {
-      // Parallel API requests with forceFresh bypass on date changes to guarantee fresh grounded Google Flights data
-      const isFresh = query.forceFresh || query.triggerReason === 'date_update';
+      // Parallel API requests with forceFresh bypass to guarantee fresh grounded Google Flights & price data
+      const isFresh = query.forceFresh !== false;
       const [searchRes, trendRes] = await Promise.all([
         CacheManager.cachedFetch('/api/flights/search', {
           method: 'POST',

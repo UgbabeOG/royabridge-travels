@@ -16,38 +16,51 @@ export function useDateGroundedFlightSearch({
   passengers = 1,
   multiCityLegs = [],
   onSearchFlights,
-  debounceMs = 350,
+  debounceMs = 450,
   enabled = true
 }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastGroundedAt, setLastGroundedAt] = useState(null);
   const [groundedDateRange, setGroundedDateRange] = useState('');
   
-  const prevDatesRef = useRef({ departDate: null, returnDate: null });
+  const prevParamsRef = useRef({
+    departDate: null,
+    returnDate: null,
+    origin: null,
+    destination: null,
+    tripType: null,
+    cabinClass: null,
+    passengers: null
+  });
   const timeoutRef = useRef(null);
   const isInitialMount = useRef(true);
 
   useEffect(() => {
-    // Skip firing on initial render unless dates differ from initialized defaults
+    // Skip firing on initial render unless params differ
     if (isInitialMount.current) {
       isInitialMount.current = false;
-      prevDatesRef.current = { departDate, returnDate };
+      prevParamsRef.current = { departDate, returnDate, origin, destination, tripType, cabinClass, passengers };
       setGroundedDateRange(returnDate ? `${departDate} ➔ ${returnDate}` : departDate);
       return;
     }
 
     if (!enabled || !departDate) return;
 
-    const prevDepart = prevDatesRef.current.departDate;
-    const prevReturn = prevDatesRef.current.returnDate;
+    const prev = prevParamsRef.current;
 
-    // Detect explicit change in departDate or returnDate
-    const departChanged = prevDepart !== null && prevDepart !== departDate;
-    const returnChanged = prevReturn !== null && prevReturn !== returnDate;
-    const dateChanged = departChanged || returnChanged;
+    // Detect explicit change in ANY search parameter
+    const departChanged = prev.departDate !== null && prev.departDate !== departDate;
+    const returnChanged = prev.returnDate !== null && prev.returnDate !== returnDate;
+    const originChanged = prev.origin !== null && prev.origin !== origin;
+    const destChanged = prev.destination !== null && prev.destination !== destination;
+    const classChanged = prev.cabinClass !== null && prev.cabinClass !== cabinClass;
+    const paxChanged = prev.passengers !== null && prev.passengers !== passengers;
+    const typeChanged = prev.tripType !== null && prev.tripType !== tripType;
 
-    if (dateChanged) {
-      prevDatesRef.current = { departDate, returnDate };
+    const paramChanged = departChanged || returnChanged || originChanged || destChanged || classChanged || paxChanged || typeChanged;
+
+    if (paramChanged) {
+      prevParamsRef.current = { departDate, returnDate, origin, destination, tripType, cabinClass, passengers };
       setIsRefreshing(true);
 
       if (timeoutRef.current) {
@@ -69,8 +82,7 @@ export function useDateGroundedFlightSearch({
             cabinClass,
             multiCityLegs,
             forceFresh: true,
-            triggerReason: 'date_update',
-            updatedField: departChanged ? 'departDate' : 'returnDate'
+            triggerReason: 'parameter_update'
           });
         }
 

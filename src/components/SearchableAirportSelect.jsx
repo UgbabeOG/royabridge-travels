@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, MapPin, Check, ChevronDown, X } from 'lucide-react';
+import { useDebounce } from '../hooks/useDebounce';
 
 export default function SearchableAirportSelect({
   value,
@@ -11,6 +12,7 @@ export default function SearchableAirportSelect({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 200);
   const dropdownRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -43,8 +45,8 @@ export default function SearchableAirportSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [selectedAirport]);
 
-  // Filter airports based on search query
-  const query = searchTerm.trim().toLowerCase();
+  // Filter airports based on debounced search query while typing
+  const query = (debouncedSearchTerm || '').trim().toLowerCase();
   
   // Strip out display suffix if user is typing a new query
   const rawInputQuery = (isOpen && selectedAirport && searchTerm.includes(`(${selectedAirport.code})`))

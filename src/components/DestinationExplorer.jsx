@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { DESTINATIONS } from '../data/destinations';
 import { formatCurrency } from '../utils/pnrGenerator';
 import { Plane, Tag, Sparkles, Database, ShieldCheck, RefreshCw, X, Sun, Compass, FileText, CheckCircle2, ExternalLink, Globe, Search } from 'lucide-react';
+import { useDebounce } from '../hooks/useDebounce';
 
 export default function DestinationExplorer({ onSelectDestination, currency = 'USD' }) {
   const [destinations, setDestinations] = useState([]);
   const [filter, setFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 250);
   const [loading, setLoading] = useState(true);
   const [serverVerified, setServerVerified] = useState(false);
 
@@ -122,8 +124,8 @@ export default function DestinationExplorer({ onSelectDestination, currency = 'U
     const matchesFilter = filter === 'All' ? true : filter === 'Popular' ? item.popular : item.region === filter;
     if (!matchesFilter) return false;
 
-    if (!searchTerm.trim()) return true;
-    const q = searchTerm.toLowerCase().trim();
+    if (!debouncedSearchTerm.trim()) return true;
+    const q = debouncedSearchTerm.toLowerCase().trim();
     return (
       (item.name && item.name.toLowerCase().includes(q)) ||
       (item.city && item.city.toLowerCase().includes(q)) ||

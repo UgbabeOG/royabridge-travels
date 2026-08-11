@@ -46,19 +46,25 @@ function getCachedResponse(key: string, res?: express.Response): any | null {
   const cached = serverCache.get(key);
   if (!cached) {
     cacheMissCount++;
-    if (res) res.setHeader('X-Cache', 'MISS');
+    if (res) {
+      res.setHeader('X-Cache', 'MISS');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    }
     return null;
   }
   if (Date.now() > cached.expiry) {
     serverCache.delete(key);
     cacheMissCount++;
-    if (res) res.setHeader('X-Cache', 'EXPIRED');
+    if (res) {
+      res.setHeader('X-Cache', 'EXPIRED');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    }
     return null;
   }
   cacheHitCount++;
   if (res) {
     res.setHeader('X-Cache', 'HIT');
-    res.setHeader('Cache-Control', 'public, max-age=900, s-maxage=3600, stale-while-revalidate=1800');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   }
   return cached.data;
 }
@@ -129,6 +135,7 @@ function estimateBasePrice(origin: string, destination: string, cabin: string, d
 
 // API Endpoint 1: Real-time Flight Search & Price Checker Grounded with Google Search
 app.post("/api/flights/search", async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   try {
     const { origin = 'JFK', destination = 'LHR', departDate, returnDate, tripType = 'round', cabinClass = 'Economy', passengers = 1, forceFresh = false } = req.body;
 
