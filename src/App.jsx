@@ -104,21 +104,12 @@ export default function App() {
       }
 
     } catch (err) {
-      console.warn("Flight search API failed, falling back to local simulation engine:", err);
-      try {
-        const fallbackFlights = generateClientSideFlights(query).map(f => ({
-          ...f,
-          source: 'client_simulation',
-          isLive: false
-        }));
-        const fallbackTrend = generateClientSidePriceTrend(query.origin, query.destination, query.cabinClass);
-        setFlights(fallbackFlights);
-        setPriceTrend(fallbackTrend);
-        setGroundingSources(fallbackTrend.groundingSources || []);
-      } catch (fallbackErr) {
-        console.error("Fallback generator also failed:", fallbackErr);
-        setSearchError("Failed to connect to real-time flight search API.");
-      }
+      const message = err?.message || 'Failed to connect to real-time flight search API.';
+      console.warn("Flight search API failed:", message);
+      setFlights([]);
+      setPriceTrend(null);
+      setGroundingSources([]);
+      setSearchError(message);
     } finally {
       setSearchLoading(false);
     }

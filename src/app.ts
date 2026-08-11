@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { GoogleGenAI } from "@google/genai";
+import { getPricedSerpApiFlights, normalizeFlightPrice } from "./utils/flightSearchLogic";
 
 const app = express();
 
@@ -172,6 +173,7 @@ apiRouter.post("/flights/search", async (req, res) => {
     let flightSource: 'serpapi_google_flights' | 'gemini_grounded_search' | 'estimated_fallback' = 'estimated_fallback';
     let isLive = false;
     let upstreamStatus = serpApiKey ? 'SerpAPI Querying...' : 'SERPAPI_API_KEY missing in process.env';
+    const grounded = false;
 
     // 1. Primary Direct API: SerpAPI Google Flights engine query
     if (serpApiKey) {
@@ -202,6 +204,7 @@ apiRouter.post("/flights/search", async (req, res) => {
 
         const serpUrl = `https://serpapi.com/search?${params.toString()}`;
         console.log(`\n📡 [SERPAPI ENGINE] Querying SerpAPI Google Flights...`);
+        console.log(`[SERPAPI_REQUEST] route=${origin}-${destination} departure=${departDate || 'N/A'} return=${returnDate || 'N/A'}`);
         console.log(`📍 Parameters: route=${origin}-${destination}, dep=${departDate}, ret=${returnDate}, class=${cabinClass}`);
 
         const serpRes = await fetch(serpUrl);
@@ -212,21 +215,22 @@ apiRouter.post("/flights/search", async (req, res) => {
             console.log(`⚠️ [SERPAPI ENGINE] ${upstreamStatus}. Falling back to Gemini Google Search Grounding.`);
           }
           const rawFlights = [...(serpData.best_flights || []), ...(serpData.other_flights || [])];
+          const pricedFlights = getPricedSerpApiFlights(rawFlights);
+          console.log(`[SERPAPI_RESPONSE] status=200 flights=${rawFlights.length} pricedFlights=${pricedFlights.length}`);
 
-          if (rawFlights.length > 0) {
+          if (pricedFlights.length > 0) {
             flightSource = 'serpapi_google_flights';
             isLive = true;
+            isGrounded = true;
             upstreamStatus = '200 OK (SerpAPI Google Flights Engine)';
 
-            realTimeFlights = rawFlights.slice(0, 8).map((f: any, idx: number) => {
-              const mainSegment = f.flights?.[0] || {};
-              const lastSegment = f.flights?.[f.flights.length - 1] || mainSegment;
-              
-              // Preserve exact SerpAPI returned retail price
-              const retailPrice = f.price || (estimateBasePrice(origin, destination, cabinClass, departDate, returnDate) * passengers);
+            realTimeFlights = pricedFlights.slice(0, 8).map(({ flight, price }, idx: number) => {
+              const mainSegment = flight.flights?.[0] || {};
+              const lastSegment = flight.flights?.[flight.flights.length - 1] || mainSegment;
+              const retailPrice = price;
               const royaPrice = Math.round(retailPrice * 0.70);
 
-              const durationMinutes = f.total_duration || 0;
+              const durationMinutes = flight.total_duration || 0;
               const hours = Math.floor(durationMinutes / 60);
               const mins = durationMinutes % 60;
               const formattedDuration = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
@@ -249,8 +253,8 @@ apiRouter.post("/flights/search", async (req, res) => {
                 departTime: depTime,
                 arriveTime: arrTime,
                 duration: formattedDuration,
-                stops: (f.flights?.length || 1) - 1,
-                stopLocation: f.layovers?.[0]?.name || null,
+                stops: (flight.flights?.length || 1) - 1,
+                stopLocation: flight.layovers?.[0]?.name || null,
                 retailPrice: Math.round(retailPrice),
                 royaPrice,
                 savings: Math.round(retailPrice - royaPrice),
@@ -260,17 +264,17 @@ apiRouter.post("/flights/search", async (req, res) => {
                 cabinClass,
                 baggageIncluded: cabinClass === 'Business' || cabinClass === 'First' ? '2 x 32kg Checked + 2 Carry-ons' : '1 x 23kg Checked + 1 Carry-on',
                 source: 'serpapi_google_flights',
-                isLive: true
+                isLive: true,
+                grounded: true
               };
             });
 
-            isGrounded = true;
             groundingSources = [{ title: 'SerpAPI Live Google Flights Engine', url: `https://www.google.com/travel/flights?q=Flights%20to%20${destination}%20from%20${origin}` }];
             searchQueries = [`https://serpapi.com/search?engine=google_flights&departure_id=${origin}&arrival_id=${destination}`];
             console.log(`✅ [SERPAPI ENGINE] Successfully retrieved ${realTimeFlights.length} live Google Flights results via SerpAPI!\n`);
           } else if (!serpData.error) {
-            upstreamStatus = `SerpAPI returned 0 flights for ${origin}-${destination} on ${departDate}`;
-            console.log(`ℹ️ [SERPAPI ENGINE] ${upstreamStatus}. Falling back to Gemini Search Grounding.`);
+            upstreamStatus = '200 OK (SerpAPI Google Flights Engine)';
+            console.log(`ℹ️ [SERPAPI ENGINE] SerpAPI returned ${rawFlights.length} flights without valid numeric prices. Falling back to grounded or estimated results.`);
           }
         } else {
           upstreamStatus = `SerpAPI HTTP ${serpRes.status} (${serpRes.statusText})`;
@@ -323,7 +327,8 @@ Provide output STRICTLY as a valid JSON array of 4 to 6 flight options.`;
           realTimeFlights = JSON.parse(jsonMatch[0]);
           if (Array.isArray(realTimeFlights) && realTimeFlights.length > 0) {
             flightSource = 'gemini_grounded_search';
-            isLive = true;
+            isLive = false;
+            isGrounded = true;
             upstreamStatus = '200 OK (Gemini Search Grounded)';
           }
         }
@@ -447,15 +452,19 @@ Provide output STRICTLY as a valid JSON array of 4 to 6 flight options.`;
           holdFeeUSD: 0,
           pnrHoldDurationHours: 24,
           source: 'gemini_grounded_search',
-          isLive: true
+          isLive: false,
+          grounded: true
         };
       });
     }
+
+    const groundedResult = flightSource === 'serpapi_google_flights' || flightSource === 'gemini_grounded_search';
 
     const payload = {
       success: true,
       source: flightSource,
       isLive,
+      grounded: groundedResult,
       fetchedAt: new Date().toISOString(),
       cacheStatus: forceFresh ? 'BYPASS' : 'MISS',
       upstreamStatus,
@@ -463,7 +472,7 @@ Provide output STRICTLY as a valid JSON array of 4 to 6 flight options.`;
       timestamp: new Date().toISOString(),
       flightsCount: realTimeFlights.length,
       currency: 'USD',
-      isGrounded: isLive,
+      isGrounded: groundedResult,
       searchQueries,
       groundingSources,
       flights: realTimeFlights
