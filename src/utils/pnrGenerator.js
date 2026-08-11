@@ -53,14 +53,14 @@ export const AIRLINES = [
   { name: 'Virgin Atlantic', code: 'VS', logo: '🔴', color: '#C8102E' }
 ];
 
-export function estimateBasePrice(origin, destination, cabin) {
-  let base = 650;
+export function estimateBasePrice(origin, destination, cabin, departDate, returnDate) {
+  let base = 550;
   
   const highDistPairs = ['JFK-HND', 'JFK-SYD', 'LHR-SYD', 'DXB-SYD', 'LAX-SIN', 'JFK-SIN', 'CDG-HND'];
   const medDistPairs = ['JFK-LHR', 'JFK-CDG', 'JFK-DXB', 'LHR-DXB', 'YYZ-LHR', 'LAX-HND'];
   
-  const pairStr = `${origin}-${destination}`;
-  const revPairStr = `${destination}-${origin}`;
+  const pairStr = `${origin}-${destination}`.toUpperCase();
+  const revPairStr = `${destination}-${origin}`.toUpperCase();
   
   if (highDistPairs.includes(pairStr) || highDistPairs.includes(revPairStr)) {
     base = 1250;
@@ -72,12 +72,36 @@ export function estimateBasePrice(origin, destination, cabin) {
   if (cabin === 'Business') base *= 2.6;
   if (cabin === 'First') base *= 4.5;
 
+  // Add date-based price variation
+  if (departDate) {
+    try {
+      const dep = new Date(departDate);
+      if (!isNaN(dep.getTime())) {
+        const today = new Date();
+        const diffDays = Math.max(0, Math.floor((dep.getTime() - today.getTime()) / (1000 * 3600 * 24)));
+        const dayOfWeek = dep.getUTCDay();
+        if (dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0) {
+          base *= 1.12; // Weekend departure surge
+        } else if (dayOfWeek === 2 || dayOfWeek === 3) {
+          base *= 0.92; // Mid-week discount
+        }
+        if (diffDays < 7) {
+          base *= 1.25; // Last minute fare increase
+        } else if (diffDays > 30) {
+          base *= 0.90; // Early bird discount
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
   return Math.round(base);
 }
 
 export function generateClientSideFlights(query) {
-  const { origin = 'JFK', destination = 'LHR', cabinClass = 'Economy', passengers = 1, tripType = 'round' } = query;
-  const basePrice = estimateBasePrice(origin, destination, cabinClass);
+  const { origin = 'JFK', destination = 'LHR', cabinClass = 'Economy', passengers = 1, tripType = 'round', departDate, returnDate } = query;
+  const basePrice = estimateBasePrice(origin, destination, cabinClass, departDate, returnDate);
   
   const schedules = [
     { dep: '08:15 AM', arr: '08:25 PM', dur: '7h 10m', stops: 0, stopLoc: null, craft: 'Boeing 787-10 Dreamliner', timeSlot: 'Morning Express' },
