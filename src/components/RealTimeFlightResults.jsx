@@ -430,10 +430,26 @@ export default function RealTimeFlightResults({
                         </label>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
                         <span style={{ fontSize: '0.78rem', color: 'var(--color-gold)', background: 'rgba(229,193,88,0.12)', border: '1px solid rgba(229,193,88,0.25)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
                           Flight {flight.flightNumber}
                         </span>
+                        
+                        {/* Live vs Estimated Source Badge */}
+                        {flight.source === 'serpapi_google_flights' || (flight.isLive && !flight.source) ? (
+                          <span style={{ fontSize: '0.74rem', background: 'rgba(16, 185, 129, 0.18)', border: '1px solid rgba(16, 185, 129, 0.4)', color: '#6EE7B7', padding: '2px 8px', borderRadius: '4px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }} /> Live SerpAPI
+                          </span>
+                        ) : flight.source === 'gemini_grounded_search' ? (
+                          <span style={{ fontSize: '0.74rem', background: 'rgba(59, 130, 246, 0.18)', border: '1px solid rgba(59, 130, 246, 0.4)', color: '#93C5FD', padding: '2px 8px', borderRadius: '4px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <Search size={11} /> Live Google Search
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.74rem', background: 'rgba(245, 158, 11, 0.18)', border: '1px solid rgba(245, 158, 11, 0.4)', color: '#FCD34D', padding: '2px 8px', borderRadius: '4px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <AlertCircle size={11} /> Estimated Fare
+                          </span>
+                        )}
+
                         <span style={{ fontSize: '0.78rem', color: '#94A3B8' }}>
                           Aircraft: {flight.aircraft || 'Boeing 787-9 Dreamliner'}
                         </span>

@@ -143,7 +143,7 @@ app.post("/api/flights/search", async (req, res) => {
     if (!forceFresh) {
       const cached = getCachedResponse(cacheKey, res);
       if (cached) {
-        return res.json(cached);
+        return res.json({ ...cached, cacheStatus: 'HIT' });
       }
     } else {
       serverCache.delete(cacheKey);
@@ -155,6 +155,9 @@ app.post("/api/flights/search", async (req, res) => {
     let groundingSources: Array<{ title: string; url: string }> = [];
     let searchQueries: string[] = [];
     let isGrounded = false;
+    let flightSource: 'serpapi_google_flights' | 'gemini_grounded_search' | 'estimated_fallback' = 'estimated_fallback';
+    let isLive = false;
+    let upstreamStatus = 'Fallback Estimator';
 
     // 1. Primary Direct API: SerpAPI Google Flights engine query (if SERPAPI_API_KEY is configured)
     const serpApiKey = process.env.SERPAPI_API_KEY;
@@ -191,9 +194,16 @@ app.post("/api/flights/search", async (req, res) => {
         const serpRes = await fetch(serpUrl);
         if (serpRes.ok) {
           const serpData = await serpRes.json();
+          if (serpData.error) {
+            console.log(`⚠️ [SERPAPI ENGINE] SerpAPI returned error: "${serpData.error}". Falling back to Gemini Google Search Grounding.`);
+          }
           const rawFlights = [...(serpData.best_flights || []), ...(serpData.other_flights || [])];
 
           if (rawFlights.length > 0) {
+            flightSource = 'serpapi_google_flights';
+            isLive = true;
+            upstreamStatus = '200 OK (SerpAPI Google Flights Engine)';
+
             realTimeFlights = rawFlights.slice(0, 8).map((f: any) => {
               const mainSegment = f.flights?.[0] || {};
               const lastSegment = f.flights?.[f.flights.length - 1] || mainSegment;
@@ -229,7 +239,9 @@ app.post("/api/flights/search", async (req, res) => {
                 aircraft: mainSegment.airplane || 'Boeing 787 / Airbus A350',
                 seatsRemaining: Math.floor(Math.random() * 5) + 2,
                 cabinClass,
-                baggageIncluded: cabinClass === 'Business' || cabinClass === 'First' ? '2 x 32kg Checked + 2 Carry-ons' : '1 x 23kg Checked + 1 Carry-on'
+                baggageIncluded: cabinClass === 'Business' || cabinClass === 'First' ? '2 x 32kg Checked + 2 Carry-ons' : '1 x 23kg Checked + 1 Carry-on',
+                source: 'serpapi_google_flights',
+                isLive: true
               };
             });
 
@@ -241,10 +253,10 @@ app.post("/api/flights/search", async (req, res) => {
             console.log('ℹ️ [SERPAPI ENGINE] SerpAPI response had no flights array. Falling back to Gemini Search Grounding.');
           }
         } else {
-          console.log(`ℹ️ [SERPAPI ENGINE] SerpAPI status ${serpRes.status} (Account activation/quota limit). Seamlessly falling back to Gemini Google Search Grounding.`);
+          console.log(`ℹ️ [SERPAPI ENGINE] SerpAPI status ${serpRes.status} (${serpRes.statusText}). Falling back to Gemini Google Search Grounding.`);
         }
       } catch (serpErr) {
-        console.log('ℹ️ [SERPAPI ENGINE] SerpAPI query skipped. Seamlessly falling back to Gemini Google Search Grounding.');
+        console.log('ℹ️ [SERPAPI ENGINE] SerpAPI query error. Falling back to Gemini Google Search Grounding:', serpErr);
       }
     }
 
@@ -338,7 +350,12 @@ Do NOT wrap in markdown markdown code blocks if possible, or use standard raw JS
         const jsonMatch = textResponse.match(/\[\s*\{[\s\S]*\}\s*\]/);
         if (jsonMatch) {
           realTimeFlights = JSON.parse(jsonMatch[0]);
-          console.log(`✅ [FLIGHT ENGINE] Successfully parsed ${realTimeFlights.length} flight options from live grounding.`);
+          if (Array.isArray(realTimeFlights) && realTimeFlights.length > 0) {
+            flightSource = 'gemini_grounded_search';
+            isLive = true;
+            upstreamStatus = '200 OK (Gemini Search Grounded)';
+            console.log(`✅ [FLIGHT ENGINE] Successfully parsed ${realTimeFlights.length} flight options from live grounding.`);
+          }
         } else {
           console.warn('⚠️ [FLIGHT ENGINE] JSON array match failed on raw text response.');
         }
@@ -359,6 +376,10 @@ Do NOT wrap in markdown markdown code blocks if possible, or use standard raw JS
     // Fallback/Augment generator if AI response wasn't available or parseable
     if (!realTimeFlights || !Array.isArray(realTimeFlights) || realTimeFlights.length === 0) {
       console.log('ℹ️ [FLIGHT ENGINE] Using dynamic base pricing estimator fallback.');
+      flightSource = 'estimated_fallback';
+      isLive = false;
+      upstreamStatus = '404 (Fallback Estimator)';
+
       const basePrice = estimateBasePrice(origin, destination, cabinClass, departDate, returnDate);
       
       const schedules = [
@@ -403,10 +424,12 @@ Do NOT wrap in markdown markdown code blocks if possible, or use standard raw JS
             : '1 x 23kg Checked + 1 Carry-on',
           holdAvailable: true,
           holdFeeUSD: 0, // Free 24h hold
-          pnrHoldDurationHours: 24
+          pnrHoldDurationHours: 24,
+          source: 'estimated_fallback',
+          isLive: false
         };
       });
-    } else {
+    } else if (flightSource === 'gemini_grounded_search') {
       // Process Gemini search results to preserve grounded prices accurately
       realTimeFlights = realTimeFlights.map((f: any, idx: number) => {
         let retailPrice = Number(f.retailPrice);
@@ -456,18 +479,25 @@ Do NOT wrap in markdown markdown code blocks if possible, or use standard raw JS
           baggageIncluded: f.baggageIncluded || (cabinClass === 'Business' || cabinClass === 'First' ? '2 x 32kg Checked + 2 Carry-ons' : '1 x 23kg Checked + 1 Carry-on'),
           holdAvailable: true,
           holdFeeUSD: 0,
-          pnrHoldDurationHours: 24
+          pnrHoldDurationHours: 24,
+          source: 'gemini_grounded_search',
+          isLive: true
         };
       });
     }
 
     const payload = {
       success: true,
+      source: flightSource,
+      isLive,
+      fetchedAt: new Date().toISOString(),
+      cacheStatus: forceFresh ? 'BYPASS' : 'MISS',
+      upstreamStatus,
       searchQuery: { origin, destination, departDate, returnDate, tripType, cabinClass, passengers },
       timestamp: new Date().toISOString(),
       flightsCount: realTimeFlights.length,
       currency: 'USD',
-      isGrounded: true,
+      isGrounded: isLive,
       searchQueries,
       groundingSources,
       flights: realTimeFlights
@@ -1433,4 +1463,8 @@ async function startServer() {
 
 export default app;
 
-startServer();
+// Only start standalone HTTP listener when not running in Vercel serverless environment
+if (!process.env.VERCEL && process.env.VERCEL_ENV === undefined) {
+  startServer();
+}
+

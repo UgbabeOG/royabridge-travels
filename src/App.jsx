@@ -106,7 +106,11 @@ export default function App() {
     } catch (err) {
       console.warn("Flight search API failed, falling back to local simulation engine:", err);
       try {
-        const fallbackFlights = generateClientSideFlights(query);
+        const fallbackFlights = generateClientSideFlights(query).map(f => ({
+          ...f,
+          source: 'client_simulation',
+          isLive: false
+        }));
         const fallbackTrend = generateClientSidePriceTrend(query.origin, query.destination, query.cabinClass);
         setFlights(fallbackFlights);
         setPriceTrend(fallbackTrend);
