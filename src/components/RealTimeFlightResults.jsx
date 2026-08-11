@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plane, Clock, ShieldCheck, Sparkles, Luggage, AlertCircle, ArrowRight, Filter, TrendingDown, Check, Columns, Layers, Trash2, X, Search, ExternalLink, Globe } from 'lucide-react';
+import { Plane, Clock, ShieldCheck, Sparkles, Luggage, AlertCircle, ArrowRight, Filter, TrendingDown, Check, Columns, Layers, Trash2, X, Search, ExternalLink, Globe, Info, ChevronDown, ChevronUp, Lock, DollarSign, Percent } from 'lucide-react';
 import { formatCurrency } from '../utils/pnrGenerator';
 import AirlineLogo from './AirlineLogo';
 import FlightComparisonModal from './FlightComparisonModal';
@@ -21,6 +21,13 @@ export default function RealTimeFlightResults({
   const [showTrend, setShowTrend] = useState(false);
   const [comparedFlightIds, setComparedFlightIds] = useState([]);
   const [isComparisonOpen, setIsComparisonOpen] = useState(false);
+  const [openBreakdownIds, setOpenBreakdownIds] = useState([]);
+
+  const toggleBreakdown = (flightId) => {
+    setOpenBreakdownIds(prev => 
+      prev.includes(flightId) ? prev.filter(id => id !== flightId) : [...prev, flightId]
+    );
+  };
 
   if (!searchQuery && !loading && (!flights || flights.length === 0)) {
     return null;
@@ -523,14 +530,15 @@ export default function RealTimeFlightResults({
                           </span>
                         </div>
 
-                        {/* Savings Badge */}
+                        {/* Savings Badge & Price Breakdown Toggle */}
                         <div style={{
                           marginTop: '8px',
                           paddingTop: '8px',
                           borderTop: '1px dashed rgba(229,193,88,0.2)',
                           display: 'flex',
+                          flexDirection: 'column',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          gap: '6px'
                         }}>
                           <span style={{
                             fontSize: '0.75rem',
@@ -543,8 +551,82 @@ export default function RealTimeFlightResults({
                           }}>
                             SAVE {formatCurrency(flight.retailPrice - flight.royaPrice, currency)} (30% OFF)
                           </span>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleBreakdown(flight.id || flight.flightNumber);
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'var(--color-gold-bright)',
+                              fontSize: '0.74rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              marginTop: '2px',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              transition: 'all 0.2s ease'
+                            }}
+                          >
+                            <Info size={13} />
+                            Price breakdown & 24h PNR Lock
+                            {openBreakdownIds.includes(flight.id || flight.flightNumber) ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                          </button>
                         </div>
                       </div>
+
+                      {/* Expandable Price Breakdown & PNR Lock Explanation Panel */}
+                      {openBreakdownIds.includes(flight.id || flight.flightNumber) && (
+                        <div style={{
+                          background: 'rgba(10, 15, 28, 0.98)',
+                          border: '1px solid rgba(229, 193, 88, 0.4)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '12px 14px',
+                          marginBottom: '12px',
+                          fontSize: '0.78rem',
+                          color: '#E2E8F0',
+                          lineHeight: '1.45',
+                          boxShadow: '0 6px 16px rgba(0,0,0,0.4)',
+                          animation: 'fadeIn 0.2s ease-in-out'
+                        }}>
+                          <div style={{ fontWeight: 800, color: 'var(--color-gold-bright)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
+                            <DollarSign size={14} color="var(--color-gold-bright)" />
+                            Fare Structure & Discount Breakdown
+                          </div>
+                          
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span style={{ color: '#94A3B8' }}>Google Flights Market Fare:</span>
+                            <span style={{ color: '#F87171', fontWeight: 700 }}>{formatCurrency(flight.retailPrice, currency)}</span>
+                          </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span style={{ color: '#94A3B8' }}>RoyaBridge Private Rate (-30%):</span>
+                            <span style={{ color: '#10B981', fontWeight: 700 }}>-{formatCurrency(flight.retailPrice - flight.royaPrice, currency)}</span>
+                          </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '4px', borderTop: '1px dashed rgba(255,255,255,0.1)', fontWeight: 800, marginBottom: '10px' }}>
+                            <span style={{ color: '#FFF' }}>Net Payable Fare:</span>
+                            <span style={{ color: 'var(--color-gold-bright)' }}>{formatCurrency(flight.royaPrice, currency)}</span>
+                          </div>
+
+                          <div style={{ fontWeight: 800, color: '#6EE7B7', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem' }}>
+                            <Lock size={13} color="#10B981" />
+                            24-Hour PNR Lock Benefits:
+                          </div>
+                          
+                          <ul style={{ margin: 0, paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '4px', color: '#CBD5E1', fontSize: '0.74rem' }}>
+                            <li><b>Instant Reservation:</b> Hold your official seat with a valid airline PNR before making full payment.</li>
+                            <li><b>Price Lock Guarantee:</b> Protect against price increases while confirming dates or visa requirements.</li>
+                            <li><b>Zero Risk:</b> 100% free hold with no cancellation penalties if plans change.</li>
+                          </ul>
+                        </div>
+                      )}
 
                       <button
                         onClick={() => onSelectFlight(flight)}

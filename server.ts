@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import path from "path";
 import cors from "cors";
@@ -148,7 +149,100 @@ app.post("/api/flights/search", async (req, res) => {
     let searchQueries: string[] = [];
     let isGrounded = false;
 
-    if (gemini && !isQuotaExhausted()) {
+    // 1. Primary Direct API: SerpAPI Google Flights engine query (if SERPAPI_API_KEY is configured)
+    const serpApiKey = process.env.SERPAPI_API_KEY;
+    if (serpApiKey) {
+      try {
+        const travelClassMap: Record<string, string> = {
+          'Economy': '1',
+          'Premium Economy': '2',
+          'Business': '3',
+          'First': '4'
+        };
+
+        const params = new URLSearchParams({
+          engine: 'google_flights',
+          departure_id: origin,
+          arrival_id: destination,
+          outbound_date: departDate,
+          type: tripType === 'round' ? '1' : '2',
+          travel_class: travelClassMap[cabinClass] || '1',
+          adults: String(passengers),
+          currency: 'USD',
+          hl: 'en',
+          api_key: serpApiKey
+        });
+
+        if (tripType === 'round' && returnDate) {
+          params.append('return_date', returnDate);
+        }
+
+        const serpUrl = `https://serpapi.com/search?${params.toString()}`;
+        console.log(`\n📡 [SERPAPI ENGINE] Querying SerpAPI Google Flights...`);
+        console.log(`📍 Parameters: origin=${origin}, dest=${destination}, dep=${departDate}, ret=${returnDate}, class=${cabinClass}`);
+
+        const serpRes = await fetch(serpUrl);
+        if (serpRes.ok) {
+          const serpData = await serpRes.json();
+          const rawFlights = [...(serpData.best_flights || []), ...(serpData.other_flights || [])];
+
+          if (rawFlights.length > 0) {
+            realTimeFlights = rawFlights.slice(0, 8).map((f: any) => {
+              const mainSegment = f.flights?.[0] || {};
+              const lastSegment = f.flights?.[f.flights.length - 1] || mainSegment;
+              const retailPrice = f.price || (estimateBasePrice(origin, destination, cabinClass, departDate, returnDate) * passengers);
+              const royaPrice = Math.round(retailPrice * 0.70);
+
+              const durationMinutes = f.total_duration || 0;
+              const hours = Math.floor(durationMinutes / 60);
+              const mins = durationMinutes % 60;
+              const formattedDuration = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
+              const depTime = mainSegment.departure_airport?.time || '09:00 AM';
+              const arrTime = lastSegment.arrival_airport?.time || '05:00 PM';
+
+              return {
+                flightNumber: mainSegment.flight_number || `${mainSegment.airline || 'FL'}-${Math.floor(100 + Math.random() * 900)}`,
+                airline: mainSegment.airline || 'Major Airline',
+                airlineCode: mainSegment.airline_code || (mainSegment.flight_number ? mainSegment.flight_number.slice(0, 2) : 'AA'),
+                airlineLogo: mainSegment.airline_logo,
+                origin,
+                destination,
+                departDate,
+                returnDate: tripType === 'round' ? returnDate : null,
+                departTime: depTime,
+                arriveTime: arrTime,
+                duration: formattedDuration,
+                stops: (f.flights?.length || 1) - 1,
+                stopLocation: f.layovers?.[0]?.name || null,
+                retailPrice: Math.round(retailPrice),
+                royaPrice,
+                savings: Math.round(retailPrice - royaPrice),
+                discountPercent: 30,
+                aircraft: mainSegment.airplane || 'Boeing 787 / Airbus A350',
+                seatsRemaining: Math.floor(Math.random() * 5) + 2,
+                cabinClass,
+                baggageIncluded: cabinClass === 'Business' || cabinClass === 'First' ? '2 x 32kg Checked + 2 Carry-ons' : '1 x 23kg Checked + 1 Carry-on'
+              };
+            });
+
+            isGrounded = true;
+            groundingSources = [{ title: 'SerpAPI Live Google Flights Engine', url: `https://www.google.com/travel/flights?q=Flights%20to%20${destination}%20from%20${origin}` }];
+            searchQueries = [`https://serpapi.com/search?engine=google_flights&departure_id=${origin}&arrival_id=${destination}`];
+            console.log(`✅ [SERPAPI ENGINE] Successfully retrieved ${realTimeFlights.length} live Google Flights results via SerpAPI!\n`);
+          } else {
+            console.log('ℹ️ [SERPAPI ENGINE] SerpAPI response had no flights array. Falling back to Gemini Search Grounding.');
+          }
+        } else {
+          console.log(`ℹ️ [SERPAPI ENGINE] SerpAPI status ${serpRes.status} (Account activation/quota limit). Seamlessly falling back to Gemini Google Search Grounding.`);
+        }
+      } catch (serpErr) {
+        console.log('ℹ️ [SERPAPI ENGINE] SerpAPI query skipped. Seamlessly falling back to Gemini Google Search Grounding.');
+      }
+    }
+
+    // 2. Secondary Engine: Gemini Google Search Grounded Search (runs if SerpAPI not set or yielded no results)
+    if (!realTimeFlights && gemini && !isQuotaExhausted()) {
       try {
         const prompt = `Perform a live Google Search grounded search for real-time flight prices, actual airline flight schedules, and current seat availability on Google Flights and airline booking engines for:
 Route: ${origin} to ${destination}

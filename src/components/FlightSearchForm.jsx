@@ -3,6 +3,7 @@ import { Plane, Calendar, Users, Shield, ArrowRightLeft, Sparkles, Activity, Sea
 import { POPULAR_AIRPORTS, INTERCITY_ROUTES } from '../data/destinations';
 import { calculateSavings, formatCurrency } from '../utils/pnrGenerator';
 import { useDateGroundedFlightSearch } from '../hooks/useDateGroundedFlightSearch';
+import SearchableAirportSelect from './SearchableAirportSelect';
 
 export default function FlightSearchForm({ onSearchFlights, loading, currency = 'USD', onCurrencyChange }) {
   const getTodayStr = () => new Date().toISOString().split('T')[0];
@@ -431,30 +432,14 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                 
                 {/* Origin */}
                 <div>
-                  <label style={labelStyle}>From (Origin)</label>
-                  <div style={inputContainerStyle}>
-                    <Plane size={18} color="var(--color-gold)" style={{ transform: 'rotate(-45deg)' }} />
-                    <select 
-                      value={origin} 
-                      onChange={(e) => setOrigin(e.target.value)}
-                      style={selectStyle}
-                    >
-                      <optgroup label="Inter-City & Regional Hubs">
-                        {airports.filter(ap => ap.isInterCity).map(ap => (
-                          <option key={`origin-ic-${ap.code}`} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
-                            {ap.city} ({ap.code}) - {ap.country}
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="All International Destinations">
-                        {airports.filter(ap => !ap.isInterCity).map(ap => (
-                          <option key={`origin-intl-${ap.code}`} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
-                            {ap.city} ({ap.code}) - {ap.country}
-                          </option>
-                        ))}
-                      </optgroup>
-                    </select>
-                  </div>
+                  <SearchableAirportSelect
+                    label="From (Origin)"
+                    value={origin}
+                    onChange={(val) => setOrigin(val)}
+                    airports={airports}
+                    placeholder="Search origin city, airport or code..."
+                    icon={(props) => <Plane {...props} style={{ transform: 'rotate(-45deg)' }} />}
+                  />
                 </div>
 
                 {/* Swap Button */}
@@ -483,30 +468,14 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
 
                 {/* Destination */}
                 <div>
-                  <label style={labelStyle}>To (Destination)</label>
-                  <div style={inputContainerStyle}>
-                    <Plane size={18} color="var(--color-gold)" style={{ transform: 'rotate(45deg)' }} />
-                    <select 
-                      value={destination} 
-                      onChange={(e) => setDestination(e.target.value)}
-                      style={selectStyle}
-                    >
-                      <optgroup label="Inter-City & Regional Hubs">
-                        {airports.filter(ap => ap.isInterCity).map(ap => (
-                          <option key={`dest-ic-${ap.code}`} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
-                            {ap.city} ({ap.code}) - {ap.country}
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="All International Destinations">
-                        {airports.filter(ap => !ap.isInterCity).map(ap => (
-                          <option key={`dest-intl-${ap.code}`} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
-                            {ap.city} ({ap.code}) - {ap.country}
-                          </option>
-                        ))}
-                      </optgroup>
-                    </select>
-                  </div>
+                  <SearchableAirportSelect
+                    label="To (Destination)"
+                    value={destination}
+                    onChange={(val) => setDestination(val)}
+                    airports={airports}
+                    placeholder="Search destination city, airport or code..."
+                    icon={(props) => <Plane {...props} style={{ transform: 'rotate(45deg)' }} />}
+                  />
                 </div>
 
                 {/* Departure Date */}
@@ -622,58 +591,26 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
 
                     {/* From */}
                     <div>
-                      <label style={labelStyle}>From</label>
-                      <div style={inputContainerStyle}>
-                        <Plane size={15} color="var(--color-gold)" style={{ transform: 'rotate(-45deg)' }} />
-                        <select
-                          value={leg.origin}
-                          onChange={(e) => handleUpdateLeg(leg.id, 'origin', e.target.value)}
-                          style={selectStyle}
-                        >
-                          <optgroup label="Inter-City & Regional Hubs">
-                            {airports.filter(ap => ap.isInterCity).map(ap => (
-                              <option key={`leg-orig-ic-${ap.code}`} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
-                                {ap.city} ({ap.code})
-                              </option>
-                            ))}
-                          </optgroup>
-                          <optgroup label="All International Destinations">
-                            {airports.filter(ap => !ap.isInterCity).map(ap => (
-                              <option key={`leg-orig-intl-${ap.code}`} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
-                                {ap.city} ({ap.code})
-                              </option>
-                            ))}
-                          </optgroup>
-                        </select>
-                      </div>
+                      <SearchableAirportSelect
+                        label="From"
+                        value={leg.origin}
+                        onChange={(val) => handleUpdateLeg(leg.id, 'origin', val)}
+                        airports={airports}
+                        placeholder="Search origin..."
+                        icon={(props) => <Plane {...props} size={15} style={{ transform: 'rotate(-45deg)' }} />}
+                      />
                     </div>
 
                     {/* To */}
                     <div>
-                      <label style={labelStyle}>To</label>
-                      <div style={inputContainerStyle}>
-                        <Plane size={15} color="var(--color-gold)" style={{ transform: 'rotate(45deg)' }} />
-                        <select
-                          value={leg.destination}
-                          onChange={(e) => handleUpdateLeg(leg.id, 'destination', e.target.value)}
-                          style={selectStyle}
-                        >
-                          <optgroup label="Inter-City & Regional Hubs">
-                            {airports.filter(ap => ap.isInterCity).map(ap => (
-                              <option key={`leg-dest-ic-${ap.code}`} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
-                                {ap.city} ({ap.code})
-                              </option>
-                            ))}
-                          </optgroup>
-                          <optgroup label="All International Destinations">
-                            {airports.filter(ap => !ap.isInterCity).map(ap => (
-                              <option key={`leg-dest-intl-${ap.code}`} value={ap.code} style={{ background: '#0F172A', color: '#FFF' }}>
-                                {ap.city} ({ap.code})
-                              </option>
-                            ))}
-                          </optgroup>
-                        </select>
-                      </div>
+                      <SearchableAirportSelect
+                        label="To"
+                        value={leg.destination}
+                        onChange={(val) => handleUpdateLeg(leg.id, 'destination', val)}
+                        airports={airports}
+                        placeholder="Search destination..."
+                        icon={(props) => <Plane {...props} size={15} style={{ transform: 'rotate(45deg)' }} />}
+                      />
                     </div>
 
                     {/* Flight Date */}
