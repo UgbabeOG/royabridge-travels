@@ -139,7 +139,7 @@ app.post("/api/flights/search", async (req, res) => {
         return res.json(cached);
       }
     } else {
-      cacheStore.delete(cacheKey);
+      serverCache.delete(cacheKey);
     }
 
     const gemini = getGeminiClient();
@@ -1254,7 +1254,7 @@ app.post("/api/flights/price-trend", async (req, res) => {
         return res.json(cached);
       }
     } else {
-      cacheStore.delete(cacheKey);
+      serverCache.delete(cacheKey);
     }
 
     const gemini = getGeminiClient();
