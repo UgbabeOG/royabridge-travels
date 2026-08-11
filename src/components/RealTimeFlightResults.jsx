@@ -47,7 +47,7 @@ export default function RealTimeFlightResults({
     });
   };
 
-  const selectedComparedFlights = (flights || []).filter(f => comparedFlightIds.includes(f.id || f.flightNumber));
+  const selectedComparedFlights = (flights || []).filter((f, idx) => comparedFlightIds.includes(f.id || `${f.flightNumber || 'FL'}-${idx}`));
 
   // Filter & sort logic
   let filtered = Array.isArray(flights) ? [...flights] : [];
@@ -379,9 +379,11 @@ export default function RealTimeFlightResults({
 
             {/* Flight Cards List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              {filtered.map((flight) => (
+              {filtered.map((flight, idx) => {
+                const flightKey = flight.id || `${flight.flightNumber || 'FL'}-${idx}`;
+                return (
                 <div 
-                  key={flight.id || flight.flightNumber}
+                  key={flightKey}
                   className="glass-card"
                   style={{
                     padding: '24px 28px',
@@ -409,24 +411,24 @@ export default function RealTimeFlightResults({
                           alignItems: 'center',
                           gap: '6px',
                           cursor: 'pointer',
-                          background: comparedFlightIds.includes(flight.id || flight.flightNumber) ? 'rgba(229,193,88,0.22)' : 'rgba(255,255,255,0.05)',
-                          border: comparedFlightIds.includes(flight.id || flight.flightNumber) ? '1px solid var(--color-gold)' : '1px solid rgba(255,255,255,0.15)',
+                          background: comparedFlightIds.includes(flightKey) ? 'rgba(229,193,88,0.22)' : 'rgba(255,255,255,0.05)',
+                          border: comparedFlightIds.includes(flightKey) ? '1px solid var(--color-gold)' : '1px solid rgba(255,255,255,0.15)',
                           padding: '4px 10px',
                           borderRadius: '16px',
                           fontSize: '0.76rem',
-                          color: comparedFlightIds.includes(flight.id || flight.flightNumber) ? 'var(--color-gold-bright)' : '#CBD5E1',
+                          color: comparedFlightIds.includes(flightKey) ? 'var(--color-gold-bright)' : '#CBD5E1',
                           fontWeight: 700,
                           transition: 'all 0.2s ease',
                           userSelect: 'none'
                         }}>
                           <input
                             type="checkbox"
-                            checked={comparedFlightIds.includes(flight.id || flight.flightNumber)}
-                            onChange={() => toggleCompareFlight(flight.id || flight.flightNumber)}
+                            checked={comparedFlightIds.includes(flightKey)}
+                            onChange={() => toggleCompareFlight(flightKey)}
                             style={{ accentColor: 'var(--color-gold)', cursor: 'pointer' }}
                           />
                           <Columns size={13} />
-                          {comparedFlightIds.includes(flight.id || flight.flightNumber) ? 'Comparing' : 'Compare'}
+                          {comparedFlightIds.includes(flightKey) ? 'Comparing' : 'Compare'}
                         </label>
                       </div>
 
@@ -657,7 +659,8 @@ export default function RealTimeFlightResults({
                   </div>
 
                 </div>
-              ))}
+              );
+              })}
             </div>
 
           </div>
@@ -698,9 +701,11 @@ export default function RealTimeFlightResults({
 
             {/* Selected Flight Badges */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', padding: '2px 0' }}>
-              {selectedComparedFlights.map(f => (
+              {selectedComparedFlights.map((f, idx) => {
+                const fKey = f.id || `${f.flightNumber || 'FL'}-${idx}`;
+                return (
                 <span 
-                  key={f.id || f.flightNumber} 
+                  key={fKey} 
                   style={{
                     fontSize: '0.75rem',
                     background: 'rgba(255,255,255,0.08)',
@@ -716,14 +721,15 @@ export default function RealTimeFlightResults({
                 >
                   <strong>{f.flightNumber}</strong> ({formatCurrency(f.royaPrice, currency)})
                   <button 
-                    onClick={() => toggleCompareFlight(f.id || f.flightNumber)}
+                    onClick={() => toggleCompareFlight(fKey)}
                     style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: 0, display: 'flex' }}
                     title="Remove from comparison"
                   >
                     <X size={12} />
                   </button>
                 </span>
-              ))}
+              );
+              })}
             </div>
 
             {/* Actions */}

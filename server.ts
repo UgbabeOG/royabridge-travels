@@ -155,12 +155,12 @@ app.post("/api/flights/search", async (req, res) => {
     let groundingSources: Array<{ title: string; url: string }> = [];
     let searchQueries: string[] = [];
     let isGrounded = false;
+    const serpApiKey = process.env.SERPAPI_API_KEY;
     let flightSource: 'serpapi_google_flights' | 'gemini_grounded_search' | 'estimated_fallback' = 'estimated_fallback';
     let isLive = false;
-    let upstreamStatus = 'Fallback Estimator';
+    let upstreamStatus = serpApiKey ? 'SerpAPI Querying...' : 'SERPAPI_API_KEY missing in process.env';
 
     // 1. Primary Direct API: SerpAPI Google Flights engine query (if SERPAPI_API_KEY is configured)
-    const serpApiKey = process.env.SERPAPI_API_KEY;
     if (serpApiKey) {
       try {
         const travelClassMap: Record<string, string> = {
@@ -195,7 +195,8 @@ app.post("/api/flights/search", async (req, res) => {
         if (serpRes.ok) {
           const serpData = await serpRes.json();
           if (serpData.error) {
-            console.log(`⚠️ [SERPAPI ENGINE] SerpAPI returned error: "${serpData.error}". Falling back to Gemini Google Search Grounding.`);
+            upstreamStatus = `SerpAPI Error: "${serpData.error}"`;
+            console.log(`⚠️ [SERPAPI ENGINE] ${upstreamStatus}. Falling back to Gemini Google Search Grounding.`);
           }
           const rawFlights = [...(serpData.best_flights || []), ...(serpData.other_flights || [])];
 
@@ -204,7 +205,7 @@ app.post("/api/flights/search", async (req, res) => {
             isLive = true;
             upstreamStatus = '200 OK (SerpAPI Google Flights Engine)';
 
-            realTimeFlights = rawFlights.slice(0, 8).map((f: any) => {
+            realTimeFlights = rawFlights.slice(0, 8).map((f: any, idx: number) => {
               const mainSegment = f.flights?.[0] || {};
               const lastSegment = f.flights?.[f.flights.length - 1] || mainSegment;
               const retailPrice = f.price || (estimateBasePrice(origin, destination, cabinClass, departDate, returnDate) * passengers);
@@ -218,8 +219,11 @@ app.post("/api/flights/search", async (req, res) => {
               const depTime = mainSegment.departure_airport?.time || '09:00 AM';
               const arrTime = lastSegment.arrival_airport?.time || '05:00 PM';
 
+              const flightNum = mainSegment.flight_number || `${mainSegment.airline || 'FL'}-${Math.floor(100 + Math.random() * 900)}`;
+
               return {
-                flightNumber: mainSegment.flight_number || `${mainSegment.airline || 'FL'}-${Math.floor(100 + Math.random() * 900)}`,
+                id: `serpapi-${origin}-${destination}-${idx + 1}-${flightNum.replace(/\s+/g, '')}`,
+                flightNumber: flightNum,
                 airline: mainSegment.airline || 'Major Airline',
                 airlineCode: mainSegment.airline_code || (mainSegment.flight_number ? mainSegment.flight_number.slice(0, 2) : 'AA'),
                 airlineLogo: mainSegment.airline_logo,
@@ -249,14 +253,17 @@ app.post("/api/flights/search", async (req, res) => {
             groundingSources = [{ title: 'SerpAPI Live Google Flights Engine', url: `https://www.google.com/travel/flights?q=Flights%20to%20${destination}%20from%20${origin}` }];
             searchQueries = [`https://serpapi.com/search?engine=google_flights&departure_id=${origin}&arrival_id=${destination}`];
             console.log(`✅ [SERPAPI ENGINE] Successfully retrieved ${realTimeFlights.length} live Google Flights results via SerpAPI!\n`);
-          } else {
-            console.log('ℹ️ [SERPAPI ENGINE] SerpAPI response had no flights array. Falling back to Gemini Search Grounding.');
+          } else if (!serpData.error) {
+            upstreamStatus = `SerpAPI returned 0 flights for ${origin}-${destination} on ${departDate}`;
+            console.log(`ℹ️ [SERPAPI ENGINE] ${upstreamStatus}. Falling back to Gemini Search Grounding.`);
           }
         } else {
-          console.log(`ℹ️ [SERPAPI ENGINE] SerpAPI status ${serpRes.status} (${serpRes.statusText}). Falling back to Gemini Google Search Grounding.`);
+          upstreamStatus = `SerpAPI HTTP ${serpRes.status} (${serpRes.statusText})`;
+          console.log(`ℹ️ [SERPAPI ENGINE] ${upstreamStatus}. Falling back to Gemini Google Search Grounding.`);
         }
-      } catch (serpErr) {
-        console.log('ℹ️ [SERPAPI ENGINE] SerpAPI query error. Falling back to Gemini Google Search Grounding:', serpErr);
+      } catch (serpErr: any) {
+        upstreamStatus = `SerpAPI Exception: ${serpErr?.message || serpErr}`;
+        console.log(`ℹ️ [SERPAPI ENGINE] ${upstreamStatus}. Falling back to Gemini Google Search Grounding:`, serpErr);
       }
     }
 
