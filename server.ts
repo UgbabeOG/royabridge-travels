@@ -1269,7 +1269,54 @@ app.post("/api/flights/price-trend", async (req, res) => {
     let cheapestDay = 'Tuesday';
     let groundingSources: Array<{ title: string; url: string }> = [];
 
-    if (gemini && !isQuotaExhausted()) {
+    // 1. Primary Direct API: SerpAPI Google Flights engine query for price insights
+    const serpApiKey = process.env.SERPAPI_API_KEY;
+    if (serpApiKey) {
+      try {
+        const travelClassMap: Record<string, string> = {
+          'Economy': '1',
+          'Premium Economy': '2',
+          'Business': '3',
+          'First': '4'
+        };
+
+        const params = new URLSearchParams({
+          engine: 'google_flights',
+          departure_id: origin,
+          arrival_id: destination,
+          outbound_date: departDate || '',
+          type: returnDate ? '1' : '2',
+          travel_class: travelClassMap[cabinClass] || '1',
+          currency: 'USD',
+          hl: 'en',
+          api_key: serpApiKey
+        });
+
+        if (returnDate) {
+          params.append('return_date', returnDate);
+        }
+
+        const serpUrl = `https://serpapi.com/search?${params.toString()}`;
+        const serpRes = await fetch(serpUrl);
+        if (serpRes.ok) {
+          const serpData = await serpRes.json();
+          const priceInsights = serpData.price_insights;
+          if (priceInsights) {
+            const lowest = priceInsights.lowest_price;
+            const level = priceInsights.price_level; // e.g. "LOW", "TYPICAL", "HIGH"
+            if (lowest && level) {
+              priceAdvice = `Current live fares start at $${lowest} USD (${level.toLowerCase()} level for ${origin}-${destination} in ${cabinClass}).`;
+            }
+          }
+          groundingSources = [{ title: 'SerpAPI Live Google Flights Engine', url: `https://www.google.com/travel/flights?q=price+trend+${origin}+to+${destination}` }];
+          console.log(`✅ [SERPAPI ENGINE] Successfully retrieved price insights via SerpAPI!`);
+        }
+      } catch (serpErr) {
+        console.log('ℹ️ [SERPAPI ENGINE] Price trend query via SerpAPI skipped/fallback.');
+      }
+    }
+
+    if (groundingSources.length === 0 && gemini && !isQuotaExhausted()) {
       try {
         const trendPrompt = `Perform a real-time web search for airfare price trends and flight booking tips from ${origin} to ${destination} in ${cabinClass} class departing on ${departDate || 'requested departure date'}${returnDate ? ` and returning on ${returnDate}` : ''}.
 Find out whether airfares for this travel window (${departDate || 'current season'}) are rising, falling, or stable, and what day of the week is cheapest.
