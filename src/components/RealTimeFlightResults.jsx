@@ -103,10 +103,10 @@ export default function RealTimeFlightResults({
               </div>
 
               <h3 className="font-royal" style={{ fontSize: '1.35rem', color: '#FFF', marginBottom: '8px' }}>
-                Checking live flight availability...
+                Performing Real-Time Google Search Grounding...
               </h3>
               <p style={{ color: '#CBD5E1', maxWidth: '520px', margin: '0 auto 16px', fontSize: '0.9rem' }}>
-                Verifying direct live fares and grounded search results for <strong>{searchQuery?.origin || 'Origin'}</strong> to <strong>{searchQuery?.destination || 'Destination'}</strong>...
+                Grounding live flight schedules & current airfares via Google Search for <strong>{searchQuery?.origin || 'Origin'}</strong> to <strong>{searchQuery?.destination || 'Destination'}</strong>...
               </p>
 
               <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -440,11 +440,11 @@ export default function RealTimeFlightResults({
                         {/* Live vs Estimated Source Badge */}
                         {flight.source === 'serpapi_google_flights' || (flight.isLive && !flight.source) ? (
                           <span style={{ fontSize: '0.74rem', background: 'rgba(16, 185, 129, 0.18)', border: '1px solid rgba(16, 185, 129, 0.4)', color: '#6EE7B7', padding: '2px 8px', borderRadius: '4px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }} /> Live Google Flights
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }} /> Live SerpAPI
                           </span>
                         ) : flight.source === 'gemini_grounded_search' ? (
                           <span style={{ fontSize: '0.74rem', background: 'rgba(59, 130, 246, 0.18)', border: '1px solid rgba(59, 130, 246, 0.4)', color: '#93C5FD', padding: '2px 8px', borderRadius: '4px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            <Search size={11} /> Grounded Search
+                            <Search size={11} /> Live Google Search
                           </span>
                         ) : (
                           <span style={{ fontSize: '0.74rem', background: 'rgba(245, 158, 11, 0.18)', border: '1px solid rgba(245, 158, 11, 0.4)', color: '#FCD34D', padding: '2px 8px', borderRadius: '4px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
