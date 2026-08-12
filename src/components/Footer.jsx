@@ -139,7 +139,7 @@ export default function Footer({ onOpenChat, onOpenContact }) {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Mail size={16} color="var(--color-gold)" />
-                <span>concierge@royabridgetravels.com</span>
+                <span>support@royabridge.com</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <MapPin size={16} color="var(--color-gold)" />

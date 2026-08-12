@@ -171,21 +171,21 @@ export default function ContactModal({ isOpen, onClose, onOpenChat }) {
                   wordBreak: 'break-word',
                   overflowWrap: 'anywhere'
                 }}>
-                  concierge@royabridgetravels.com
+                  support@royabridge.com
                 </strong>
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
               <a 
-                href="mailto:concierge@royabridgetravels.com?subject=RoyaBridge%20Flight%20Concierge%20Inquiry"
+                href="mailto:support@royabridge.com?subject=RoyaBridge%20Flight%20Concierge%20Inquiry"
                 className="btn-outline-gold"
                 style={{ padding: '8px 14px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
               >
                 Send Email
               </a>
               <button
-                onClick={() => copyToClipboard('concierge@royabridgetravels.com', 'email')}
+                onClick={() => copyToClipboard('support@royabridge.com', 'email')}
                 style={{
                   background: 'transparent',
                   border: '1px solid rgba(255,255,255,0.15)',
