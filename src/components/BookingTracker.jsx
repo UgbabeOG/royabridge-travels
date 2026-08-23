@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Search, ShieldCheck, X, Clock, Plane, Activity, CheckCircle2, AlertCircle, RefreshCw, User, Mail, Phone, Tag, Share2, Copy, Check } from 'lucide-react';
+import { Search, ShieldCheck, X, Clock, Plane, Activity, CheckCircle2, AlertCircle, RefreshCw, User, Mail, Phone, Tag, Share2, Copy, Check, CreditCard, CheckCircle } from 'lucide-react';
 import { formatCurrency } from '../utils/pnrGenerator';
-import { lookupBookingFromDatabase } from '../lib/bookingsService';
+import { lookupBookingFromDatabase, updateBookingPaymentStatus } from '../lib/bookingsService';
+import { openFlutterwavePayment } from '../utils/flutterwave';
 
 export default function BookingTracker({ isOpen, onClose, onOpenChat, showToast, currency = 'USD' }) {
   const [tab, setTab] = useState('pnr'); // 'pnr' | 'flight'
@@ -9,8 +10,63 @@ export default function BookingTracker({ isOpen, onClose, onOpenChat, showToast,
   const [result, setResult] = useState(null);
   const [flightStatus, setFlightStatus] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
   const [error, setError] = useState('');
   const [copiedPnr, setCopiedPnr] = useState(false);
+
+  const handlePayBookingWithFlutterwave = async () => {
+    if (!result) return;
+    setIsPaying(true);
+
+    try {
+      await openFlutterwavePayment({
+        pnr: result.pnr,
+        amount: result.totalFare || 840,
+        currency: currency || 'USD',
+        passengerEmail: result.email || 'traveler@royabridge.com',
+        passengerName: result.passenger || 'Valued Passenger',
+        passengerPhone: result.phone || '',
+        flightNumber: result.flightNumber || 'Flight',
+        airline: result.airline || 'Airline',
+        route: result.route,
+        onSuccess: async (payRes) => {
+          setIsPaying(false);
+          await updateBookingPaymentStatus(result.pnr, payRes);
+          setResult(prev => prev ? ({
+            ...prev,
+            status: 'PAID_TICKET_ISSUED',
+            isPaid: true,
+            flwTxRef: payRes.tx_ref || payRes.flw_ref
+          }) : null);
+
+          if (showToast) {
+            showToast({
+              type: 'success',
+              title: 'Ticket Issued & Paid!',
+              message: `Payment confirmed via Flutterwave for PNR ${result.pnr}. Official ticket issued!`,
+              pnr: result.pnr
+            });
+          }
+        },
+        onCancel: () => {
+          setIsPaying(false);
+        },
+        onError: (err) => {
+          setIsPaying(false);
+          if (showToast) {
+            showToast({
+              type: 'error',
+              title: 'Payment Encountered Error',
+              message: err?.message || 'Could not complete Flutterwave payment.'
+            });
+          }
+        }
+      });
+    } catch (err) {
+      console.error('Tracker Flutterwave error:', err);
+      setIsPaying(false);
+    }
+  };
 
   const handleShareResult = async () => {
     if (!result) return;
@@ -374,11 +430,62 @@ ${window.location.origin}`;
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(16, 185, 129, 0.1)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', marginBottom: '16px' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#94A3B8' }}>24h Hold Expiry Countdown</span>
+                  <span style={{ fontSize: '0.8rem', color: '#94A3B8' }}>
+                    {result.isPaid || result.status === 'PAID_TICKET_ISSUED' ? 'Ticket Status' : '24h Hold Expiry Countdown'}
+                  </span>
                   <span style={{ color: '#6EE7B7', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.88rem' }}>
-                    <Clock size={15} /> {result.holdExpires}
+                    {result.isPaid || result.status === 'PAID_TICKET_ISSUED' ? (
+                      <>
+                        <CheckCircle size={15} color="#10B981" /> Paid & Confirmed via Flutterwave
+                      </>
+                    ) : (
+                      <>
+                        <Clock size={15} /> {result.holdExpires}
+                      </>
+                    )}
                   </span>
                 </div>
+
+                {/* Flutterwave Payment Banner / Button if Unpaid */}
+                {!(result.isPaid || result.status === 'PAID_TICKET_ISSUED') && (
+                  <div style={{
+                    background: 'linear-gradient(135deg, rgba(229,193,88,0.1) 0%, rgba(245,158,11,0.15) 100%)',
+                    border: '1px solid var(--border-gold)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '12px 14px',
+                    marginBottom: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '0.82rem', color: '#FFF', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <CreditCard size={16} color="var(--color-gold-bright)" /> Complete Payment via Flutterwave
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: '#94A3B8' }}>Cards, Mobile Money, Bank Transfer</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handlePayBookingWithFlutterwave}
+                      disabled={isPaying}
+                      className="btn-gold"
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        fontSize: '0.88rem',
+                        fontWeight: 800,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      {isPaying ? <RefreshCw className="animate-spin" size={16} /> : <CreditCard size={16} />}
+                      {isPaying ? 'Launching Flutterwave Modal...' : `Pay ${formatCurrency(result.totalFare, currency)} via Flutterwave`}
+                    </button>
+                  </div>
+                )}
 
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
                   <button 

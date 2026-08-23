@@ -54,6 +54,28 @@ export async function saveBookingToDatabase(booking) {
     console.warn('LocalStorage error:', e);
   }
 
+  // 3. Dispatch confirmation email to passenger
+  try {
+    const emailRes = await fetch('/api/bookings/send-confirmation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...bookingRecord,
+        seatPreference: booking.seatPreference,
+        mealPreference: booking.mealPreference,
+        selectedAddOns: booking.selectedAddOns
+      })
+    });
+    const emailData = await emailRes.json();
+    if (emailData && emailData.success) {
+      console.log(`[Email Confirmation] Successfully triggered confirmation email for PNR ${pnrCode}`);
+      bookingRecord.emailSent = true;
+      bookingRecord.emailDetails = emailData;
+    }
+  } catch (emailErr) {
+    console.warn(`[Email Confirmation Warning] Email endpoint request error:`, emailErr);
+  }
+
   return bookingRecord;
 }
 
@@ -120,6 +142,66 @@ export async function lookupBookingFromDatabase(searchInput) {
   }
 
   return null;
+}
+
+/**
+ * Updates a booking's payment status to PAID with Flutterwave transaction details
+ */
+export async function updateBookingPaymentStatus(pnr, paymentData) {
+  const pnrCode = (pnr || '').toUpperCase();
+  if (!pnrCode) throw new Error('PNR reference is required');
+
+  const nowISO = new Date().toISOString();
+  const paymentRecord = {
+    status: 'PAID_TICKET_ISSUED',
+    isPaid: true,
+    paymentMethod: 'Flutterwave',
+    flwTransactionId: paymentData?.transaction_id || paymentData?.flw_ref || 'FLW-' + Date.now(),
+    flwTxRef: paymentData?.tx_ref || 'RB-FLW-' + pnrCode,
+    paidAt: nowISO,
+    paidAmount: paymentData?.amount || null,
+    paidCurrency: paymentData?.currency || 'USD'
+  };
+
+  // 1. Update Firestore DB
+  try {
+    const docRef = doc(db, 'bookings', pnrCode);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const updatedData = {
+        ...docSnap.data(),
+        ...paymentRecord,
+        updatedAt: nowISO
+      };
+      await setDoc(docRef, updatedData, { merge: true });
+      console.log(`[Firestore DB] Updated payment status for PNR ${pnrCode} to PAID via Flutterwave`);
+    }
+  } catch (err) {
+    console.warn(`[Firestore DB Warning] Could not update payment status in remote database:`, err);
+  }
+
+  // 2. Update LocalStorage
+  try {
+    const localStr = localStorage.getItem('royabridge_bookings');
+    if (localStr) {
+      const localBookings = JSON.parse(localStr);
+      const updatedList = localBookings.map(b => {
+        if (b.pnr?.toUpperCase() === pnrCode) {
+          return {
+            ...b,
+            ...paymentRecord,
+            updatedAt: nowISO
+          };
+        }
+        return b;
+      });
+      localStorage.setItem('royabridge_bookings', JSON.stringify(updatedList));
+    }
+  } catch (e) {
+    console.warn('LocalStorage payment update error:', e);
+  }
+
+  return { success: true, pnr: pnrCode, ...paymentRecord };
 }
 
 function formatBookingResult(raw) {

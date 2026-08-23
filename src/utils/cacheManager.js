@@ -16,10 +16,14 @@ export const CacheManager = {
     // 1. Check in-memory cache
     if (MEMORY_CACHE.has(key)) {
       const entry = MEMORY_CACHE.get(key);
-      if (now < entry.expiry) {
+      const isFallback = entry.data?.source === 'estimated_fallback' || entry.data?.isLive === false;
+      if (now < entry.expiry && !isFallback) {
         return { data: entry.data, isStale: false, source: 'memory' };
       }
-      // Stale entry
+      // Stale or estimated entry
+      if (isFallback) {
+        return { data: entry.data, isStale: true, source: 'memory-fallback-stale' };
+      }
       MEMORY_CACHE.delete(key);
     }
 
@@ -28,11 +32,16 @@ export const CacheManager = {
       const raw = localStorage.getItem(`roya_cache_${key}`);
       if (raw) {
         const entry = JSON.parse(raw);
-        if (now < entry.expiry) {
+        const isFallback = entry.data?.source === 'estimated_fallback' || entry.data?.isLive === false;
+        if (now < entry.expiry && !isFallback) {
           // Populate memory cache for faster subsequent reads
           MEMORY_CACHE.set(key, entry);
           return { data: entry.data, isStale: false, source: 'localStorage' };
         } else {
+          // If it's a fallback response, always treat as stale so background revalidation fires
+          if (isFallback) {
+            return { data: entry.data, isStale: true, source: 'localStorage-fallback-stale' };
+          }
           // Allow stale-while-revalidate if within 2x TTL
           const staleGracePeriod = entry.ttlMs ? entry.ttlMs * 2 : 1800000;
           if (now < entry.expiry + staleGracePeriod) {

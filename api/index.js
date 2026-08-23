@@ -6,10 +6,15 @@ import { GoogleGenAI } from "@google/genai";
 var app = express();
 app.use(cors());
 app.use(express.json());
+function getSerpApiKey() {
+  const key = process.env.SERPAPI_API_KEY || process.env.SERPAPI_KEY || process.env.SERP_API_KEY || process.env.VITE_SERPAPI_API_KEY;
+  return key ? key.trim() : void 0;
+}
 var aiClient = null;
 function getGeminiClient() {
-  if (!aiClient && process.env.GEMINI_API_KEY) {
-    aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GEMINI_KEY || process.env.VITE_GEMINI_API_KEY;
+  if (!aiClient && apiKey) {
+    aiClient = new GoogleGenAI({ apiKey: apiKey.trim() });
   }
   return aiClient;
 }
@@ -154,18 +159,26 @@ apiRouter.post("/flights/search", async (req, res) => {
     } else {
       serverCache.delete(cacheKey);
     }
-    console.log(`[FLIGHT_SEARCH] cache status=${forceFresh ? "BYPASS" : "MISS"}`);
+    const serpApiKey = getSerpApiKey();
+    const serpapiConfigured = Boolean(serpApiKey);
+    console.log("[SERPAPI CONFIG]", { configured: serpapiConfigured });
+    console.log(`[FLIGHT_SEARCH] request received`);
+    console.log(`[FLIGHT_SEARCH] origin=${origin} destination=${destination}`);
+    console.log(`[FLIGHT_SEARCH] forceFresh=${forceFresh}`);
+    console.log(`[FLIGHT_SEARCH] cache=${forceFresh ? "BYPASS" : "MISS"}`);
+    console.log(`[FLIGHT_SEARCH] serpapi=${serpapiConfigured ? "configured" : "missing"}`);
     const gemini = getGeminiClient();
     let realTimeFlights = null;
     let groundingSources = [];
     let searchQueries = [];
     let isGrounded = false;
-    const serpApiKey = process.env.SERPAPI_API_KEY;
     let flightSource = "estimated_fallback";
     let isLive = false;
-    let upstreamStatus = serpApiKey ? "SerpAPI Querying..." : "SERPAPI_API_KEY missing in process.env";
-    if (serpApiKey) {
+    let upstreamStatus = serpapiConfigured ? "SerpAPI Querying..." : "SERPAPI_API_KEY missing in process.env";
+    let fallbackReason = "NONE";
+    if (serpapiConfigured && serpApiKey) {
       console.log(`[FLIGHT_SEARCH] calling SerpAPI`);
+      console.log(`[SERPAPI REQUEST] route=${origin}-${destination} departure=${departDate} return=${returnDate || "N/A"} tripType=${tripType} cabin=${cabinClass} passengers=${passengers}`);
       try {
         const travelClassMap = {
           "Economy": "1",
@@ -190,20 +203,24 @@ apiRouter.post("/flights/search", async (req, res) => {
         }
         const serpUrl = `https://serpapi.com/search?${params.toString()}`;
         const serpRes = await fetch(serpUrl);
-        console.log(`[FLIGHT_SEARCH] SerpAPI status=${serpRes.status}`);
+        console.log(`[SERPAPI RESPONSE] status=${serpRes.status}`);
         if (serpRes.ok) {
           const serpData = await serpRes.json();
           if (serpData.error) {
             upstreamStatus = `SerpAPI Error: "${serpData.error}"`;
-            console.log(`[FLIGHT_SEARCH] SerpAPI error message: ${serpData.error}`);
+            fallbackReason = `SERPAPI_ERROR_FIELD: ${serpData.error}`;
+            console.log(`[SERPAPI ERROR] status=200 message="${serpData.error}"`);
           }
           const rawFlights = [...serpData.best_flights || [], ...serpData.other_flights || []];
+          const bestCount = serpData.best_flights?.length || 0;
+          const otherCount = serpData.other_flights?.length || 0;
           if (rawFlights.length > 0) {
-            console.log(`[FLIGHT_SEARCH] parsing results (${rawFlights.length} raw flights found)`);
             const validPricedFlights = rawFlights.filter((f) => typeof f.price === "number" && f.price > 0);
+            console.log(`[SERPAPI PARSE] bestFlights=${bestCount} otherFlights=${otherCount} rawTotal=${rawFlights.length} pricedFlights=${validPricedFlights.length}`);
             if (validPricedFlights.length > 0) {
               flightSource = "serpapi_google_flights";
               isLive = true;
+              fallbackReason = "NONE";
               upstreamStatus = "200 OK (SerpAPI Google Flights Engine)";
               realTimeFlights = validPricedFlights.slice(0, 8).map((f, idx) => {
                 const mainSegment = f.flights?.[0] || {};
@@ -249,20 +266,26 @@ apiRouter.post("/flights/search", async (req, res) => {
               searchQueries = [`https://serpapi.com/search?engine=google_flights&departure_id=${origin}&arrival_id=${destination}`];
               console.log(`[FLIGHT_SEARCH] priced flights=${realTimeFlights.length}`);
             } else {
+              fallbackReason = "SERPAPI_ZERO_PRICED_FLIGHTS";
               console.log(`[FLIGHT_SEARCH] No valid priced flights found in SerpAPI response.`);
             }
           } else if (!serpData.error) {
             upstreamStatus = `SerpAPI returned 0 flights for ${origin}-${destination} on ${departDate}`;
+            fallbackReason = "SERPAPI_ZERO_RAW_FLIGHTS";
             console.log(`[FLIGHT_SEARCH] ${upstreamStatus}`);
           }
         } else {
           upstreamStatus = `SerpAPI HTTP ${serpRes.status} (${serpRes.statusText})`;
-          console.log(`[FLIGHT_SEARCH] ${upstreamStatus}`);
+          fallbackReason = `SERPAPI_HTTP_${serpRes.status}`;
+          console.log(`[SERPAPI ERROR] status=${serpRes.status} message="${serpRes.statusText}"`);
         }
       } catch (serpErr) {
         upstreamStatus = `SerpAPI Exception: ${serpErr?.message || serpErr}`;
+        fallbackReason = `SERPAPI_EXCEPTION: ${serpErr?.message || "Network exception"}`;
         console.log(`[FLIGHT_SEARCH] ERROR stage=SERPAPI error="${serpErr?.message || "Upstream exception"}"`);
       }
+    } else {
+      fallbackReason = "SERPAPI_KEY_MISSING";
     }
     if (!realTimeFlights && gemini && !isQuotaExhausted()) {
       console.log(`[FLIGHT_SEARCH] calling Gemini Search Grounding`);
@@ -361,10 +384,13 @@ Provide output STRICTLY as a valid JSON array of 4 to 6 flight options.`;
       ];
     }
     if (!realTimeFlights || !Array.isArray(realTimeFlights) || realTimeFlights.length === 0) {
-      console.log("[FLIGHT_SEARCH] using estimated fallback");
+      if (fallbackReason === "NONE") {
+        fallbackReason = "NO_LIVE_RESULTS_FOUND";
+      }
+      console.log(`[FALLBACK] reason=${fallbackReason} status=${upstreamStatus}`);
       flightSource = "estimated_fallback";
       isLive = false;
-      upstreamStatus = "404 (Fallback Estimator)";
+      upstreamStatus = `Estimated Fallback (${fallbackReason})`;
       const basePrice = estimateBasePrice(origin, destination, cabinClass, departDate, returnDate || void 0);
       const schedules = [
         { dep: "08:15 AM", arr: "08:25 PM", dur: "7h 10m", stops: 0, stopLoc: null, craft: "Boeing 787-10 Dreamliner", timeSlot: "Morning Express" },
@@ -410,11 +436,13 @@ Provide output STRICTLY as a valid JSON array of 4 to 6 flight options.`;
         };
       });
     }
-    console.log(`[FLIGHT_SEARCH] returning results (source=${flightSource}, flightsCount=${realTimeFlights.length})`);
+    console.log(`[FLIGHT_SEARCH] returning results (source=${flightSource}, flightsCount=${realTimeFlights.length}, fallbackReason=${fallbackReason})`);
     const payload = {
       success: true,
       source: flightSource,
       isLive,
+      serpapiConfigured,
+      fallbackReason,
       fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
       cacheStatus: forceFresh ? "BYPASS" : "MISS",
       upstreamStatus,
@@ -631,7 +659,7 @@ apiRouter.post("/flights/price-trend", async (req, res) => {
     let priceAdvice = `Prices for departure on ${departDate || "your selected dates"} are expected to fluctuate. We recommend securing a 24h free hold now.`;
     let cheapestDay = "Tuesday";
     let groundingSources = [];
-    const serpApiKey = process.env.SERPAPI_API_KEY;
+    const serpApiKey = getSerpApiKey();
     if (serpApiKey) {
       try {
         const travelClassMap = {

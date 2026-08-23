@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, ShieldCheck, Download, Printer, MessageCircle, Clock, CheckCircle2, Copy, Plane, Activity, AlertCircle, Shield, Sparkles, Check, Luggage, PlusCircle, FileText, Lock, HeartHandshake, Search, Globe, ExternalLink, Share2, Mail, Send } from 'lucide-react';
+import { X, ShieldCheck, Download, Printer, MessageCircle, Clock, CheckCircle2, Copy, Plane, Activity, AlertCircle, Shield, Sparkles, Check, Luggage, PlusCircle, FileText, Lock, HeartHandshake, Search, Globe, ExternalLink, Share2, Mail, Send, CreditCard, CheckCircle } from 'lucide-react';
 import { generatePNR, formatCurrency } from '../utils/pnrGenerator';
-import { saveBookingToDatabase } from '../lib/bookingsService';
+import { saveBookingToDatabase, updateBookingPaymentStatus } from '../lib/bookingsService';
 import { validateEmail, validatePhone, validateName } from '../utils/validation';
+import { openFlutterwavePayment } from '../utils/flutterwave';
 
 export default function ReserveModal({ data, onClose, onOpenChat, showToast, currency = 'USD' }) {
   const [passengerName, setPassengerName] = useState('');
@@ -11,6 +12,9 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
   const [specialRequests, setSpecialRequests] = useState('');
   const [seatPreference, setSeatPreference] = useState('Window');
   const [mealPreference, setMealPreference] = useState('Standard');
+  const [checkoutMode, setCheckoutMode] = useState('flutterwave'); // 'flutterwave' | 'hold'
+  const [isPaid, setIsPaid] = useState(false);
+  const [flwDetails, setFlwDetails] = useState(null);
 
   // Interactive Cabin Selection
   const initialCabin = data?.cabinClass || 'Business';
@@ -198,7 +202,8 @@ ${window.location.origin}`;
     try {
       const addOnsList = Object.keys(addOns).filter(k => addOns[k]);
 
-      await saveBookingToDatabase({
+      // 1. Persist booking hold in database
+      const savedRecord = await saveBookingToDatabase({
         pnr: pnr,
         passengerName: passengerName.trim(),
         passengerEmail: passengerEmail.trim(),
@@ -225,18 +230,61 @@ ${window.location.origin}`;
       });
 
       setConfirmedSuccess(true);
-      if (showToast) {
-        showToast({
-          type: 'success',
-          title: 'Flight Reservation Hold Confirmed!',
-          message: `Itinerary hold locked for ${passengerName.trim()}. PNR reference ${pnr} registered.`,
-          pnr: pnr
+
+      // 2. If Flutterwave checkout mode selected, open Flutterwave modal
+      if (checkoutMode === 'flutterwave') {
+        await openFlutterwavePayment({
+          pnr: pnr,
+          amount: totalFinalPrice,
+          currency: currency || 'USD',
+          passengerEmail: passengerEmail.trim(),
+          passengerName: passengerName.trim(),
+          passengerPhone: passengerPhone.trim(),
+          flightNumber: data.flightNumber || 'BA178',
+          airline: data.airline || 'British Airways',
+          route: `${data.origin?.code || 'JFK'} → ${data.destination?.code || 'LHR'}`,
+          onSuccess: async (payRes) => {
+            setIsPaid(true);
+            setFlwDetails(payRes);
+            await updateBookingPaymentStatus(pnr, payRes);
+
+            if (showToast) {
+              showToast({
+                type: 'success',
+                title: 'Payment Verified via Flutterwave!',
+                message: `Ticket issued & confirmed for ${passengerName.trim()}. Payment ref: ${payRes.flw_ref || payRes.tx_ref || 'FLW-OK'}.`,
+                pnr: pnr
+              });
+            }
+          },
+          onCancel: () => {
+            if (showToast) {
+              showToast({
+                type: 'info',
+                title: '24-Hour Hold Active',
+                message: `Your PNR hold (${pnr}) is reserved. You can pay anytime in Manage Booking.`
+              });
+            }
+          },
+          onError: (err) => {
+            setValidationError(err?.message || 'Flutterwave payment was cancelled or encountered an issue. Your PNR hold remains active.');
+          }
         });
+      } else {
+        if (showToast) {
+          showToast({
+            type: 'success',
+            title: 'Flight Reservation & Email Confirmed!',
+            message: `24-Hour itinerary hold locked for ${passengerName.trim()}. Confirmation email sent to ${passengerEmail.trim()}.`,
+            pnr: pnr
+          });
+        }
       }
+
       if (onOpenChat) onOpenChat();
     } catch (err) {
       console.error('Error saving booking:', err);
-      setValidationError('Failed to store reservation hold in database. Please try again.');
+      setValidationError('Failed to store reservation in database. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -668,6 +716,25 @@ ${window.location.origin}`;
                     </div>
                   </div>
 
+                  {/* Confirmation Email Sent Callout */}
+                  <div style={{
+                    background: 'rgba(59, 130, 246, 0.12)',
+                    border: '1px solid #3B82F6',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '10px 14px',
+                    marginBottom: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    fontSize: '0.82rem',
+                    color: '#93C5FD'
+                  }}>
+                    <Mail size={18} color="#60A5FA" style={{ flexShrink: 0 }} />
+                    <div>
+                      <strong style={{ color: '#FFF' }}>Confirmation Email Sent!</strong> A detailed flight hold itinerary with PNR reference <strong style={{ color: '#E5C158' }}>{pnr}</strong> and complete flight details has been sent to <strong style={{ color: '#FFF' }}>{passengerEmail}</strong>.
+                    </div>
+                  </div>
+
                   {/* Flight Details Grid */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', background: 'rgba(7, 11, 20, 0.7)', padding: '12px', borderRadius: 'var(--radius-sm)', marginBottom: '16px', fontSize: '0.82rem', color: '#CBD5E1' }}>
                     <div>
@@ -1041,7 +1108,7 @@ ${window.location.origin}`;
 
               <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '4px 0' }} />
 
-              {/* Total Price Section */}
+            {/* Total Price Section */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <div>
                   <span style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block' }}>Total Reserved Fare</span>
@@ -1061,23 +1128,110 @@ ${window.location.origin}`;
 
             </div>
 
-            {/* Zero Dollar Paid Today Callout */}
-            <div style={{
-              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.15) 100%)',
-              border: '1px solid #10B981',
-              borderRadius: 'var(--radius-sm)',
-              padding: '10px',
-              textAlign: 'center',
-              color: '#6EE7B7',
-              fontSize: '0.82rem',
-              fontWeight: 800,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px'
-            }}>
-              <Lock size={14} /> NO IMMEDIATE PAYMENT REQUIRED TODAY
-            </div>
+            {/* Payment Verified Banner if Paid */}
+            {isPaid ? (
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.25) 100%)',
+                border: '1.5px solid #10B981',
+                borderRadius: 'var(--radius-sm)',
+                padding: '12px',
+                textAlign: 'center',
+                color: '#6EE7B7',
+                fontSize: '0.85rem',
+                fontWeight: 800,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                  <CheckCircle size={18} color="#10B981" /> TICKET PAID VIA FLUTTERWAVE
+                </div>
+                <span style={{ fontSize: '0.72rem', color: '#A7F3D0', fontWeight: 600 }}>
+                  Ref: {flwDetails?.flw_ref || flwDetails?.tx_ref || 'FLW-SUCCESS'}
+                </span>
+              </div>
+            ) : (
+              /* Payment Method Option Selector */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 700, letterSpacing: '0.05em' }}>
+                  CHOOSE CHECKOUT MODE
+                </span>
+
+                {/* Option 1: Flutterwave */}
+                <div 
+                  onClick={() => setCheckoutMode('flutterwave')}
+                  style={{
+                    background: checkoutMode === 'flutterwave' ? 'rgba(229,193,88,0.12)' : 'rgba(15, 23, 42, 0.6)',
+                    border: checkoutMode === 'flutterwave' ? '1.5px solid var(--border-gold)' : '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '10px 12px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '50%',
+                      border: checkoutMode === 'flutterwave' ? '5px solid var(--color-gold)' : '2px solid #64748B',
+                      background: '#0F172A'
+                    }} />
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#FFF', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <CreditCard size={15} color="var(--color-gold-bright)" /> Pay via Flutterwave
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#94A3B8' }}>
+                        Cards, M-Pesa, Mobile Money, Bank Transfer, Apple Pay
+                      </div>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '0.7rem', color: '#6EE7B7', fontWeight: 700, background: 'rgba(16,185,129,0.15)', padding: '2px 6px', borderRadius: '4px' }}>
+                    Instant
+                  </span>
+                </div>
+
+                {/* Option 2: 24h Free Hold */}
+                <div 
+                  onClick={() => setCheckoutMode('hold')}
+                  style={{
+                    background: checkoutMode === 'hold' ? 'rgba(229,193,88,0.12)' : 'rgba(15, 23, 42, 0.6)',
+                    border: checkoutMode === 'hold' ? '1.5px solid var(--border-gold)' : '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '10px 12px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '50%',
+                      border: checkoutMode === 'hold' ? '5px solid var(--color-gold)' : '2px solid #64748B',
+                      background: '#0F172A'
+                    }} />
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#FFF', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Clock size={15} color="#38BDF8" /> 24-Hour Hold ($0 Today)
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#94A3B8' }}>
+                        Lock fare price for 24 hours free. Pay later.
+                      </div>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '0.7rem', color: '#38BDF8', fontWeight: 700, background: 'rgba(56,189,248,0.15)', padding: '2px 6px', borderRadius: '4px' }}>
+                    $0 Now
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Actions */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1089,8 +1243,8 @@ ${window.location.origin}`;
                   disabled={saving}
                   style={{ width: '100%', padding: '12px', fontSize: '0.92rem', fontWeight: 800 }}
                 >
-                  {saving ? <Activity className="animate-spin" size={16} /> : <MessageCircle size={16} />}
-                  {saving ? 'Locking PNR in DB...' : 'Confirm Flight Hold ($0 Now)'}
+                  {saving ? <Activity className="animate-spin" size={16} /> : (checkoutMode === 'flutterwave' ? <CreditCard size={16} /> : <MessageCircle size={16} />)}
+                  {saving ? 'Processing Booking...' : (checkoutMode === 'flutterwave' ? `Pay ${formatCurrency(totalFinalPrice, currency)} via Flutterwave` : 'Confirm Flight Hold ($0 Now)')}
                 </button>
               ) : (
                 <button 

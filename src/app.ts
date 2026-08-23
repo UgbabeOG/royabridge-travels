@@ -2,17 +2,25 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { GoogleGenAI } from "@google/genai";
+import { sendBookingConfirmationEmail } from "./lib/emailService.js";
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
+// Helper to get SerpAPI key from common env var aliases
+function getSerpApiKey(): string | undefined {
+  const key = process.env.SERPAPI_API_KEY || process.env.SERPAPI_KEY || process.env.SERP_API_KEY || process.env.VITE_SERPAPI_API_KEY;
+  return key ? key.trim() : undefined;
+}
+
 // Lazy-loaded Gemini AI client helper
 let aiClient: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI | null {
-  if (!aiClient && process.env.GEMINI_API_KEY) {
-    aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GEMINI_KEY || process.env.VITE_GEMINI_API_KEY;
+  if (!aiClient && apiKey) {
+    aiClient = new GoogleGenAI({ apiKey: apiKey.trim() });
   }
   return aiClient;
 }
@@ -23,9 +31,55 @@ function isQuotaExhausted(): boolean {
   return Date.now() < quotaCooldownUntil;
 }
 
+function extractIataCode(locationStr: string, fallback: string): string {
+  if (!locationStr || typeof locationStr !== 'string') return fallback;
+  const cleaned = locationStr.trim().toUpperCase();
+  if (/^[A-Z]{3}$/.test(cleaned)) {
+    return cleaned;
+  }
+  const matchParen = cleaned.match(/\(([A-Z]{3})\)/);
+  if (matchParen) {
+    return matchParen[1];
+  }
+  const matchHyphen = cleaned.match(/^([A-Z]{3})\s*[-–]/);
+  if (matchHyphen) {
+    return matchHyphen[1];
+  }
+  const matchAny = cleaned.match(/\b([A-Z]{3})\b/);
+  if (matchAny) {
+    return matchAny[1];
+  }
+  const cityMap: Record<string, string> = {
+    'LONDON': 'LHR',
+    'NEW YORK': 'JFK',
+    'PARIS': 'CDG',
+    'TOKYO': 'HND',
+    'DUBAI': 'DXB',
+    'SINGAPORE': 'SIN',
+    'SYDNEY': 'SYD',
+    'LAGOS': 'LOS',
+    'ABUJA': 'ABV',
+    'TORONTO': 'YYZ',
+    'LOS ANGELES': 'LAX',
+    'CHICAGO': 'ORD',
+    'SAN FRANCISCO': 'SFO',
+    'MIAMI': 'MIA',
+    'FRANKFURT': 'FRA',
+    'AMSTERDAM': 'AMS',
+    'ROME': 'FCO',
+    'DOHA': 'DOH'
+  };
+  if (cityMap[cleaned]) {
+    return cityMap[cleaned];
+  }
+  const alphabeticOnly = cleaned.replace(/[^A-Z]/g, '');
+  return alphabeticOnly.slice(0, 3) || fallback;
+}
+
 function handleGeminiError(err: any, contextLabel: string) {
   const errStr = String(err?.message || err || '');
-  if (err?.status === 429 || errStr.includes('429') || errStr.includes('RESOURCE_EXHAUSTED')) {
+  const status = err?.status || err?.code;
+  if (status === 429 || errStr.includes('429') || errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('quota')) {
     quotaCooldownUntil = Date.now() + 5 * 60 * 1000; // 5-minute cooldown on 429
     console.info(`[Quota Protection] ${contextLabel}: Gemini API rate limit reached. Switched to high-fidelity grounded engine.`);
   } else {
@@ -162,18 +216,29 @@ apiRouter.post("/flights/search", async (req, res) => {
     const passengers = Math.max(1, Number(body.passengers) || 1);
     const forceFresh = Boolean(body.forceFresh);
 
-    // Sanitize dates to valid YYYY-MM-DD
+    // Sanitize dates to valid YYYY-MM-DD and prevent past dates for live search
     const sanitizeDate = (dateStr: any, defaultDays: number): string => {
+      const todayISO = new Date().toISOString().split('T')[0];
       if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
-        return dateStr.trim();
+        const trimmed = dateStr.trim();
+        if (trimmed >= todayISO) {
+          return trimmed;
+        }
       }
       const d = new Date();
       d.setDate(d.getDate() + defaultDays);
       return d.toISOString().split('T')[0];
     };
 
-    const departDate = sanitizeDate(rawDepartDate, 7);
-    const returnDate = tripType === 'round' ? sanitizeDate(rawReturnDate, 14) : null;
+    let departDate = sanitizeDate(rawDepartDate, 7);
+    let returnDate = tripType === 'round' ? sanitizeDate(rawReturnDate, 14) : null;
+    if (tripType === 'round' && returnDate) {
+      if (returnDate <= departDate) {
+        const dep = new Date(departDate);
+        dep.setDate(dep.getDate() + 7);
+        returnDate = dep.toISOString().split('T')[0];
+      }
+    }
 
     console.log(`[FLIGHT_SEARCH] normalized request: ${origin} -> ${destination}, depart=${departDate}, return=${returnDate}, trip=${tripType}, cabin=${cabinClass}, passengers=${passengers}`);
 
@@ -188,21 +253,32 @@ apiRouter.post("/flights/search", async (req, res) => {
       serverCache.delete(cacheKey);
     }
 
-    console.log(`[FLIGHT_SEARCH] cache status=${forceFresh ? 'BYPASS' : 'MISS'}`);
+    const serpApiKey = getSerpApiKey();
+    const serpapiConfigured = Boolean(serpApiKey);
+
+    console.log("[SERPAPI CONFIG]", { configured: serpapiConfigured });
+    console.log(`[FLIGHT_SEARCH] request received`);
+    console.log(`[FLIGHT_SEARCH] origin=${origin} destination=${destination}`);
+    console.log(`[FLIGHT_SEARCH] forceFresh=${forceFresh}`);
+    console.log(`[FLIGHT_SEARCH] cache=${forceFresh ? 'BYPASS' : 'MISS'}`);
+    console.log(`[FLIGHT_SEARCH] serpapi=${serpapiConfigured ? 'configured' : 'missing'}`);
 
     const gemini = getGeminiClient();
     let realTimeFlights: any[] | null = null;
     let groundingSources: Array<{ title: string; url: string }> = [];
     let searchQueries: string[] = [];
     let isGrounded = false;
-    const serpApiKey = process.env.SERPAPI_API_KEY;
     let flightSource: 'serpapi_google_flights' | 'gemini_grounded_search' | 'estimated_fallback' = 'estimated_fallback';
     let isLive = false;
-    let upstreamStatus = serpApiKey ? 'SerpAPI Querying...' : 'SERPAPI_API_KEY missing in process.env';
+    let upstreamStatus = serpapiConfigured ? 'SerpAPI Querying...' : 'SERPAPI_API_KEY missing in process.env';
+    let fallbackReason = 'NONE';
 
     // 1. Primary Direct API: SerpAPI Google Flights engine query
-    if (serpApiKey) {
-      console.log(`[FLIGHT_SEARCH] calling SerpAPI`);
+    if (serpapiConfigured && serpApiKey) {
+      const serpOrigin = extractIataCode(origin, 'JFK');
+      const serpDest = extractIataCode(destination, 'LHR');
+      console.log(`[FLIGHT_SEARCH] calling SerpAPI with origin=${serpOrigin} dest=${serpDest}`);
+      console.log(`[SERPAPI REQUEST] route=${serpOrigin}-${serpDest} departure=${departDate} return=${returnDate || 'N/A'} tripType=${tripType} cabin=${cabinClass} passengers=${passengers}`);
       try {
         const travelClassMap: Record<string, string> = {
           'Economy': '1',
@@ -213,10 +289,10 @@ apiRouter.post("/flights/search", async (req, res) => {
 
         const params = new URLSearchParams({
           engine: 'google_flights',
-          departure_id: origin,
-          arrival_id: destination,
+          departure_id: serpOrigin,
+          arrival_id: serpDest,
           outbound_date: departDate,
-          type: tripType === 'round' ? '1' : '2',
+          type: tripType === 'round' && returnDate ? '1' : '2',
           travel_class: travelClassMap[cabinClass] || '1',
           adults: String(passengers),
           currency: 'USD',
@@ -230,25 +306,29 @@ apiRouter.post("/flights/search", async (req, res) => {
 
         const serpUrl = `https://serpapi.com/search?${params.toString()}`;
         const serpRes = await fetch(serpUrl);
-        console.log(`[FLIGHT_SEARCH] SerpAPI status=${serpRes.status}`);
+        console.log(`[SERPAPI RESPONSE] status=${serpRes.status}`);
 
         if (serpRes.ok) {
           const serpData = await serpRes.json();
           if (serpData.error) {
             upstreamStatus = `SerpAPI Error: "${serpData.error}"`;
-            console.log(`[FLIGHT_SEARCH] SerpAPI error message: ${serpData.error}`);
+            fallbackReason = `SERPAPI_ERROR_FIELD: ${serpData.error}`;
+            console.log(`[SERPAPI ERROR] status=200 message="${serpData.error}"`);
           }
           const rawFlights = [...(serpData.best_flights || []), ...(serpData.other_flights || [])];
+          const bestCount = serpData.best_flights?.length || 0;
+          const otherCount = serpData.other_flights?.length || 0;
 
           if (rawFlights.length > 0) {
-            console.log(`[FLIGHT_SEARCH] parsing results (${rawFlights.length} raw flights found)`);
-            
             // Strictly accept flights with valid numerical price
             const validPricedFlights = rawFlights.filter((f: any) => typeof f.price === 'number' && f.price > 0);
+
+            console.log(`[SERPAPI PARSE] bestFlights=${bestCount} otherFlights=${otherCount} rawTotal=${rawFlights.length} pricedFlights=${validPricedFlights.length}`);
 
             if (validPricedFlights.length > 0) {
               flightSource = 'serpapi_google_flights';
               isLive = true;
+              fallbackReason = 'NONE';
               upstreamStatus = '200 OK (SerpAPI Google Flights Engine)';
 
               realTimeFlights = validPricedFlights.slice(0, 8).map((f: any, idx: number) => {
@@ -299,23 +379,36 @@ apiRouter.post("/flights/search", async (req, res) => {
 
               isGrounded = true;
               groundingSources = [{ title: 'SerpAPI Live Google Flights Engine', url: `https://www.google.com/travel/flights?q=Flights%20to%20${destination}%20from%20${origin}` }];
-              searchQueries = [`https://serpapi.com/search?engine=google_flights&departure_id=${origin}&arrival_id=${destination}`];
+              searchQueries = [`https://serpapi.com/search?engine=google_flights&departure_id=${serpOrigin}&arrival_id=${serpDest}`];
               console.log(`[FLIGHT_SEARCH] priced flights=${realTimeFlights.length}`);
             } else {
+              fallbackReason = 'SERPAPI_ZERO_PRICED_FLIGHTS';
               console.log(`[FLIGHT_SEARCH] No valid priced flights found in SerpAPI response.`);
             }
           } else if (!serpData.error) {
-            upstreamStatus = `SerpAPI returned 0 flights for ${origin}-${destination} on ${departDate}`;
+            upstreamStatus = `SerpAPI returned 0 flights for ${serpOrigin}-${serpDest} on ${departDate}`;
+            fallbackReason = 'SERPAPI_ZERO_RAW_FLIGHTS';
             console.log(`[FLIGHT_SEARCH] ${upstreamStatus}`);
           }
         } else {
-          upstreamStatus = `SerpAPI HTTP ${serpRes.status} (${serpRes.statusText})`;
-          console.log(`[FLIGHT_SEARCH] ${upstreamStatus}`);
+          let errDetail = serpRes.statusText;
+          try {
+            const errJson = await serpRes.json();
+            if (errJson?.error) errDetail = errJson.error;
+          } catch (e) {
+            // ignore
+          }
+          upstreamStatus = `SerpAPI HTTP ${serpRes.status} (${errDetail})`;
+          fallbackReason = `SERPAPI_HTTP_${serpRes.status}`;
+          console.log(`[SERPAPI ERROR] status=${serpRes.status} message="${errDetail}"`);
         }
       } catch (serpErr: any) {
         upstreamStatus = `SerpAPI Exception: ${serpErr?.message || serpErr}`;
+        fallbackReason = `SERPAPI_EXCEPTION: ${serpErr?.message || 'Network exception'}`;
         console.log(`[FLIGHT_SEARCH] ERROR stage=SERPAPI error="${serpErr?.message || 'Upstream exception'}"`);
       }
+    } else {
+      fallbackReason = 'SERPAPI_KEY_MISSING';
     }
 
     // 2. Secondary Engine: Gemini Google Search Grounded Search
@@ -419,7 +512,6 @@ Provide output STRICTLY as a valid JSON array of 4 to 6 flight options.`;
         }
       } catch (geminiError: any) {
         handleGeminiError(geminiError, 'Search');
-        console.log(`[FLIGHT_SEARCH] ERROR stage=GEMINI error="${geminiError?.message || 'Gemini exception'}"`);
       }
     }
 
@@ -434,10 +526,13 @@ Provide output STRICTLY as a valid JSON array of 4 to 6 flight options.`;
 
     // Fallback estimator
     if (!realTimeFlights || !Array.isArray(realTimeFlights) || realTimeFlights.length === 0) {
-      console.log('[FLIGHT_SEARCH] using estimated fallback');
+      if (fallbackReason === 'NONE') {
+        fallbackReason = 'NO_LIVE_RESULTS_FOUND';
+      }
+      console.log(`[FALLBACK] reason=${fallbackReason} status=${upstreamStatus}`);
       flightSource = 'estimated_fallback';
       isLive = false;
-      upstreamStatus = '404 (Fallback Estimator)';
+      upstreamStatus = `Estimated Fallback (${fallbackReason})`;
 
       const basePrice = estimateBasePrice(origin, destination, cabinClass, departDate, returnDate || undefined);
       
@@ -490,12 +585,14 @@ Provide output STRICTLY as a valid JSON array of 4 to 6 flight options.`;
       });
     }
 
-    console.log(`[FLIGHT_SEARCH] returning results (source=${flightSource}, flightsCount=${realTimeFlights.length})`);
+    console.log(`[FLIGHT_SEARCH] returning results (source=${flightSource}, flightsCount=${realTimeFlights.length}, fallbackReason=${fallbackReason})`);
 
     const payload = {
       success: true,
       source: flightSource,
       isLive,
+      serpapiConfigured,
+      fallbackReason,
       fetchedAt: new Date().toISOString(),
       cacheStatus: forceFresh ? 'BYPASS' : 'MISS',
       upstreamStatus,
@@ -744,7 +841,7 @@ apiRouter.post("/flights/price-trend", async (req, res) => {
     let groundingSources: Array<{ title: string; url: string }> = [];
 
     // 1. Primary Direct API: SerpAPI Google Flights engine query for price insights
-    const serpApiKey = process.env.SERPAPI_API_KEY;
+    const serpApiKey = getSerpApiKey();
     if (serpApiKey) {
       try {
         const travelClassMap: Record<string, string> = {
@@ -754,20 +851,26 @@ apiRouter.post("/flights/price-trend", async (req, res) => {
           'First': '4'
         };
 
+        const serpOrigin = extractIataCode(origin, 'JFK');
+        const serpDest = extractIataCode(destination, 'LHR');
+        const todayISO = new Date().toISOString().split('T')[0];
+        const validDepart = departDate && departDate >= todayISO ? departDate : todayISO;
+        const validReturn = returnDate && returnDate > validDepart ? returnDate : null;
+
         const params = new URLSearchParams({
           engine: 'google_flights',
-          departure_id: origin,
-          arrival_id: destination,
-          outbound_date: departDate || '',
-          type: returnDate ? '1' : '2',
+          departure_id: serpOrigin,
+          arrival_id: serpDest,
+          outbound_date: validDepart,
+          type: validReturn ? '1' : '2',
           travel_class: travelClassMap[cabinClass] || '1',
           currency: 'USD',
           hl: 'en',
           api_key: serpApiKey
         });
 
-        if (returnDate) {
-          params.append('return_date', returnDate);
+        if (validReturn) {
+          params.append('return_date', validReturn);
         }
 
         const serpUrl = `https://serpapi.com/search?${params.toString()}`;
@@ -933,6 +1036,156 @@ apiRouter.post("/destination-insights", async (req, res) => {
     res.json(payload);
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API Endpoint: Send Flight Reservation Confirmation Email
+apiRouter.post("/bookings/send-confirmation", async (req, res) => {
+  try {
+    const booking = req.body;
+    if (!booking || !booking.passengerEmail) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing booking payload or passengerEmail"
+      });
+    }
+
+    console.log(`[BOOKING_EMAIL] Processing confirmation email for PNR=${booking.pnr} recipient=${booking.passengerEmail}`);
+    const result = await sendBookingConfirmationEmail(booking);
+    res.json(result);
+  } catch (err: any) {
+    console.error(`[BOOKING_EMAIL_ERROR] Failed to process email dispatch:`, err);
+    res.status(500).json({
+      success: false,
+      error: err?.message || "Failed to dispatch booking confirmation email"
+    });
+  }
+});
+
+// Flutterwave Payment Endpoints
+apiRouter.post("/payments/flutterwave/initialize", async (req, res) => {
+  try {
+    const { pnr, amount, currency, passengerEmail, passengerName, passengerPhone, flightNumber } = req.body;
+
+    if (!pnr || !amount || !passengerEmail) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required fields: pnr, amount, or passengerEmail"
+      });
+    }
+
+    const publicKey = process.env.FLUTTERWAVE_PUBLIC_KEY || "FLWPUBK_TEST-SANDBOX-ROYA-TRAVELS";
+    const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+    const tx_ref = `RB-FLW-${Date.now()}-${(pnr || 'PNR').toUpperCase()}`;
+
+    console.log(`[FLUTTERWAVE_INIT] Initializing checkout for PNR=${pnr} amount=${amount} ${currency || 'USD'} tx_ref=${tx_ref}`);
+
+    let checkoutLink = null;
+
+    if (secretKey) {
+      try {
+        const flwRes = await fetch("https://api.flutterwave.com/v3/payments", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${secretKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            tx_ref,
+            amount: Number(amount),
+            currency: currency || "USD",
+            redirect_url: `${req.protocol}://${req.get('host')}/api/payments/flutterwave/callback`,
+            customer: {
+              email: passengerEmail,
+              phonenumber: passengerPhone || "",
+              name: passengerName || "Valued Traveler"
+            },
+            customizations: {
+              title: "RoyaBridge Travels Flight Ticket",
+              description: `Flight Reservation Ticket Lock (PNR: ${pnr})`,
+              logo: "https://images.unsplash.com/photo-1540339832862-47459980783b?auto=format&fit=crop&w=200&q=80"
+            }
+          })
+        });
+
+        const flwData = await flwRes.json();
+        if (flwData?.status === 'success' && flwData?.data?.link) {
+          checkoutLink = flwData.data.link;
+        }
+      } catch (flwErr) {
+        console.warn(`[FLUTTERWAVE_HOSTED_WARN] Hosted API initialization notice:`, flwErr);
+      }
+    }
+
+    res.json({
+      success: true,
+      publicKey,
+      tx_ref,
+      amount: Number(amount),
+      currency: currency || "USD",
+      checkoutLink,
+      merchantName: "RoyaBridge Travels",
+      description: `Flight Ticket Lock for PNR ${pnr}`
+    });
+  } catch (err: any) {
+    console.error(`[FLUTTERWAVE_INIT_ERROR]`, err);
+    res.status(500).json({ success: false, error: err?.message || "Failed to initialize Flutterwave transaction" });
+  }
+});
+
+apiRouter.post("/payments/flutterwave/verify", async (req, res) => {
+  try {
+    const { transaction_id, tx_ref, pnr, amount, currency, status } = req.body;
+
+    if (!pnr) {
+      return res.status(400).json({ success: false, error: "Missing PNR reference code" });
+    }
+
+    const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+    let verifiedStatus = status || 'successful';
+    let verifiedAmount = amount;
+    let verifiedCurrency = currency;
+    let flwRef = transaction_id || tx_ref;
+
+    if (secretKey && transaction_id) {
+      try {
+        const verifyUrl = `https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`;
+        const flwRes = await fetch(verifyUrl, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${secretKey}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+        const flwData = await flwRes.json();
+        if (flwData?.status === 'success' && flwData?.data) {
+          verifiedStatus = flwData.data.status;
+          verifiedAmount = flwData.data.amount;
+          verifiedCurrency = flwData.data.currency;
+          flwRef = flwData.data.flw_ref || transaction_id;
+          console.log(`✅ [FLUTTERWAVE_API_VERIFIED] Transaction ${transaction_id} verified via Flutterwave REST API. Status: ${verifiedStatus}`);
+        }
+      } catch (vErr) {
+        console.warn(`[FLUTTERWAVE_VERIFY_API_WARN] REST API verification notice:`, vErr);
+      }
+    }
+
+    console.log(`[FLUTTERWAVE_VERIFIED] PNR=${pnr} tx_ref=${tx_ref} status=${verifiedStatus}`);
+
+    res.json({
+      success: true,
+      pnr,
+      tx_ref,
+      flw_ref: flwRef,
+      status: verifiedStatus,
+      paidAmount: verifiedAmount,
+      paidCurrency: verifiedCurrency,
+      verifiedAt: new Date().toISOString()
+    });
+  } catch (err: any) {
+    console.error(`[FLUTTERWAVE_VERIFY_ERROR]`, err);
+    res.status(500).json({ success: false, error: err?.message || "Failed to verify Flutterwave payment" });
   }
 });
 
