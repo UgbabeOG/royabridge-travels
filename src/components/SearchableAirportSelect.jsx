@@ -45,22 +45,55 @@ export default function SearchableAirportSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [selectedAirport]);
 
-  // Filter airports based on debounced search query while typing
+  // Filter and rank airports based on debounced search query while typing
   const query = (debouncedSearchTerm || '').trim().toLowerCase();
   
-  // Strip out display suffix if user is typing a new query
+  // Strip out display suffix if user is typing a new query over selection
   const rawInputQuery = (isOpen && selectedAirport && searchTerm.includes(`(${selectedAirport.code})`))
     ? '' 
     : query;
 
-  const filteredAirports = airports.filter(ap => {
-    if (!rawInputQuery) return true;
-    const matchCode = ap.code?.toLowerCase().includes(rawInputQuery);
-    const matchCity = ap.city?.toLowerCase().includes(rawInputQuery);
-    const matchCountry = ap.country?.toLowerCase().includes(rawInputQuery);
-    const matchName = ap.name?.toLowerCase().includes(rawInputQuery);
-    return matchCode || matchCity || matchCountry || matchName;
-  });
+  const filteredAirports = React.useMemo(() => {
+    if (!rawInputQuery) {
+      const popular = airports.filter(a => a.isPopular);
+      if (popular.length >= 50) return popular.slice(0, 50);
+      const remaining = airports.filter(a => !a.isPopular);
+      return [...popular, ...remaining].slice(0, 50);
+    }
+
+    const matches = [];
+    for (let i = 0; i < airports.length; i++) {
+      const ap = airports[i];
+      const codeLower = ap.code?.toLowerCase() || '';
+      const cityLower = ap.city?.toLowerCase() || '';
+      const countryLower = ap.country?.toLowerCase() || '';
+      const countryCodeLower = ap.countryCode?.toLowerCase() || '';
+      const nameLower = ap.name?.toLowerCase() || '';
+      const stateLower = ap.state?.toLowerCase() || '';
+
+      let score = -1;
+
+      if (codeLower === rawInputQuery) score = 1000;
+      else if (codeLower.startsWith(rawInputQuery)) score = 850;
+      else if (cityLower === rawInputQuery) score = 700;
+      else if (cityLower.startsWith(rawInputQuery)) score = 600;
+      else if (cityLower.includes(rawInputQuery)) score = 500;
+      else if (countryLower === rawInputQuery) score = 450;
+      else if (countryLower.startsWith(rawInputQuery)) score = 400;
+      else if (countryLower.includes(rawInputQuery)) score = 350;
+      else if (nameLower.includes(rawInputQuery)) score = 300;
+      else if (stateLower.includes(rawInputQuery)) score = 250;
+      else if (countryCodeLower === rawInputQuery) score = 200;
+
+      if (score > 0) {
+        if (ap.isPopular) score += 50;
+        matches.push({ ap, score });
+      }
+    }
+
+    matches.sort((a, b) => b.score - a.score || (a.ap.city || '').localeCompare(b.ap.city || ''));
+    return matches.slice(0, 60).map(m => m.ap);
+  }, [airports, rawInputQuery]);
 
   const handleSelect = (apCode) => {
     onChange(apCode);

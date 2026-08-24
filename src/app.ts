@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import { GoogleGenAI } from "@google/genai";
 import { sendBookingConfirmationEmail } from "./lib/emailService.js";
+import { loadAllAirports, searchAirports, getAirportByCode } from "./lib/airportLoader.js";
 
 const app = express();
 
@@ -49,28 +50,9 @@ function extractIataCode(locationStr: string, fallback: string): string {
   if (matchAny) {
     return matchAny[1];
   }
-  const cityMap: Record<string, string> = {
-    'LONDON': 'LHR',
-    'NEW YORK': 'JFK',
-    'PARIS': 'CDG',
-    'TOKYO': 'HND',
-    'DUBAI': 'DXB',
-    'SINGAPORE': 'SIN',
-    'SYDNEY': 'SYD',
-    'LAGOS': 'LOS',
-    'ABUJA': 'ABV',
-    'TORONTO': 'YYZ',
-    'LOS ANGELES': 'LAX',
-    'CHICAGO': 'ORD',
-    'SAN FRANCISCO': 'SFO',
-    'MIAMI': 'MIA',
-    'FRANKFURT': 'FRA',
-    'AMSTERDAM': 'AMS',
-    'ROME': 'FCO',
-    'DOHA': 'DOH'
-  };
-  if (cityMap[cleaned]) {
-    return cityMap[cleaned];
+  const found = searchAirports(locationStr, 1);
+  if (found && found.length > 0) {
+    return found[0].code;
   }
   const alphabeticOnly = cleaned.replace(/[^A-Z]/g, '');
   return alphabeticOnly.slice(0, 3) || fallback;
@@ -771,12 +753,22 @@ apiRouter.get("/destinations", (req, res) => {
   }
 });
 
-// API Endpoint: Get Airports
+// API Endpoint: Get Airports (Supports search query `?q=` or returns all loaded airports)
 apiRouter.get("/airports", (req, res) => {
-  res.json({
-    success: true,
-    airports: BACKEND_AIRPORTS
-  });
+  try {
+    const query = typeof req.query.q === 'string' ? req.query.q : '';
+    const limit = Number(req.query.limit) || (query ? 100 : 10000);
+    
+    const results = searchAirports(query, limit);
+
+    res.json({
+      success: true,
+      count: results.length,
+      airports: results
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message, airports: [] });
+  }
 });
 
 // API Endpoint: Price Validation

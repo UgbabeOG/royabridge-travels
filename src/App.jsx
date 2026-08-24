@@ -51,6 +51,23 @@ export default function App() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState('');
 
+  const [allAirports, setAllAirports] = useState(POPULAR_AIRPORTS);
+
+  useEffect(() => {
+    async function fetchAirports() {
+      try {
+        const res = await fetch('/api/airports');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.airports)) {
+          setAllAirports(data.airports);
+        }
+      } catch (err) {
+        console.warn('Failed to load global airports in App.jsx:', err);
+      }
+    }
+    fetchAirports();
+  }, []);
+
   // Perform initial search on load
   useEffect(() => {
     executeFlightSearch(searchQuery);
@@ -135,8 +152,8 @@ export default function App() {
   };
 
   const handleSelectFlight = (flight) => {
-    const originObj = POPULAR_AIRPORTS.find(a => a.code === flight.origin) || { code: flight.origin, city: flight.origin, name: flight.origin };
-    const destObj = POPULAR_AIRPORTS.find(a => a.code === flight.destination) || { code: flight.destination, city: flight.destination, name: flight.destination };
+    const originObj = allAirports.find(a => a.code === flight.origin) || { code: flight.origin, city: flight.origin, name: flight.origin };
+    const destObj = allAirports.find(a => a.code === flight.destination) || { code: flight.destination, city: flight.destination, name: flight.destination };
 
     setReserveModalData({
       tripType: searchQuery.tripType || 'round',
