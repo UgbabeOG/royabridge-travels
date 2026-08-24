@@ -1062,6 +1062,110 @@ apiRouter.post("/bookings/send-confirmation", async (req, res) => {
   }
 });
 
+// API Endpoint: AI Flight Concierge Chat
+apiRouter.post("/chat", async (req, res) => {
+  try {
+    const { message, history } = req.body;
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({ success: false, error: "Message is required" });
+    }
+
+    const trimmedMsg = message.trim();
+    const ai = getGeminiClient();
+
+    const systemPrompt = `You are RoyaBridge Travels' Senior Flight Concierge AI Assistant.
+RoyaBridge Travels is an elite global flight concierge service offering up to 30% savings on Economy, Business, and First Class flights worldwide.
+
+Key Business Knowledge:
+1. Reserve Before Payment: Customers can hold flight seats for 24-48 hours with an official airline PNR reference without paying upfront ($0 today). Ideal for securing fare prices and visa applications.
+2. Visa Compliance: Our official flight itinerary holds contain live airline PNRs accepted by embassies, consulates, and immigration authorities globally.
+3. Discount Fares: Wholesale corporate & consolidator rates deliver up to 30% savings vs standard online engines.
+4. Lead Passenger Policy: Lead passenger must be 18+ with valid Date of Birth and Passport number.
+5. Flexible Payment Options: Support for Credit/Debit cards, M-Pesa, Mobile Money, Bank Transfer, Apple Pay, USSD.
+6. Support Contact: support@royabridge.com | 24/7 Concierge Hotline: +1 (800) 769-2274.
+7. Manage Bookings: Customers can track or pay for their held PNR itinerary anytime using the 'Manage Booking' tab on the homepage.
+
+Guidelines:
+- Be warm, professional, sophisticated, and concise (keep responses around 2-4 sentences unless detailed step-by-step instructions are asked).
+- Use clear, elegant formatting.
+- Help users with searching flights, understanding reservation holds, checking PNR status, visa requirements, cabin upgrades, or contact info.`;
+
+    if (ai && !isQuotaExhausted()) {
+      try {
+        const contents: any[] = [];
+        if (Array.isArray(history)) {
+          history.slice(-6).forEach((h: any) => {
+            if (h.text && (h.sender || h.role)) {
+              contents.push({
+                role: (h.sender === 'user' || h.role === 'user') ? 'user' : 'model',
+                parts: [{ text: h.text }]
+              });
+            }
+          });
+        }
+        contents.push({
+          role: 'user',
+          parts: [{ text: trimmedMsg }]
+        });
+
+        const result = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: contents,
+          config: {
+            systemInstruction: systemPrompt,
+            temperature: 0.7,
+            maxOutputTokens: 500
+          }
+        });
+
+        const replyText = result.text?.trim();
+        if (replyText) {
+          return res.json({
+            success: true,
+            reply: replyText,
+            source: 'gemini'
+          });
+        }
+      } catch (geminiErr) {
+        handleGeminiError(geminiErr, "ConciergeChat");
+      }
+    }
+
+    // Fallback Smart Rule Engine when Gemini API is unavailable or rate-limited
+    let fallbackReply = "Thank you for reaching out to RoyaBridge Travels! Our senior flight concierge team is available 24/7. How can I assist you with your flight reservation, fare lock, or travel route today?";
+    const q = trimmedMsg.toLowerCase();
+
+    if (q.includes('reserve') || q.includes('hold') || q.includes('payment') || q.includes('free')) {
+      fallbackReply = "With our 'Reserve Before Payment' option, we issue a verified 24-48 hour airline PNR hold on your flight with $0 upfront. You can inspect your itinerary, confirm details, or use it for visa processing before making payment.";
+    } else if (q.includes('visa') || q.includes('embassy') || q.includes('consulate')) {
+      fallbackReply = "Yes! Our official flight reservation holds feature active airline PNR codes that satisfy all embassy and consulate requirements for visa applications worldwide.";
+    } else if (q.includes('price') || q.includes('discount') || q.includes('cheap') || q.includes('deal') || q.includes('30%')) {
+      fallbackReply = "RoyaBridge Travels provides wholesale consolidated rates saving up to 30% compared to standard travel sites across Economy, Business, and First Class cabins.";
+    } else if (q.includes('pnr') || q.includes('track') || q.includes('status') || q.includes('my booking')) {
+      fallbackReply = "You can instantly verify or manage your flight reservation using our 'Manage Booking' tool on the homepage with your PNR code and passenger last name.";
+    } else if (q.includes('passport') || q.includes('age') || q.includes('18') || q.includes('lead')) {
+      fallbackReply = "When reserving a flight, the lead passenger must be at least 18 years old and provide a valid Date of Birth and Passport Number for airline safety compliance.";
+    } else if (q.includes('contact') || q.includes('phone') || q.includes('email') || q.includes('agent')) {
+      fallbackReply = "You can reach our 24/7 Senior Concierge team directly at support@royabridge.com or call us at +1 (800) 769-2274 for immediate priority booking assistance.";
+    } else if (q.includes('business') || q.includes('first class') || q.includes('cabin') || q.includes('upgrade')) {
+      fallbackReply = "We specialize in discounted Business and First Class long-haul fares with premium lie-flat seating, priority lounge access, and flexible cancellation holds.";
+    }
+
+    res.json({
+      success: true,
+      reply: fallbackReply,
+      source: 'concierge-engine'
+    });
+
+  } catch (err: any) {
+    console.error(`[CHAT_API_ERROR]`, err);
+    res.status(500).json({
+      success: false,
+      reply: "Our concierge network is currently updating live flight availability. Please re-send your message or reach us at support@royabridge.com for immediate assistance."
+    });
+  }
+});
+
 // Flutterwave Payment Endpoints
 apiRouter.post("/payments/flutterwave/initialize", async (req, res) => {
   try {
