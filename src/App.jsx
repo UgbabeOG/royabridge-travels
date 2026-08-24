@@ -10,6 +10,8 @@ import ReserveModal from './components/ReserveModal';
 import BookingTracker from './components/BookingTracker';
 import ConciergeChat from './components/ConciergeChat';
 import ContactModal from './components/ContactModal';
+import TermsOfServiceModal from './components/TermsOfServiceModal';
+import RefundPolicyModal from './components/RefundPolicyModal';
 import FAQSection from './components/FAQSection';
 import Footer from './components/Footer';
 import ToastNotification from './components/ToastNotification';
@@ -24,6 +26,8 @@ export default function App() {
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [isRefundsOpen, setIsRefundsOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
 
   const showToast = ({ type = 'success', title, message, pnr, duration = 5000 }) => {
@@ -281,6 +285,8 @@ export default function App() {
       <Footer 
         onOpenChat={() => setIsChatOpen(true)}
         onOpenContact={() => setIsContactOpen(true)}
+        onOpenTerms={() => setIsTermsOpen(true)}
+        onOpenRefunds={() => setIsRefundsOpen(true)}
       />
 
 
@@ -316,6 +322,34 @@ export default function App() {
         onClose={() => setIsContactOpen(false)}
         onOpenChat={() => {
           setIsContactOpen(false);
+          setIsChatOpen(true);
+        }}
+      />
+
+      {/* Terms of Service Legal Dialog */}
+      <TermsOfServiceModal 
+        isOpen={isTermsOpen}
+        onClose={() => setIsTermsOpen(false)}
+        onOpenContact={() => {
+          setIsTermsOpen(false);
+          setIsContactOpen(true);
+        }}
+        onOpenChat={() => {
+          setIsTermsOpen(false);
+          setIsChatOpen(true);
+        }}
+      />
+
+      {/* Cancellation & Refund Policy Legal Dialog */}
+      <RefundPolicyModal 
+        isOpen={isRefundsOpen}
+        onClose={() => setIsRefundsOpen(false)}
+        onOpenContact={() => {
+          setIsRefundsOpen(false);
+          setIsContactOpen(true);
+        }}
+        onOpenChat={() => {
+          setIsRefundsOpen(false);
           setIsChatOpen(true);
         }}
       />

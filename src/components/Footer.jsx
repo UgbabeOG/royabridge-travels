@@ -1,7 +1,7 @@
 import React from 'react';
 import { Phone, Mail, MapPin, ArrowUp, Facebook, Instagram, Twitter, MessageCircle } from 'lucide-react';
 
-export default function Footer({ onOpenChat, onOpenContact }) {
+export default function Footer({ onOpenChat, onOpenContact, onOpenTerms, onOpenRefunds }) {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -166,10 +166,19 @@ export default function Footer({ onOpenChat, onOpenContact }) {
             © {new Date().getFullYear()} <strong>RoyaBridge Travels</strong>. All Rights Reserved. Discover the World, Save Big and Travel Better.
           </div>
 
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <a href="/sitemap.xml" style={{ color: '#64748B', textDecoration: 'none' }}>Sitemap</a>
-            <a href="#" style={{ color: '#64748B', textDecoration: 'none' }}>Privacy Policy</a>
-            <a href="#" style={{ color: '#64748B', textDecoration: 'none' }}>Terms of Service</a>
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <button 
+              onClick={(e) => { e.preventDefault(); if (onOpenRefunds) onOpenRefunds(); }} 
+              style={{ background: 'none', border: 'none', color: '#94A3B8', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.82rem', padding: 0 }}
+            >
+              Refund Policy
+            </button>
+            <button 
+              onClick={(e) => { e.preventDefault(); if (onOpenTerms) onOpenTerms(); }} 
+              style={{ background: 'none', border: 'none', color: '#94A3B8', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.82rem', padding: 0 }}
+            >
+              Terms of Service
+            </button>
           </div>
 
           <button 
