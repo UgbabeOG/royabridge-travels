@@ -292,7 +292,7 @@ ${window.location.origin}`;
         }
       }
 
-      if (onOpenChat) onOpenChat();
+      // Reservation created successfully
     } catch (err) {
       console.error('Error saving booking:', err);
       setValidationError('Failed to store reservation in database. Please try again.');
