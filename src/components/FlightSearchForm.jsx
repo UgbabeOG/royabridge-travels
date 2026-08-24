@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Plane, Calendar, Users, Shield, ArrowRightLeft, Sparkles, Activity, Search, History, Clock, ArrowRight, Tag, Globe, Plus, Trash2, MapPin } from 'lucide-react';
 import { POPULAR_AIRPORTS, INTERCITY_ROUTES } from '../data/destinations';
 import { calculateSavings, formatCurrency } from '../utils/pnrGenerator';
-import { useDateGroundedFlightSearch } from '../hooks/useDateGroundedFlightSearch';
 import SearchableAirportSelect from './SearchableAirportSelect';
 
 export default function FlightSearchForm({ onSearchFlights, loading, currency = 'USD', onCurrencyChange }) {
@@ -205,21 +204,6 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
 
     onSearchFlights(searchPayload);
   }, [tripType, cabinClass, passengers, adults, childrenCount, infants, origin, destination, departDate, returnDate, multiCityLegs, airports, reserveBeforePayment, savings, onSearchFlights, saveRecentSearch]);
-
-  // Request hook that triggers a fresh grounded search whenever departure or return date updates
-  useDateGroundedFlightSearch({
-    departDate,
-    returnDate,
-    origin,
-    destination,
-    tripType,
-    cabinClass,
-    passengers,
-    multiCityLegs,
-    onSearchFlights: executeSearch,
-    debounceMs: 350,
-    enabled: true
-  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
