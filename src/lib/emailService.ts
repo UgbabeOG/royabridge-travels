@@ -5,6 +5,8 @@ export interface BookingDataForEmail {
   passengerName: string;
   passengerEmail: string;
   passengerPhone?: string;
+  passengerDob?: string;
+  passengerPassport?: string;
   flightNumber?: string;
   airline?: string;
   origin?: string;
@@ -34,6 +36,8 @@ export function generateBookingEmailHtml(booking: BookingDataForEmail): string {
   const name = booking.passengerName || 'Valued Traveler';
   const email = booking.passengerEmail || '';
   const phone = booking.passengerPhone || 'Not specified';
+  const dob = booking.passengerDob || 'Not specified';
+  const passport = booking.passengerPassport || 'Not specified';
   const flight = booking.flightNumber || 'BA178';
   const airline = booking.airline || 'British Airways';
   const origin = booking.origin || 'JFK';
@@ -295,6 +299,14 @@ export function generateBookingEmailHtml(booking: BookingDataForEmail): string {
         <tr>
           <td class="label">Phone / WhatsApp:</td>
           <td class="value">${phone}</td>
+        </tr>
+        <tr>
+          <td class="label">Date of Birth (18+):</td>
+          <td class="value">${dob}</td>
+        </tr>
+        <tr>
+          <td class="label">Passport Number:</td>
+          <td class="value">${passport}</td>
         </tr>
         <tr>
           <td class="label">Seat Preference:</td>

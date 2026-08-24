@@ -43,7 +43,7 @@ export default function BookingTracker({ isOpen, onClose, onOpenChat, showToast,
             showToast({
               type: 'success',
               title: 'Ticket Issued & Paid!',
-              message: `Payment confirmed via Flutterwave for PNR ${result.pnr}. Official ticket issued!`,
+              message: `Payment confirmed for PNR ${result.pnr}. Official ticket issued!`,
               pnr: result.pnr
             });
           }
@@ -57,7 +57,7 @@ export default function BookingTracker({ isOpen, onClose, onOpenChat, showToast,
             showToast({
               type: 'error',
               title: 'Payment Encountered Error',
-              message: err?.message || 'Could not complete Flutterwave payment.'
+              message: err?.message || 'Could not complete payment.'
             });
           }
         }
@@ -420,6 +420,8 @@ ${window.location.origin}`;
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.86rem', color: '#CBD5E1', marginBottom: '16px' }}>
                   <div><strong>Lead Passenger:</strong> {result.passenger}</div>
                   <div><strong>Email:</strong> {result.email || 'N/A'}</div>
+                  {result.dob && <div><strong>Date of Birth:</strong> {result.dob}</div>}
+                  {result.passport && <div><strong>Passport Number:</strong> {result.passport.toUpperCase()}</div>}
                   <div><strong>Flight:</strong> {result.airline} ({result.flightNumber})</div>
                   <div><strong>Cabin:</strong> {result.cabin}</div>
                   <div style={{ gridColumn: 'span 2' }}><strong>Route:</strong> {result.route}</div>
@@ -436,7 +438,7 @@ ${window.location.origin}`;
                   <span style={{ color: '#6EE7B7', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.88rem' }}>
                     {result.isPaid || result.status === 'PAID_TICKET_ISSUED' ? (
                       <>
-                        <CheckCircle size={15} color="#10B981" /> Paid & Confirmed via Flutterwave
+                        <CheckCircle size={15} color="#10B981" /> Paid & Confirmed
                       </>
                     ) : (
                       <>
@@ -446,7 +448,7 @@ ${window.location.origin}`;
                   </span>
                 </div>
 
-                {/* Flutterwave Payment Banner / Button if Unpaid */}
+                {/* Payment Banner / Button if Unpaid */}
                 {!(result.isPaid || result.status === 'PAID_TICKET_ISSUED') && (
                   <div style={{
                     background: 'linear-gradient(135deg, rgba(229,193,88,0.1) 0%, rgba(245,158,11,0.15) 100%)',
@@ -460,7 +462,7 @@ ${window.location.origin}`;
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: '0.82rem', color: '#FFF', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <CreditCard size={16} color="var(--color-gold-bright)" /> Complete Payment via Flutterwave
+                        <CreditCard size={16} color="var(--color-gold-bright)" /> Complete Payment
                       </span>
                       <span style={{ fontSize: '0.72rem', color: '#94A3B8' }}>Cards, Mobile Money, Bank Transfer</span>
                     </div>
@@ -482,7 +484,7 @@ ${window.location.origin}`;
                       }}
                     >
                       {isPaying ? <RefreshCw className="animate-spin" size={16} /> : <CreditCard size={16} />}
-                      {isPaying ? 'Launching Flutterwave Modal...' : `Pay ${formatCurrency(result.totalFare, currency)} via Flutterwave`}
+                      {isPaying ? 'Launching Secure Checkout...' : `Pay ${formatCurrency(result.totalFare, currency)}`}
                     </button>
                   </div>
                 )}

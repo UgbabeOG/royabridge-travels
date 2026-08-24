@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { X, ShieldCheck, Download, Printer, MessageCircle, Clock, CheckCircle2, Copy, Plane, Activity, AlertCircle, Shield, Sparkles, Check, Luggage, PlusCircle, FileText, Lock, HeartHandshake, Search, Globe, ExternalLink, Share2, Mail, Send, CreditCard, CheckCircle } from 'lucide-react';
 import { generatePNR, formatCurrency } from '../utils/pnrGenerator';
 import { saveBookingToDatabase, updateBookingPaymentStatus } from '../lib/bookingsService';
-import { validateEmail, validatePhone, validateName } from '../utils/validation';
+import { validateEmail, validatePhone, validateName, validateDob, validatePassport } from '../utils/validation';
 import { openFlutterwavePayment } from '../utils/flutterwave';
 
 export default function ReserveModal({ data, onClose, onOpenChat, showToast, currency = 'USD' }) {
   const [passengerName, setPassengerName] = useState('');
   const [passengerEmail, setPassengerEmail] = useState('');
   const [passengerPhone, setPassengerPhone] = useState('');
+  const [passengerDob, setPassengerDob] = useState('');
+  const [passengerPassport, setPassengerPassport] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
   const [seatPreference, setSeatPreference] = useState('Window');
   const [mealPreference, setMealPreference] = useState('Standard');
@@ -28,7 +30,7 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
     carbonOffset: false // Eco-Travel Carbon Neutral Offset ($12/pax)
   });
 
-  const [fieldErrors, setFieldErrors] = useState({ name: '', email: '', phone: '' });
+  const [fieldErrors, setFieldErrors] = useState({ name: '', email: '', phone: '', dob: '', passport: '' });
   const [validationError, setValidationError] = useState('');
   const [confirmedSuccess, setConfirmedSuccess] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -68,9 +70,12 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
     const retDate = data.returnDate ? ` | Return: ${data.returnDate}` : '';
     const price = formatCurrency(totalFinalPrice, currency);
 
+    const paxDob = passengerDob ? ` | DOB: ${passengerDob}` : '';
+    const paxPassport = passengerPassport ? ` | Passport: ${passengerPassport.toUpperCase()}` : '';
+
     return `✈️ ROYA BRIDGE TRAVELS - FLIGHT ITINERARY HOLD
 📌 PNR Reference: ${pnr}
-👤 Lead Passenger: ${paxName}
+👤 Lead Passenger: ${paxName}${paxDob}${paxPassport}
 🛫 Flight: ${airln} (${flightNo})
 📍 Route: ${orig} ➔ ${dest}
 📅 Departure: ${depDate}${retDate}
@@ -181,17 +186,21 @@ ${window.location.origin}`;
     const nameVal = validateName(passengerName);
     const emailVal = validateEmail(passengerEmail);
     const phoneVal = validatePhone(passengerPhone);
+    const dobVal = validateDob(passengerDob);
+    const passportVal = validatePassport(passengerPassport);
 
     const errors = {
       name: nameVal.error || '',
       email: emailVal.error || '',
-      phone: phoneVal.error || ''
+      phone: phoneVal.error || '',
+      dob: dobVal.error || '',
+      passport: passportVal.error || ''
     };
 
     setFieldErrors(errors);
 
-    if (!nameVal.isValid || !emailVal.isValid || !phoneVal.isValid) {
-      const firstErr = nameVal.error || emailVal.error || phoneVal.error;
+    if (!nameVal.isValid || !emailVal.isValid || !phoneVal.isValid || !dobVal.isValid || !passportVal.isValid) {
+      const firstErr = nameVal.error || emailVal.error || phoneVal.error || dobVal.error || passportVal.error;
       setValidationError(firstErr);
       return;
     }
@@ -208,6 +217,8 @@ ${window.location.origin}`;
         passengerName: passengerName.trim(),
         passengerEmail: passengerEmail.trim(),
         passengerPhone: passengerPhone.trim(),
+        passengerDob: passengerDob.trim(),
+        passengerPassport: passengerPassport.trim().toUpperCase(),
         flightNumber: data.flightNumber || 'BA178',
         airline: data.airline || 'British Airways',
         origin: data.origin?.code || data.origin || 'JFK',
@@ -251,8 +262,8 @@ ${window.location.origin}`;
             if (showToast) {
               showToast({
                 type: 'success',
-                title: 'Payment Verified via Flutterwave!',
-                message: `Ticket issued & confirmed for ${passengerName.trim()}. Payment ref: ${payRes.flw_ref || payRes.tx_ref || 'FLW-OK'}.`,
+                title: 'Payment Confirmed!',
+                message: `Ticket issued & confirmed for ${passengerName.trim()}. Payment ref: ${payRes.flw_ref || payRes.tx_ref || 'OK'}.`,
                 pnr: pnr
               });
             }
@@ -267,7 +278,7 @@ ${window.location.origin}`;
             }
           },
           onError: (err) => {
-            setValidationError(err?.message || 'Flutterwave payment was cancelled or encountered an issue. Your PNR hold remains active.');
+            setValidationError(err?.message || 'Payment process was cancelled or encountered an issue. Your PNR hold remains active.');
           }
         });
       } else {
@@ -750,6 +761,14 @@ ${window.location.origin}`;
                       <strong>{data.departDate || '2026-08-20'}</strong>
                     </div>
                     <div>
+                      <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>Date of Birth</span>
+                      <strong>{passengerDob || 'N/A'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>Passport Number</span>
+                      <strong>{passengerPassport?.toUpperCase() || 'N/A'}</strong>
+                    </div>
+                    <div>
                       <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>Class & Seat</span>
                       <strong>{selectedCabin} ({seatPreference})</strong>
                     </div>
@@ -921,6 +940,61 @@ ${window.location.origin}`;
                   {fieldErrors.phone && (
                     <span style={{ fontSize: '0.72rem', color: '#FCA5A5', marginTop: '2px', display: 'block' }}>
                       {fieldErrors.phone}
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>
+                    Date of Birth (Must be 18+) <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <input 
+                    type="date" 
+                    value={passengerDob} 
+                    max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+                    onChange={(e) => { 
+                      setPassengerDob(e.target.value); 
+                      setValidationError(''); 
+                      setFieldErrors(prev => ({ ...prev, dob: '' }));
+                    }}
+                    style={{
+                      ...modalInputStyle,
+                      borderColor: fieldErrors.dob ? '#EF4444' : 'var(--border-gold)',
+                      colorScheme: 'dark'
+                    }}
+                  />
+                  {fieldErrors.dob ? (
+                    <span style={{ fontSize: '0.72rem', color: '#FCA5A5', marginTop: '2px', display: 'block' }}>
+                      {fieldErrors.dob}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '0.7rem', color: '#64748B', marginTop: '2px', display: 'block' }}>
+                      Lead passenger must be 18 or older
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>
+                    Passport Number <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. A12345678"
+                    value={passengerPassport} 
+                    onChange={(e) => { 
+                      setPassengerPassport(e.target.value.toUpperCase()); 
+                      setValidationError(''); 
+                      setFieldErrors(prev => ({ ...prev, passport: '' }));
+                    }}
+                    style={{
+                      ...modalInputStyle,
+                      borderColor: fieldErrors.passport ? '#EF4444' : 'var(--border-gold)'
+                    }}
+                  />
+                  {fieldErrors.passport && (
+                    <span style={{ fontSize: '0.72rem', color: '#FCA5A5', marginTop: '2px', display: 'block' }}>
+                      {fieldErrors.passport}
                     </span>
                   )}
                 </div>
@@ -1144,10 +1218,10 @@ ${window.location.origin}`;
                 gap: '4px'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                  <CheckCircle size={18} color="#10B981" /> TICKET PAID VIA FLUTTERWAVE
+                  <CheckCircle size={18} color="#10B981" /> TICKET PAID & CONFIRMED
                 </div>
                 <span style={{ fontSize: '0.72rem', color: '#A7F3D0', fontWeight: 600 }}>
-                  Ref: {flwDetails?.flw_ref || flwDetails?.tx_ref || 'FLW-SUCCESS'}
+                  Ref: {flwDetails?.flw_ref || flwDetails?.tx_ref || 'SUCCESS'}
                 </span>
               </div>
             ) : (
@@ -1157,7 +1231,7 @@ ${window.location.origin}`;
                   CHOOSE CHECKOUT MODE
                 </span>
 
-                {/* Option 1: Flutterwave */}
+                {/* Option 1: Instant Payment */}
                 <div 
                   onClick={() => setCheckoutMode('flutterwave')}
                   style={{
@@ -1182,7 +1256,7 @@ ${window.location.origin}`;
                     }} />
                     <div>
                       <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#FFF', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <CreditCard size={15} color="var(--color-gold-bright)" /> Pay via Flutterwave
+                        <CreditCard size={15} color="var(--color-gold-bright)" /> Pay Now & Issue Ticket
                       </div>
                       <div style={{ fontSize: '0.72rem', color: '#94A3B8' }}>
                         Cards, M-Pesa, Mobile Money, Bank Transfer, Apple Pay
@@ -1244,7 +1318,7 @@ ${window.location.origin}`;
                   style={{ width: '100%', padding: '12px', fontSize: '0.92rem', fontWeight: 800 }}
                 >
                   {saving ? <Activity className="animate-spin" size={16} /> : (checkoutMode === 'flutterwave' ? <CreditCard size={16} /> : <MessageCircle size={16} />)}
-                  {saving ? 'Processing Booking...' : (checkoutMode === 'flutterwave' ? `Pay ${formatCurrency(totalFinalPrice, currency)} via Flutterwave` : 'Confirm Flight Hold ($0 Now)')}
+                  {saving ? 'Processing Booking...' : (checkoutMode === 'flutterwave' ? `Pay ${formatCurrency(totalFinalPrice, currency)}` : 'Confirm Flight Hold ($0 Now)')}
                 </button>
               ) : (
                 <button 

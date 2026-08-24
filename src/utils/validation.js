@@ -70,6 +70,79 @@ export function validatePhone(phone) {
 }
 
 /**
+ * Validates lead passenger Date of Birth (must be at least 18 years old).
+ * @param {string} dob 
+ * @returns {{ isValid: boolean, age?: number, error: string | null }}
+ */
+export function validateDob(dob) {
+  if (!dob || typeof dob !== 'string') {
+    return { isValid: false, error: 'Date of birth is required.' };
+  }
+
+  const trimmed = dob.trim();
+  if (!trimmed) {
+    return { isValid: false, error: 'Date of birth is required for lead passenger.' };
+  }
+
+  const birthDate = new Date(trimmed);
+  if (isNaN(birthDate.getTime())) {
+    return { isValid: false, error: 'Please enter a valid date of birth.' };
+  }
+
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+
+  if (birthDate > today) {
+    return { isValid: false, error: 'Date of birth cannot be in the future.' };
+  }
+
+  if (age < 18) {
+    return { isValid: false, age, error: 'Lead passenger must be at least 18 years old.' };
+  }
+
+  if (age > 120) {
+    return { isValid: false, error: 'Please enter a valid date of birth.' };
+  }
+
+  return { isValid: true, age, error: null };
+}
+
+/**
+ * Validates lead passenger passport number.
+ * @param {string} passport 
+ * @returns {{ isValid: boolean, error: string | null }}
+ */
+export function validatePassport(passport) {
+  if (!passport || typeof passport !== 'string') {
+    return { isValid: false, error: 'Passport number is required.' };
+  }
+
+  const trimmed = passport.trim();
+  if (trimmed.length === 0) {
+    return { isValid: false, error: 'Passport number is required.' };
+  }
+
+  if (trimmed.length < 5) {
+    return { isValid: false, error: 'Passport number must be at least 5 characters.' };
+  }
+
+  if (trimmed.length > 20) {
+    return { isValid: false, error: 'Passport number cannot exceed 20 characters.' };
+  }
+
+  if (!/^[a-zA-Z0-9\s\-]+$/.test(trimmed)) {
+    return { isValid: false, error: 'Passport number should only contain letters and numbers.' };
+  }
+
+  return { isValid: true, error: null };
+}
+
+
+/**
  * Validates lead passenger full legal name.
  * @param {string} name 
  * @returns {{ isValid: boolean, error: string | null }}
