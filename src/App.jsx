@@ -162,6 +162,7 @@ export default function App() {
       departDate: searchQuery.departDate || '2026-08-15',
       returnDate: searchQuery.returnDate || '2026-08-29',
       passengers: searchQuery.passengers || 1,
+      passengerBreakdown: searchQuery.passengerBreakdown || { adults: searchQuery.passengers || 1, children: 0, infants: 0 },
       cabinClass: flight.cabinClass || searchQuery.cabinClass || 'Business',
       flightNumber: flight.flightNumber,
       airline: flight.airline,

@@ -1170,8 +1170,9 @@ apiRouter.post("/payments/flutterwave/initialize", async (req, res) => {
       });
     }
 
-    const publicKey = process.env.FLUTTERWAVE_PUBLIC_KEY || "FLWPUBK_TEST-SANDBOX-ROYA-TRAVELS";
-    const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+    const publicKey = process.env.FLUTTERWAVE_PUBLIC_KEY || "FLWPUBK-bbe98ad6b46d6215f7566271944c97c0-X";
+    const secretKey = process.env.FLUTTERWAVE_SECRET_KEY || "wrMDHYfVePaSb8oDKszlL5HKcuRqQm6O";
+    const encryptionKey = process.env.FLUTTERWAVE_ENCRYPTION_KEY || "1UJgj+4W0VxDeWQGXcoIMvZVqmGxZCOq6e8VddYrpWI=";
     const tx_ref = `RB-FLW-${Date.now()}-${(pnr || 'PNR').toUpperCase()}`;
 
     console.log(`[FLUTTERWAVE_INIT] Initializing checkout for PNR=${pnr} amount=${amount} ${currency || 'USD'} tx_ref=${tx_ref}`);
@@ -1237,7 +1238,7 @@ apiRouter.post("/payments/flutterwave/verify", async (req, res) => {
       return res.status(400).json({ success: false, error: "Missing PNR reference code" });
     }
 
-    const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+    const secretKey = process.env.FLUTTERWAVE_SECRET_KEY || "wrMDHYfVePaSb8oDKszlL5HKcuRqQm6O";
     let verifiedStatus = status || 'successful';
     let verifiedAmount = amount;
     let verifiedCurrency = currency;

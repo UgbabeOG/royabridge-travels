@@ -112,6 +112,58 @@ export function validateDob(dob) {
 }
 
 /**
+ * Validates any passenger Date of Birth based on type (adult, child, infant) and lead status.
+ * @param {string} dob 
+ * @param {'adult' | 'child' | 'infant'} type 
+ * @param {boolean} isLead 
+ * @returns {{ isValid: boolean, age?: number, error: string | null }}
+ */
+export function validatePassengerDob(dob, type = 'adult', isLead = false) {
+  if (!dob || typeof dob !== 'string') {
+    return { isValid: false, error: 'Date of birth is required.' };
+  }
+
+  const trimmed = dob.trim();
+  if (!trimmed) {
+    return { isValid: false, error: 'Date of birth is required.' };
+  }
+
+  const birthDate = new Date(trimmed);
+  if (isNaN(birthDate.getTime())) {
+    return { isValid: false, error: 'Please enter a valid date of birth.' };
+  }
+
+  const today = new Date();
+  if (birthDate > today) {
+    return { isValid: false, error: 'Date of birth cannot be in the future.' };
+  }
+
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+
+  if (isLead && age < 18) {
+    return { isValid: false, age, error: 'Lead passenger must be at least 18 years old.' };
+  }
+
+  if (type === 'adult' && age < 12) {
+    return { isValid: false, age, error: 'Adult passenger must be at least 12 years old.' };
+  }
+
+  if (type === 'child' && (age < 2 || age > 11)) {
+    return { isValid: false, age, error: 'Child passenger must be between 2 and 11 years old (born 2014-2024).' };
+  }
+
+  if (type === 'infant' && age >= 2) {
+    return { isValid: false, age, error: 'Infant passenger must be under 2 years old.' };
+  }
+
+  return { isValid: true, age, error: null };
+}
+
+/**
  * Validates lead passenger passport number.
  * @param {string} passport 
  * @returns {{ isValid: boolean, error: string | null }}

@@ -21,7 +21,18 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
     const minDep = '2026-08-15' < todayStr ? todayStr : '2026-08-15';
     return defaultReturn < minDep ? minDep : defaultReturn;
   });
-  const [passengers, setPassengers] = useState(1);
+  const [adults, setAdults] = useState(1);
+  const [childrenCount, setChildrenCount] = useState(0);
+  const [infants, setInfants] = useState(0);
+  const [showPaxPopover, setShowPaxPopover] = useState(false);
+  const [shakePaxPopover, setShakePaxPopover] = useState(false);
+
+  const triggerShakePax = () => {
+    setShakePaxPopover(true);
+    setTimeout(() => setShakePaxPopover(false), 500);
+  };
+
+  const passengers = adults + childrenCount + infants;
   const [cabinClass, setCabinClass] = useState('Business');
   const [reserveBeforePayment, setReserveBeforePayment] = useState(true);
 
@@ -156,6 +167,8 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
     const originObj = airports.find(a => a.code === originCode) || { code: originCode, city: originCode, name: originCode };
     const destObj = airports.find(a => a.code === destCode) || { code: destCode, city: destCode, name: destCode };
 
+    const paxBreakdown = params.passengerBreakdown || { adults, children: childrenCount, infants };
+
     const searchPayload = {
       tripType: tType,
       origin: originCode,
@@ -165,6 +178,7 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
       departDate: depDate,
       returnDate: tType === 'round' ? retDate : null,
       passengers: pax,
+      passengerBreakdown: paxBreakdown,
       cabinClass: cabin,
       reserveBeforePayment,
       savings,
@@ -185,11 +199,12 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
       cabinClass: cabin,
       tripType: tType,
       passengers: pax,
+      passengerBreakdown: paxBreakdown,
       legsCount: legsPayload ? legsPayload.length : null
     });
 
     onSearchFlights(searchPayload);
-  }, [tripType, cabinClass, passengers, origin, destination, departDate, returnDate, multiCityLegs, airports, reserveBeforePayment, savings, onSearchFlights, saveRecentSearch]);
+  }, [tripType, cabinClass, passengers, adults, childrenCount, infants, origin, destination, departDate, returnDate, multiCityLegs, airports, reserveBeforePayment, savings, onSearchFlights, saveRecentSearch]);
 
   // Request hook that triggers a fresh grounded search whenever departure or return date updates
   useDateGroundedFlightSearch({
@@ -239,7 +254,8 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
           backdropFilter: 'blur(16px)',
           border: '1px solid rgba(229, 193, 88, 0.2)',
           borderRadius: 'var(--radius-lg)',
-          boxShadow: '0 12px 40px 0 rgba(0, 0, 0, 0.5)'
+          boxShadow: '0 12px 40px 0 rgba(0, 0, 0, 0.5)',
+          overflow: 'visible'
         }}>
 
           <div style={{
@@ -427,7 +443,8 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                 background: 'rgba(15, 23, 42, 0.4)',
                 padding: '24px',
                 borderRadius: 'var(--radius-md)',
-                border: '1px solid rgba(255, 255, 255, 0.03)'
+                border: '1px solid rgba(255, 255, 255, 0.03)',
+                overflow: 'visible'
               }}>
                 
                 {/* Origin */}
@@ -511,30 +528,216 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                 )}
 
                 {/* Passengers & Cabin */}
-                <div>
+                <div style={{ position: 'relative' }}>
                   <label style={labelStyle}>Passengers & Cabin</label>
-                  <div style={inputContainerStyle}>
-                    <Users size={18} color="var(--color-gold)" />
-                    <select 
-                      value={passengers} 
-                      onChange={(e) => setPassengers(Number(e.target.value))}
-                      style={{ ...selectStyle, width: '45%' }}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {/* Passengers Trigger Button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowPaxPopover(!showPaxPopover)}
+                      style={{
+                        ...inputContainerStyle,
+                        width: '55%',
+                        cursor: 'pointer',
+                        justifyContent: 'space-between',
+                        padding: '0 12px'
+                      }}
                     >
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-                        <option key={n} value={n} style={{ background: '#0F172A' }}>{n} {n === 1 ? 'Passenger' : 'Passengers'}</option>
-                      ))}
-                    </select>
-                    <select 
-                      value={cabinClass} 
-                      onChange={(e) => setCabinClass(e.target.value)}
-                      style={{ ...selectStyle, width: '55%' }}
-                    >
-                      <option value="Economy" style={{ background: '#0F172A' }}>Economy</option>
-                      <option value="Premium Economy" style={{ background: '#0F172A' }}>Premium Eco</option>
-                      <option value="Business" style={{ background: '#0F172A' }}>Business Class</option>
-                      <option value="First" style={{ background: '#0F172A' }}>First Class</option>
-                    </select>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                        <Users size={16} color="var(--color-gold)" style={{ flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.82rem', color: '#FFF', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                          {passengers} Pax ({adults}A{childrenCount > 0 ? `, ${childrenCount}C` : ''}{infants > 0 ? `, ${infants}I` : ''})
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Cabin Class Selector */}
+                    <div style={{ ...inputContainerStyle, width: '45%' }}>
+                      <select 
+                        value={cabinClass} 
+                        onChange={(e) => setCabinClass(e.target.value)}
+                        style={{ ...selectStyle, width: '100%' }}
+                      >
+                        <option value="Economy" style={{ background: '#0F172A' }}>Economy</option>
+                        <option value="Premium Economy" style={{ background: '#0F172A' }}>Premium Eco</option>
+                        <option value="Business" style={{ background: '#0F172A' }}>Business Class</option>
+                        <option value="First" style={{ background: '#0F172A' }}>First Class</option>
+                      </select>
+                    </div>
                   </div>
+
+                  {/* Multi-Passenger Selection Popover */}
+                  {showPaxPopover && (
+                    <div 
+                      className={shakePaxPopover ? 'shake-error-container' : ''}
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        right: 0,
+                        minWidth: '320px',
+                        maxWidth: 'calc(100vw - 32px)',
+                        zIndex: 300,
+                        background: '#0B1120',
+                        border: shakePaxPopover ? '1.5px solid #EF4444' : '1.5px solid var(--border-gold)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: '16px',
+                        boxShadow: shakePaxPopover ? '0 0 20px rgba(239, 68, 68, 0.4)' : '0 16px 40px rgba(0, 0, 0, 0.85)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '14px',
+                        transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
+                      }}
+                    >
+                      <div style={{ fontSize: '0.82rem', color: 'var(--color-gold-bright)', fontWeight: 700, borderBottom: '1px solid rgba(229,193,88,0.2)', paddingBottom: '8px' }}>
+                        Select Passengers
+                      </div>
+
+                      {/* Adults Counter */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ color: '#FFF', fontWeight: 700, fontSize: '0.85rem' }}>Adults</div>
+                          <div style={{ color: '#94A3B8', fontSize: '0.72rem' }}>Age 12+ years (Lead must be 18+)</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <button
+                            type="button"
+                            disabled={adults <= 1}
+                            onClick={() => {
+                              const newAdults = Math.max(1, adults - 1);
+                              setAdults(newAdults);
+                              if (infants > newAdults) setInfants(newAdults);
+                            }}
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '50%',
+                              border: '1px solid var(--border-gold)',
+                              background: adults <= 1 ? 'rgba(255,255,255,0.05)' : 'rgba(229,193,88,0.15)',
+                              color: adults <= 1 ? '#475569' : '#FFF',
+                              cursor: adults <= 1 ? 'not-allowed' : 'pointer',
+                              fontWeight: 800
+                            }}
+                          >-</button>
+                          <span style={{ color: '#FFF', fontWeight: 800, width: '18px', textAlign: 'center', fontSize: '0.88rem' }}>{adults}</span>
+                          <button
+                            type="button"
+                            disabled={passengers >= 9}
+                            onClick={() => setAdults(prev => prev + 1)}
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '50%',
+                              border: '1px solid var(--border-gold)',
+                              background: passengers >= 9 ? 'rgba(255,255,255,0.05)' : 'rgba(229,193,88,0.15)',
+                              color: passengers >= 9 ? '#475569' : '#FFF',
+                              cursor: passengers >= 9 ? 'not-allowed' : 'pointer',
+                              fontWeight: 800
+                            }}
+                          >+</button>
+                        </div>
+                      </div>
+
+                      {/* Children Counter */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ color: '#FFF', fontWeight: 700, fontSize: '0.85rem' }}>Children</div>
+                          <div style={{ color: '#94A3B8', fontSize: '0.72rem' }}>Age 2–11 years</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <button
+                            type="button"
+                            disabled={childrenCount <= 0}
+                            onClick={() => setChildrenCount(prev => Math.max(0, prev - 1))}
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '50%',
+                              border: '1px solid var(--border-gold)',
+                              background: childrenCount <= 0 ? 'rgba(255,255,255,0.05)' : 'rgba(229,193,88,0.15)',
+                              color: childrenCount <= 0 ? '#475569' : '#FFF',
+                              cursor: childrenCount <= 0 ? 'not-allowed' : 'pointer',
+                              fontWeight: 800
+                            }}
+                          >-</button>
+                          <span style={{ color: '#FFF', fontWeight: 800, width: '18px', textAlign: 'center', fontSize: '0.88rem' }}>{childrenCount}</span>
+                          <button
+                            type="button"
+                            disabled={passengers >= 9}
+                            onClick={() => setChildrenCount(prev => prev + 1)}
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '50%',
+                              border: '1px solid var(--border-gold)',
+                              background: passengers >= 9 ? 'rgba(255,255,255,0.05)' : 'rgba(229,193,88,0.15)',
+                              color: passengers >= 9 ? '#475569' : '#FFF',
+                              cursor: passengers >= 9 ? 'not-allowed' : 'pointer',
+                              fontWeight: 800
+                            }}
+                          >+</button>
+                        </div>
+                      </div>
+
+                      {/* Infants Counter */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ color: '#FFF', fontWeight: 700, fontSize: '0.85rem' }}>Infants</div>
+                          <div style={{ color: '#94A3B8', fontSize: '0.72rem' }}>Under 2 years (In lap/seat)</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <button
+                            type="button"
+                            disabled={infants <= 0}
+                            onClick={() => setInfants(prev => Math.max(0, prev - 1))}
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '50%',
+                              border: '1px solid var(--border-gold)',
+                              background: infants <= 0 ? 'rgba(255,255,255,0.05)' : 'rgba(229,193,88,0.15)',
+                              color: infants <= 0 ? '#475569' : '#FFF',
+                              cursor: infants <= 0 ? 'not-allowed' : 'pointer',
+                              fontWeight: 800
+                            }}
+                          >-</button>
+                          <span style={{ color: '#FFF', fontWeight: 800, width: '18px', textAlign: 'center', fontSize: '0.88rem' }}>{infants}</span>
+                          <button
+                            type="button"
+                            disabled={infants >= adults || passengers >= 9}
+                            onClick={() => setInfants(prev => Math.min(adults, prev + 1))}
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '50%',
+                              border: '1px solid var(--border-gold)',
+                              background: (infants >= adults || passengers >= 9) ? 'rgba(255,255,255,0.05)' : 'rgba(229,193,88,0.15)',
+                              color: (infants >= adults || passengers >= 9) ? '#475569' : '#FFF',
+                              cursor: (infants >= adults || passengers >= 9) ? 'not-allowed' : 'pointer',
+                              fontWeight: 800
+                            }}
+                          >+</button>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowPaxPopover(false)}
+                        style={{
+                          background: 'linear-gradient(135deg, #E5C158 0%, #B8902A 100%)',
+                          color: '#070B14',
+                          border: 'none',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '8px',
+                          fontSize: '0.8rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          marginTop: '4px'
+                        }}
+                      >
+                        Apply Passenger Selection
+                      </button>
+                    </div>
+                  )}
                 </div>
 
               </div>

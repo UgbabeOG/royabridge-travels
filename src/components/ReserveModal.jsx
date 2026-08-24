@@ -1,19 +1,80 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, ShieldCheck, Download, Printer, MessageCircle, Clock, CheckCircle2, Copy, Plane, Activity, AlertCircle, Shield, Sparkles, Check, Luggage, PlusCircle, FileText, Lock, HeartHandshake, Search, Globe, ExternalLink, Share2, Mail, Send, CreditCard, CheckCircle } from 'lucide-react';
 import { generatePNR, formatCurrency } from '../utils/pnrGenerator';
 import { saveBookingToDatabase, updateBookingPaymentStatus } from '../lib/bookingsService';
-import { validateEmail, validatePhone, validateName, validateDob, validatePassport } from '../utils/validation';
+import { validateEmail, validatePhone, validateName, validateDob, validatePassengerDob, validatePassport } from '../utils/validation';
 import { openFlutterwavePayment } from '../utils/flutterwave';
 
 export default function ReserveModal({ data, onClose, onOpenChat, showToast, currency = 'USD' }) {
-  const [passengerName, setPassengerName] = useState('');
-  const [passengerEmail, setPassengerEmail] = useState('');
-  const [passengerPhone, setPassengerPhone] = useState('');
-  const [passengerDob, setPassengerDob] = useState('');
-  const [passengerPassport, setPassengerPassport] = useState('');
+  const paxContainerRef = useRef(null);
+  const [isShaking, setIsShaking] = useState(false);
+  const initialBreakdown = data?.passengerBreakdown || { adults: data?.passengers || 1, children: 0, infants: 0 };
+
+  const [passengersList, setPassengersList] = useState(() => {
+    const list = [];
+    const totalAdults = Math.max(1, Number(initialBreakdown.adults) || 1);
+    const totalChildren = Math.max(0, Number(initialBreakdown.children) || 0);
+    const totalInfants = Math.max(0, Number(initialBreakdown.infants) || 0);
+
+    for (let i = 0; i < totalAdults; i++) {
+      list.push({
+        id: `adult-${Date.now()}-${i}`,
+        type: 'adult',
+        isLead: i === 0,
+        title: 'Mr',
+        firstName: '',
+        lastName: '',
+        fullName: '',
+        email: '',
+        phone: '',
+        dob: '',
+        passport: '',
+        seatPreference: 'Window',
+        mealPreference: 'Standard'
+      });
+    }
+
+    for (let i = 0; i < totalChildren; i++) {
+      list.push({
+        id: `child-${Date.now()}-${i}`,
+        type: 'child',
+        isLead: false,
+        title: 'Master',
+        firstName: '',
+        lastName: '',
+        fullName: '',
+        email: '',
+        phone: '',
+        dob: '',
+        passport: '',
+        seatPreference: 'Aisle',
+        mealPreference: 'Standard'
+      });
+    }
+
+    for (let i = 0; i < totalInfants; i++) {
+      list.push({
+        id: `infant-${Date.now()}-${i}`,
+        type: 'infant',
+        isLead: false,
+        title: 'Master',
+        firstName: '',
+        lastName: '',
+        fullName: '',
+        email: '',
+        phone: '',
+        dob: '',
+        passport: '',
+        seatPreference: 'Lap',
+        mealPreference: 'Standard'
+      });
+    }
+
+    return list;
+  });
+
+  const [paxErrors, setPaxErrors] = useState({});
   const [specialRequests, setSpecialRequests] = useState('');
-  const [seatPreference, setSeatPreference] = useState('Window');
-  const [mealPreference, setMealPreference] = useState('Standard');
   const [checkoutMode, setCheckoutMode] = useState('flutterwave'); // 'flutterwave' | 'hold'
   const [isPaid, setIsPaid] = useState(false);
   const [flwDetails, setFlwDetails] = useState(null);
@@ -30,7 +91,6 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
     carbonOffset: false // Eco-Travel Carbon Neutral Offset ($12/pax)
   });
 
-  const [fieldErrors, setFieldErrors] = useState({ name: '', email: '', phone: '', dob: '', passport: '' });
   const [validationError, setValidationError] = useState('');
   const [confirmedSuccess, setConfirmedSuccess] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -44,6 +104,60 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const updatePassengerField = (index, field, value) => {
+    setPassengersList(prev => {
+      const next = [...prev];
+      const target = { ...next[index], [field]: value };
+      if (field === 'firstName' || field === 'lastName') {
+        const fn = field === 'firstName' ? value : target.firstName;
+        const ln = field === 'lastName' ? value : target.lastName;
+        target.fullName = `${fn} ${ln}`.trim();
+      }
+      next[index] = target;
+      return next;
+    });
+
+    if (paxErrors[index] && paxErrors[index][field]) {
+      setPaxErrors(prev => ({
+        ...prev,
+        [index]: { ...prev[index], [field]: '' }
+      }));
+    }
+  };
+
+  const addPassenger = (type) => {
+    if (passengersList.length >= 9) return;
+    setPassengersList(prev => [
+      ...prev,
+      {
+        id: `${type}-${Date.now()}`,
+        type: type,
+        isLead: false,
+        title: type === 'adult' ? 'Mr' : 'Master',
+        firstName: '',
+        lastName: '',
+        fullName: '',
+        email: '',
+        phone: '',
+        dob: '',
+        passport: '',
+        seatPreference: type === 'infant' ? 'Lap' : 'Window',
+        mealPreference: 'Standard'
+      }
+    ]);
+  };
+
+  const removePassenger = (index) => {
+    if (passengersList[index]?.isLead) return;
+    if (passengersList.length <= 1) return;
+    setPassengersList(prev => prev.filter((_, i) => i !== index));
+    setPaxErrors(prev => {
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
+  };
 
   const formatTime = (seconds) => {
     const hrs = Math.floor(seconds / 3600);
@@ -61,7 +175,8 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
   const [shareCopied, setShareCopied] = useState(false);
 
   const generateItineraryText = () => {
-    const paxName = passengerName.trim() || 'Valued Passenger';
+    const leadPax = passengersList.find(p => p.isLead) || passengersList[0] || {};
+    const leadName = `${leadPax.title || ''} ${leadPax.fullName || 'Valued Passenger'}`.trim();
     const orig = data.origin?.city || data.origin?.code || data.origin || 'JFK';
     const dest = data.destination?.city || data.destination?.code || data.destination || 'LHR';
     const flightNo = data.flightNumber || 'BA178';
@@ -70,17 +185,21 @@ export default function ReserveModal({ data, onClose, onOpenChat, showToast, cur
     const retDate = data.returnDate ? ` | Return: ${data.returnDate}` : '';
     const price = formatCurrency(totalFinalPrice, currency);
 
-    const paxDob = passengerDob ? ` | DOB: ${passengerDob}` : '';
-    const paxPassport = passengerPassport ? ` | Passport: ${passengerPassport.toUpperCase()}` : '';
+    const paxListText = passengersList.map((p, idx) => 
+      `   ${idx + 1}. ${p.title} ${p.fullName} (${p.type.toUpperCase()}) - DOB: ${p.dob || 'N/A'} | Passport: ${p.passport ? p.passport.toUpperCase() : 'N/A'}`
+    ).join('\n');
 
     return `✈️ ROYA BRIDGE TRAVELS - FLIGHT ITINERARY HOLD
 📌 PNR Reference: ${pnr}
-👤 Lead Passenger: ${paxName}${paxDob}${paxPassport}
+👤 Lead Passenger: ${leadName} (${leadPax.email || ''} | ${leadPax.phone || ''})
+👥 Total Passengers: ${passengersCount} (${adultsCount} Adult${adultsCount > 1 ? 's' : ''}, ${childrenCount} Child${childrenCount !== 1 ? 'ren' : ''}, ${infantsCount} Infant${infantsCount !== 1 ? 's' : ''})
+Passenger Manifest:
+${paxListText}
+
 🛫 Flight: ${airln} (${flightNo})
 📍 Route: ${orig} ➔ ${dest}
 📅 Departure: ${depDate}${retDate}
-💺 Class: ${selectedCabin} (${seatPreference})
-👥 Passengers: ${passengersCount}
+💺 Cabin Class: ${selectedCabin}
 💰 Locked Fare: ${price} ($0 Paid Today)
 ⏱️ Status: 24-Hour Price Lock Confirmed
 
@@ -141,12 +260,15 @@ ${window.location.origin}`;
     setAddOns(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Pricing Calculations
-  const passengersCount = data?.passengers || 1;
+  // Dynamic Multi-Passenger Pricing Calculations
+  const adultsCount = passengersList.filter(p => p.type === 'adult').length;
+  const childrenCount = passengersList.filter(p => p.type === 'child').length;
+  const infantsCount = passengersList.filter(p => p.type === 'infant').length;
+  const passengersCount = passengersList.length;
+
   const baseRoyaPricePerPax = data?.savings?.finalPrice || data?.royaPrice || 840;
   const baseRetailPricePerPax = data?.savings?.originalPrice || data?.retailPrice || 1200;
 
-  // Cabin adjustments relative to base price
   const CABIN_PRICING = {
     'Economy': -320,
     'Premium Economy': -150,
@@ -156,13 +278,17 @@ ${window.location.origin}`;
 
   const cabinDelta = CABIN_PRICING[selectedCabin] !== undefined ? CABIN_PRICING[selectedCabin] : 0;
   
-  const flightFarePerPax = Math.max(200, baseRoyaPricePerPax + cabinDelta);
-  const flightRetailPerPax = Math.max(300, baseRetailPricePerPax + cabinDelta);
+  const adultFare = Math.max(200, baseRoyaPricePerPax + cabinDelta);
+  const childFare = Math.round(adultFare * 0.75);
+  const infantFare = Math.round(adultFare * 0.10);
 
-  const baseFlightTotal = flightFarePerPax * passengersCount;
-  const baseRetailTotal = flightRetailPerPax * passengersCount;
+  const adultRetail = Math.max(300, baseRetailPricePerPax + cabinDelta);
+  const childRetail = Math.round(adultRetail * 0.75);
+  const infantRetail = Math.round(adultRetail * 0.10);
 
-  // Add-ons total
+  const baseFlightTotal = (adultsCount * adultFare) + (childrenCount * childFare) + (infantsCount * infantFare);
+  const baseRetailTotal = (adultsCount * adultRetail) + (childrenCount * childRetail) + (infantsCount * infantRetail);
+
   const ADD_ON_RATES = {
     travelInsurance: 49,
     conciergeProtection: 29,
@@ -176,32 +302,81 @@ ${window.location.origin}`;
   if (addOns.flexiBooking) addOnsTotalPerPax += ADD_ON_RATES.flexiBooking;
   if (addOns.carbonOffset) addOnsTotalPerPax += ADD_ON_RATES.carbonOffset;
 
-  const totalAddOnsAmount = addOnsTotalPerPax * passengersCount;
+  const payingPaxCount = adultsCount + childrenCount;
+  const totalAddOnsAmount = addOnsTotalPerPax * payingPaxCount;
 
   const totalFinalPrice = baseFlightTotal + totalAddOnsAmount;
   const totalRetailPrice = baseRetailTotal + totalAddOnsAmount;
   const totalSavings = totalRetailPrice - totalFinalPrice;
 
   const handleConfirm = async () => {
-    const nameVal = validateName(passengerName);
-    const emailVal = validateEmail(passengerEmail);
-    const phoneVal = validatePhone(passengerPhone);
-    const dobVal = validateDob(passengerDob);
-    const passportVal = validatePassport(passengerPassport);
+    let hasError = false;
+    const newPaxErrors = {};
+    let firstErrorMsg = '';
 
-    const errors = {
-      name: nameVal.error || '',
-      email: emailVal.error || '',
-      phone: phoneVal.error || '',
-      dob: dobVal.error || '',
-      passport: passportVal.error || ''
-    };
+    passengersList.forEach((pax, i) => {
+      const errs = {};
 
-    setFieldErrors(errors);
+      const fullNameToTest = pax.fullName || `${pax.firstName} ${pax.lastName}`.trim();
+      const nameVal = validateName(fullNameToTest);
+      if (!pax.firstName || !pax.firstName.trim()) {
+        errs.firstName = 'First name is required';
+        hasError = true;
+        if (!firstErrorMsg) firstErrorMsg = `Passenger ${i+1} (${pax.type.toUpperCase()}): First name is required`;
+      } else if (!pax.lastName || !pax.lastName.trim()) {
+        errs.lastName = 'Last name is required';
+        hasError = true;
+        if (!firstErrorMsg) firstErrorMsg = `Passenger ${i+1} (${pax.type.toUpperCase()}): Last name is required`;
+      } else if (!nameVal.isValid) {
+        errs.firstName = nameVal.error;
+        hasError = true;
+        if (!firstErrorMsg) firstErrorMsg = `Passenger ${i+1}: ${nameVal.error}`;
+      }
 
-    if (!nameVal.isValid || !emailVal.isValid || !phoneVal.isValid || !dobVal.isValid || !passportVal.isValid) {
-      const firstErr = nameVal.error || emailVal.error || phoneVal.error || dobVal.error || passportVal.error;
-      setValidationError(firstErr);
+      const dobVal = validatePassengerDob(pax.dob, pax.type, pax.isLead);
+      if (!dobVal.isValid) {
+        errs.dob = dobVal.error;
+        hasError = true;
+        if (!firstErrorMsg) firstErrorMsg = `Passenger ${i+1} (${pax.type.toUpperCase()}): ${dobVal.error}`;
+      }
+
+      const passportVal = validatePassport(pax.passport);
+      if (!passportVal.isValid) {
+        errs.passport = passportVal.error;
+        hasError = true;
+        if (!firstErrorMsg) firstErrorMsg = `Passenger ${i+1} (${pax.type.toUpperCase()}): ${passportVal.error}`;
+      }
+
+      if (pax.isLead) {
+        const emailVal = validateEmail(pax.email);
+        if (!emailVal.isValid) {
+          errs.email = emailVal.error;
+          hasError = true;
+          if (!firstErrorMsg) firstErrorMsg = `Lead Passenger: ${emailVal.error}`;
+        }
+
+        const phoneVal = validatePhone(pax.phone);
+        if (!phoneVal.isValid) {
+          errs.phone = phoneVal.error;
+          hasError = true;
+          if (!firstErrorMsg) firstErrorMsg = `Lead Passenger: ${phoneVal.error}`;
+        }
+      }
+
+      if (Object.keys(errs).length > 0) {
+        newPaxErrors[i] = errs;
+      }
+    });
+
+    setPaxErrors(newPaxErrors);
+
+    if (hasError) {
+      setValidationError(firstErrorMsg || 'Please complete all required passenger information correctly.');
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 550);
+      if (paxContainerRef.current) {
+        paxContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return;
     }
 
@@ -210,15 +385,20 @@ ${window.location.origin}`;
 
     try {
       const addOnsList = Object.keys(addOns).filter(k => addOns[k]);
+      const leadPax = passengersList.find(p => p.isLead) || passengersList[0];
 
-      // 1. Persist booking hold in database
       const savedRecord = await saveBookingToDatabase({
         pnr: pnr,
-        passengerName: passengerName.trim(),
-        passengerEmail: passengerEmail.trim(),
-        passengerPhone: passengerPhone.trim(),
-        passengerDob: passengerDob.trim(),
-        passengerPassport: passengerPassport.trim().toUpperCase(),
+        passengerName: `${leadPax.title} ${leadPax.fullName}`.trim(),
+        passengerEmail: leadPax.email.trim(),
+        passengerPhone: leadPax.phone.trim(),
+        passengerDob: leadPax.dob.trim(),
+        passengerPassport: leadPax.passport.trim().toUpperCase(),
+        passengersList: passengersList,
+        adultsCount: adultsCount,
+        childrenCount: childrenCount,
+        infantsCount: infantsCount,
+        passengersCount: passengersCount,
         flightNumber: data.flightNumber || 'BA178',
         airline: data.airline || 'British Airways',
         origin: data.origin?.code || data.origin || 'JFK',
@@ -229,28 +409,26 @@ ${window.location.origin}`;
         returnDate: data.returnDate,
         tripType: data.tripType || 'round',
         cabinClass: selectedCabin,
-        passengersCount: passengersCount,
         retailPrice: totalRetailPrice,
         royaPrice: totalFinalPrice,
         savings: totalSavings,
         selectedAddOns: addOnsList,
-        seatPreference: seatPreference,
-        mealPreference: mealPreference,
+        seatPreference: leadPax.seatPreference,
+        mealPreference: leadPax.mealPreference,
         specialRequests: specialRequests,
         aircraft: data.aircraft || 'Boeing 787 Dreamliner'
       });
 
       setConfirmedSuccess(true);
 
-      // 2. If Flutterwave checkout mode selected, open Flutterwave modal
       if (checkoutMode === 'flutterwave') {
         await openFlutterwavePayment({
           pnr: pnr,
           amount: totalFinalPrice,
           currency: currency || 'USD',
-          passengerEmail: passengerEmail.trim(),
-          passengerName: passengerName.trim(),
-          passengerPhone: passengerPhone.trim(),
+          passengerEmail: leadPax.email.trim(),
+          passengerName: `${leadPax.title} ${leadPax.fullName}`.trim(),
+          passengerPhone: leadPax.phone.trim(),
           flightNumber: data.flightNumber || 'BA178',
           airline: data.airline || 'British Airways',
           route: `${data.origin?.code || 'JFK'} → ${data.destination?.code || 'LHR'}`,
@@ -263,7 +441,7 @@ ${window.location.origin}`;
               showToast({
                 type: 'success',
                 title: 'Payment Confirmed!',
-                message: `Ticket issued & confirmed for ${passengerName.trim()}. Payment ref: ${payRes.flw_ref || payRes.tx_ref || 'OK'}.`,
+                message: `Ticket issued & confirmed for ${leadPax.fullName.trim()}. Payment ref: ${payRes.flw_ref || payRes.tx_ref || 'OK'}.`,
                 pnr: pnr
               });
             }
@@ -286,13 +464,11 @@ ${window.location.origin}`;
           showToast({
             type: 'success',
             title: 'Flight Reservation & Email Confirmed!',
-            message: `24-Hour itinerary hold locked for ${passengerName.trim()}. Confirmation email sent to ${passengerEmail.trim()}.`,
+            message: `24-Hour itinerary hold locked for ${leadPax.fullName.trim()} (${passengersCount} passengers). Confirmation email sent to ${leadPax.email.trim()}.`,
             pnr: pnr
           });
         }
       }
-
-      // Reservation created successfully
     } catch (err) {
       console.error('Error saving booking:', err);
       setValidationError('Failed to store reservation in database. Please try again.');
@@ -302,11 +478,12 @@ ${window.location.origin}`;
   };
 
   const handlePrint = () => {
-    const nameVal = validateName(passengerName);
-    const emailVal = validateEmail(passengerEmail);
+    const leadPax = passengersList.find(p => p.isLead) || passengersList[0];
+    const nameVal = validateName(leadPax?.fullName || '');
+    const emailVal = validateEmail(leadPax?.email || '');
 
     if (!nameVal.isValid || !emailVal.isValid) {
-      setValidationError('Please enter a valid full legal name and email address before printing your itinerary ticket.');
+      setValidationError('Please enter a valid lead passenger full name and email address before printing your itinerary ticket.');
       return;
     }
     setValidationError('');
@@ -680,10 +857,72 @@ ${window.location.origin}`;
             </div>
 
             {/* Passenger Contact Form */}
-            <div>
-              <h3 style={{ fontSize: '0.92rem', color: 'var(--color-gold-bright)', marginBottom: '10px' }}>
-                Lead Passenger Information
-              </h3>
+            <div ref={paxContainerRef} className={isShaking ? 'shake-error-container' : ''}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div>
+                  <h3 style={{ fontSize: '0.98rem', color: 'var(--color-gold-bright)', margin: 0, fontWeight: 800 }}>
+                    Passenger Information ({passengersCount} {passengersCount === 1 ? 'Passenger' : 'Passengers'})
+                  </h3>
+                  <span style={{ fontSize: '0.75rem', color: '#94A3B8' }}>
+                    {adultsCount} Adult{adultsCount > 1 ? 's' : ''}{childrenCount > 0 ? `, ${childrenCount} Child${childrenCount > 1 ? 'ren' : ''}` : ''}{infantsCount > 0 ? `, ${infantsCount} Infant${infantsCount > 1 ? 's' : ''}` : ''}
+                  </span>
+                </div>
+
+                {/* Quick Add Companion Buttons */}
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={() => addPassenger('adult')}
+                    disabled={passengersCount >= 9}
+                    style={{
+                      background: 'rgba(229,193,88,0.12)',
+                      border: '1px solid var(--border-gold)',
+                      color: 'var(--color-gold)',
+                      padding: '4px 8px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      cursor: passengersCount >= 9 ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    + Adult
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => addPassenger('child')}
+                    disabled={passengersCount >= 9}
+                    style={{
+                      background: 'rgba(229,193,88,0.12)',
+                      border: '1px solid var(--border-gold)',
+                      color: 'var(--color-gold)',
+                      padding: '4px 8px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      cursor: passengersCount >= 9 ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    + Child
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => addPassenger('infant')}
+                    disabled={passengersCount >= 9}
+                    style={{
+                      background: 'rgba(229,193,88,0.12)',
+                      border: '1px solid var(--border-gold)',
+                      color: 'var(--color-gold)',
+                      padding: '4px 8px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      cursor: passengersCount >= 9 ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    + Infant
+                  </button>
+                </div>
+              </div>
 
               {validationError && (
                 <div style={{
@@ -693,7 +932,7 @@ ${window.location.origin}`;
                   padding: '10px 14px',
                   color: '#FCA5A5',
                   fontSize: '0.85rem',
-                  marginBottom: '12px',
+                  marginBottom: '14px',
                   fontWeight: 600
                 }}>
                   ⚠️ {validationError}
@@ -718,7 +957,7 @@ ${window.location.origin}`;
                         </span>
                       </div>
                       <p style={{ fontSize: '0.84rem', color: '#CBD5E1', margin: 0 }}>
-                        Confirmed for <strong style={{ color: '#FFF' }}>{passengerName}</strong> ({passengerEmail})
+                        Lead Pax: <strong style={{ color: '#FFF' }}>{passengersList[0]?.fullName}</strong> ({passengersList[0]?.email})
                       </p>
                     </div>
                     <div style={{ textAlign: 'right' }}>
@@ -742,40 +981,25 @@ ${window.location.origin}`;
                   }}>
                     <Mail size={18} color="#60A5FA" style={{ flexShrink: 0 }} />
                     <div>
-                      <strong style={{ color: '#FFF' }}>Confirmation Email Sent!</strong> A detailed flight hold itinerary with PNR reference <strong style={{ color: '#E5C158' }}>{pnr}</strong> and complete flight details has been sent to <strong style={{ color: '#FFF' }}>{passengerEmail}</strong>.
+                      <strong style={{ color: '#FFF' }}>Confirmation Email Sent!</strong> Complete booking manifest with PNR reference <strong style={{ color: '#E5C158' }}>{pnr}</strong> for all {passengersCount} passenger(s) sent to <strong style={{ color: '#FFF' }}>{passengersList[0]?.email}</strong>.
                     </div>
                   </div>
 
-                  {/* Flight Details Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', background: 'rgba(7, 11, 20, 0.7)', padding: '12px', borderRadius: 'var(--radius-sm)', marginBottom: '16px', fontSize: '0.82rem', color: '#CBD5E1' }}>
-                    <div>
-                      <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>Airline & Flight</span>
-                      <strong>{data.airline || 'British Airways'} ({data.flightNumber || 'BA178'})</strong>
+                  {/* Manifest Summary */}
+                  <div style={{ background: 'rgba(7, 11, 20, 0.7)', padding: '12px', borderRadius: 'var(--radius-sm)', marginBottom: '16px', fontSize: '0.82rem', color: '#CBD5E1' }}>
+                    <div style={{ fontWeight: 800, color: 'var(--color-gold-bright)', marginBottom: '8px' }}>
+                      Passenger Manifest ({passengersCount})
                     </div>
-                    <div>
-                      <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>Route</span>
-                      <strong>{data.origin?.code || data.origin || 'JFK'} ➔ {data.destination?.code || data.destination || 'LHR'}</strong>
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>Departure Date</span>
-                      <strong>{data.departDate || '2026-08-20'}</strong>
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>Date of Birth</span>
-                      <strong>{passengerDob || 'N/A'}</strong>
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>Passport Number</span>
-                      <strong>{passengerPassport?.toUpperCase() || 'N/A'}</strong>
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>Class & Seat</span>
-                      <strong>{selectedCabin} ({seatPreference})</strong>
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block' }}>Total Reserved</span>
-                      <strong style={{ color: 'var(--color-gold-bright)' }}>{formatCurrency(totalFinalPrice, currency)}</strong>
-                    </div>
+                    {passengersList.map((p, idx) => (
+                      <div key={p.id || idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: idx < passengersList.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                        <span>
+                          <strong>{p.title} {p.fullName}</strong> ({p.type.toUpperCase()})
+                        </span>
+                        <span style={{ color: '#94A3B8', fontSize: '0.75rem' }}>
+                          DOB: {p.dob || 'N/A'} | Pass: {p.passport?.toUpperCase() || 'N/A'}
+                        </span>
+                      </div>
+                    ))}
                   </div>
 
                   {/* Share Itinerary Action Buttons */}
@@ -868,172 +1092,247 @@ ${window.location.origin}`;
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
-                <div>
-                  <label style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>
-                    Full Legal Name <span style={{ color: '#EF4444' }}>*</span>
-                  </label>
-                  <input 
-                    type="text" 
-                    placeholder="As shown on Passport"
-                    value={passengerName} 
-                    onChange={(e) => { 
-                      setPassengerName(e.target.value); 
-                      setValidationError(''); 
-                      setFieldErrors(prev => ({ ...prev, name: '' }));
-                    }}
-                    style={{
-                      ...modalInputStyle,
-                      borderColor: fieldErrors.name ? '#EF4444' : 'var(--border-gold)'
-                    }}
-                  />
-                  {fieldErrors.name && (
-                    <span style={{ fontSize: '0.72rem', color: '#FCA5A5', marginTop: '2px', display: 'block' }}>
-                      {fieldErrors.name}
-                    </span>
-                  )}
-                </div>
+              {/* Dynamic Passenger Input Cards */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {passengersList.map((pax, index) => {
+                  const errs = paxErrors[index] || {};
+                  const hasCardError = Object.keys(errs).length > 0;
+                  return (
+                    <div 
+                      key={pax.id || index}
+                      className={hasCardError && isShaking ? 'shake-error-card' : ''}
+                      style={{
+                        background: hasCardError ? 'rgba(239, 68, 68, 0.06)' : 'rgba(7, 11, 20, 0.65)',
+                        border: hasCardError 
+                          ? '1.5px solid #EF4444' 
+                          : pax.isLead 
+                          ? '1.5px solid var(--border-gold)' 
+                          : '1px solid rgba(255,255,255,0.1)',
+                        boxShadow: hasCardError ? '0 0 12px rgba(239, 68, 68, 0.25)' : 'none',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '14px',
+                        position: 'relative',
+                        transition: 'border-color 0.25s ease, box-shadow 0.25s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ 
+                            background: pax.isLead ? 'var(--color-gold)' : '#334155', 
+                            color: pax.isLead ? '#070B14' : '#FFF', 
+                            fontSize: '0.7rem', 
+                            fontWeight: 800, 
+                            padding: '2px 6px', 
+                            borderRadius: '4px' 
+                          }}>
+                            PAX {index + 1}
+                          </span>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#FFF' }}>
+                            {pax.isLead ? 'Lead Passenger (Primary Contact)' : pax.type === 'adult' ? 'Adult Passenger (12+ yrs)' : pax.type === 'child' ? 'Child Passenger (2–11 yrs)' : 'Infant Passenger (Under 2 yrs)'}
+                          </span>
+                        </div>
 
-                <div>
-                  <label style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>
-                    Email Address <span style={{ color: '#EF4444' }}>*</span>
-                  </label>
-                  <input 
-                    type="email" 
-                    placeholder="e.g. alex@example.com"
-                    value={passengerEmail} 
-                    onChange={(e) => { 
-                      setPassengerEmail(e.target.value); 
-                      setValidationError(''); 
-                      setFieldErrors(prev => ({ ...prev, email: '' }));
-                    }}
-                    style={{
-                      ...modalInputStyle,
-                      borderColor: fieldErrors.email ? '#EF4444' : 'var(--border-gold)'
-                    }}
-                  />
-                  {fieldErrors.email && (
-                    <span style={{ fontSize: '0.72rem', color: '#FCA5A5', marginTop: '2px', display: 'block' }}>
-                      {fieldErrors.email}
-                    </span>
-                  )}
-                </div>
+                        {!pax.isLead && (
+                          <button
+                            type="button"
+                            onClick={() => removePassenger(index)}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#EF4444',
+                              fontSize: '0.72rem',
+                              cursor: 'pointer',
+                              fontWeight: 700
+                            }}
+                          >
+                            ✕ Remove
+                          </button>
+                        )}
+                      </div>
 
-                <div>
-                  <label style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>
-                    Phone / WhatsApp <span style={{ color: '#EF4444' }}>*</span>
-                  </label>
-                  <input 
-                    type="tel" 
-                    placeholder="e.g. +1 555-0192"
-                    value={passengerPhone} 
-                    onChange={(e) => { 
-                      setPassengerPhone(e.target.value); 
-                      setValidationError(''); 
-                      setFieldErrors(prev => ({ ...prev, phone: '' }));
-                    }}
-                    style={{
-                      ...modalInputStyle,
-                      borderColor: fieldErrors.phone ? '#EF4444' : 'var(--border-gold)'
-                    }}
-                  />
-                  {fieldErrors.phone && (
-                    <span style={{ fontSize: '0.72rem', color: '#FCA5A5', marginTop: '2px', display: 'block' }}>
-                      {fieldErrors.phone}
-                    </span>
-                  )}
-                </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+                        {/* Title */}
+                        <div>
+                          <label style={{ fontSize: '0.72rem', color: '#94A3B8', display: 'block', marginBottom: '3px' }}>
+                            Title
+                          </label>
+                          <select
+                            value={pax.title}
+                            onChange={(e) => updatePassengerField(index, 'title', e.target.value)}
+                            style={modalInputStyle}
+                          >
+                            {pax.type === 'adult' ? (
+                              <>
+                                <option value="Mr">Mr</option>
+                                <option value="Mrs">Mrs</option>
+                                <option value="Ms">Ms</option>
+                                <option value="Dr">Dr</option>
+                              </>
+                            ) : (
+                              <>
+                                <option value="Master">Master</option>
+                                <option value="Miss">Miss</option>
+                              </>
+                            )}
+                          </select>
+                        </div>
 
-                <div>
-                  <label style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>
-                    Date of Birth (Must be 18+) <span style={{ color: '#EF4444' }}>*</span>
-                  </label>
-                  <input 
-                    type="date" 
-                    value={passengerDob} 
-                    max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
-                    onChange={(e) => { 
-                      setPassengerDob(e.target.value); 
-                      setValidationError(''); 
-                      setFieldErrors(prev => ({ ...prev, dob: '' }));
-                    }}
-                    style={{
-                      ...modalInputStyle,
-                      borderColor: fieldErrors.dob ? '#EF4444' : 'var(--border-gold)',
-                      colorScheme: 'dark'
-                    }}
-                  />
-                  {fieldErrors.dob ? (
-                    <span style={{ fontSize: '0.72rem', color: '#FCA5A5', marginTop: '2px', display: 'block' }}>
-                      {fieldErrors.dob}
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: '0.7rem', color: '#64748B', marginTop: '2px', display: 'block' }}>
-                      Lead passenger must be 18 or older
-                    </span>
-                  )}
-                </div>
+                        {/* First Name */}
+                        <div>
+                          <label style={{ fontSize: '0.72rem', color: '#94A3B8', display: 'block', marginBottom: '3px' }}>
+                            First Name <span style={{ color: '#EF4444' }}>*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Given name"
+                            value={pax.firstName}
+                            onChange={(e) => updatePassengerField(index, 'firstName', e.target.value)}
+                            style={{
+                              ...modalInputStyle,
+                              borderColor: errs.firstName ? '#EF4444' : 'var(--border-gold)'
+                            }}
+                          />
+                          {errs.firstName && <span style={{ fontSize: '0.7rem', color: '#FCA5A5' }}>{errs.firstName}</span>}
+                        </div>
 
-                <div>
-                  <label style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>
-                    Passport Number <span style={{ color: '#EF4444' }}>*</span>
-                  </label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. A12345678"
-                    value={passengerPassport} 
-                    onChange={(e) => { 
-                      setPassengerPassport(e.target.value.toUpperCase()); 
-                      setValidationError(''); 
-                      setFieldErrors(prev => ({ ...prev, passport: '' }));
-                    }}
-                    style={{
-                      ...modalInputStyle,
-                      borderColor: fieldErrors.passport ? '#EF4444' : 'var(--border-gold)'
-                    }}
-                  />
-                  {fieldErrors.passport && (
-                    <span style={{ fontSize: '0.72rem', color: '#FCA5A5', marginTop: '2px', display: 'block' }}>
-                      {fieldErrors.passport}
-                    </span>
-                  )}
-                </div>
-              </div>
+                        {/* Last Name */}
+                        <div>
+                          <label style={{ fontSize: '0.72rem', color: '#94A3B8', display: 'block', marginBottom: '3px' }}>
+                            Last Name <span style={{ color: '#EF4444' }}>*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Surname"
+                            value={pax.lastName}
+                            onChange={(e) => updatePassengerField(index, 'lastName', e.target.value)}
+                            style={{
+                              ...modalInputStyle,
+                              borderColor: errs.lastName ? '#EF4444' : 'var(--border-gold)'
+                            }}
+                          />
+                          {errs.lastName && <span style={{ fontSize: '0.7rem', color: '#FCA5A5' }}>{errs.lastName}</span>}
+                        </div>
 
-              {/* Preferences */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
-                <div>
-                  <label style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>
-                    Seat Preference
-                  </label>
-                  <select 
-                    value={seatPreference} 
-                    onChange={(e) => setSeatPreference(e.target.value)}
-                    style={modalInputStyle}
-                  >
-                    <option value="Window">Window Seat</option>
-                    <option value="Aisle">Aisle Seat</option>
-                    <option value="Extra Legroom">Extra Legroom</option>
-                    <option value="No Preference">No Preference</option>
-                  </select>
-                </div>
+                        {/* Date of Birth */}
+                        <div>
+                          <label style={{ fontSize: '0.72rem', color: '#94A3B8', display: 'block', marginBottom: '3px' }}>
+                            Date of Birth <span style={{ color: '#EF4444' }}>*</span>
+                          </label>
+                          <input
+                            type="date"
+                            value={pax.dob}
+                            onChange={(e) => updatePassengerField(index, 'dob', e.target.value)}
+                            style={{
+                              ...modalInputStyle,
+                              borderColor: errs.dob ? '#EF4444' : 'var(--border-gold)',
+                              colorScheme: 'dark'
+                            }}
+                          />
+                          {errs.dob ? (
+                            <span style={{ fontSize: '0.7rem', color: '#FCA5A5' }}>{errs.dob}</span>
+                          ) : (
+                            <span style={{ fontSize: '0.68rem', color: '#64748B' }}>
+                              {pax.isLead ? 'Must be 18+' : pax.type === 'adult' ? '12+ yrs' : pax.type === 'child' ? 'Age 2–11 yrs' : 'Under 2 yrs'}
+                            </span>
+                          )}
+                        </div>
 
-                <div>
-                  <label style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block', marginBottom: '4px' }}>
-                    Dietary Meal Request
-                  </label>
-                  <select 
-                    value={mealPreference} 
-                    onChange={(e) => setMealPreference(e.target.value)}
-                    style={modalInputStyle}
-                  >
-                    <option value="Standard">Standard Gourmet Menu</option>
-                    <option value="Vegetarian">Vegetarian / Vegan</option>
-                    <option value="Halal">Halal Certified</option>
-                    <option value="Kosher">Kosher Certified</option>
-                    <option value="Diabetic">Diabetic Friendly</option>
-                  </select>
-                </div>
+                        {/* Passport Number */}
+                        <div>
+                          <label style={{ fontSize: '0.72rem', color: '#94A3B8', display: 'block', marginBottom: '3px' }}>
+                            Passport Number <span style={{ color: '#EF4444' }}>*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Passport / ID"
+                            value={pax.passport}
+                            onChange={(e) => updatePassengerField(index, 'passport', e.target.value.toUpperCase())}
+                            style={{
+                              ...modalInputStyle,
+                              borderColor: errs.passport ? '#EF4444' : 'var(--border-gold)'
+                            }}
+                          />
+                          {errs.passport && <span style={{ fontSize: '0.7rem', color: '#FCA5A5' }}>{errs.passport}</span>}
+                        </div>
+
+                        {/* Lead Only: Email */}
+                        {pax.isLead && (
+                          <div>
+                            <label style={{ fontSize: '0.72rem', color: '#94A3B8', display: 'block', marginBottom: '3px' }}>
+                              Email Address <span style={{ color: '#EF4444' }}>*</span>
+                            </label>
+                            <input
+                              type="email"
+                              placeholder="alex@example.com"
+                              value={pax.email}
+                              onChange={(e) => updatePassengerField(index, 'email', e.target.value)}
+                              style={{
+                                ...modalInputStyle,
+                                borderColor: errs.email ? '#EF4444' : 'var(--border-gold)'
+                              }}
+                            />
+                            {errs.email && <span style={{ fontSize: '0.7rem', color: '#FCA5A5' }}>{errs.email}</span>}
+                          </div>
+                        )}
+
+                        {/* Lead Only: Phone */}
+                        {pax.isLead && (
+                          <div>
+                            <label style={{ fontSize: '0.72rem', color: '#94A3B8', display: 'block', marginBottom: '3px' }}>
+                              Phone / WhatsApp <span style={{ color: '#EF4444' }}>*</span>
+                            </label>
+                            <input
+                              type="tel"
+                              placeholder="+1 555-0192"
+                              value={pax.phone}
+                              onChange={(e) => updatePassengerField(index, 'phone', e.target.value)}
+                              style={{
+                                ...modalInputStyle,
+                                borderColor: errs.phone ? '#EF4444' : 'var(--border-gold)'
+                              }}
+                            />
+                            {errs.phone && <span style={{ fontSize: '0.7rem', color: '#FCA5A5' }}>{errs.phone}</span>}
+                          </div>
+                        )}
+
+                        {/* Seat Preference */}
+                        <div>
+                          <label style={{ fontSize: '0.72rem', color: '#94A3B8', display: 'block', marginBottom: '3px' }}>
+                            Seat Preference
+                          </label>
+                          <select
+                            value={pax.seatPreference}
+                            onChange={(e) => updatePassengerField(index, 'seatPreference', e.target.value)}
+                            style={modalInputStyle}
+                          >
+                            <option value="Window">Window</option>
+                            <option value="Aisle">Aisle</option>
+                            <option value="Extra Legroom">Extra Legroom</option>
+                            <option value="Lap">In Lap (Infant)</option>
+                          </select>
+                        </div>
+
+                        {/* Meal Request */}
+                        <div>
+                          <label style={{ fontSize: '0.72rem', color: '#94A3B8', display: 'block', marginBottom: '3px' }}>
+                            Meal Request
+                          </label>
+                          <select
+                            value={pax.mealPreference}
+                            onChange={(e) => updatePassengerField(index, 'mealPreference', e.target.value)}
+                            style={modalInputStyle}
+                          >
+                            <option value="Standard">Standard Gourmet</option>
+                            <option value="Child/Infant Meal">Child/Infant Meal</option>
+                            <option value="Vegetarian">Vegetarian/Vegan</option>
+                            <option value="Halal">Halal</option>
+                            <option value="Kosher">Kosher</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -1142,36 +1441,54 @@ ${window.location.origin}`;
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.84rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: '#CBD5E1' }}>
                 <span>
-                  Flight Fare ({passengersCount} pax • {selectedCabin})
+                  Adult Fare ({adultsCount} x {formatCurrency(adultFare, currency)})
                 </span>
-                <span>{formatCurrency(baseFlightTotal, currency)}</span>
+                <span>{formatCurrency(adultsCount * adultFare, currency)}</span>
               </div>
+
+              {childrenCount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#CBD5E1' }}>
+                  <span>
+                    Child Fare ({childrenCount} x {formatCurrency(childFare, currency)})
+                  </span>
+                  <span>{formatCurrency(childrenCount * childFare, currency)}</span>
+                </div>
+              )}
+
+              {infantsCount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#CBD5E1' }}>
+                  <span>
+                    Infant Fare ({infantsCount} x {formatCurrency(infantFare, currency)})
+                  </span>
+                  <span>{formatCurrency(infantsCount * infantFare, currency)}</span>
+                </div>
+              )}
 
               {addOns.travelInsurance && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6EE7B7', fontSize: '0.8rem' }}>
-                  <span>+ Medical & Travel Insurance</span>
-                  <span>+{formatCurrency(ADD_ON_RATES.travelInsurance * passengersCount, currency)}</span>
+                  <span>+ Medical Insurance ({payingPaxCount} pax)</span>
+                  <span>+{formatCurrency(ADD_ON_RATES.travelInsurance * payingPaxCount, currency)}</span>
                 </div>
               )}
 
               {addOns.conciergeProtection && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-gold-bright)', fontSize: '0.8rem' }}>
-                  <span>+ VIP Concierge Protection</span>
-                  <span>+{formatCurrency(ADD_ON_RATES.conciergeProtection * passengersCount, currency)}</span>
+                  <span>+ VIP Protection ({payingPaxCount} pax)</span>
+                  <span>+{formatCurrency(ADD_ON_RATES.conciergeProtection * payingPaxCount, currency)}</span>
                 </div>
               )}
 
               {addOns.flexiBooking && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#A5B4FC', fontSize: '0.8rem' }}>
-                  <span>+ Flexi-Date Change Protection</span>
-                  <span>+{formatCurrency(ADD_ON_RATES.flexiBooking * passengersCount, currency)}</span>
+                  <span>+ Flexi-Date Guarantee ({payingPaxCount} pax)</span>
+                  <span>+{formatCurrency(ADD_ON_RATES.flexiBooking * payingPaxCount, currency)}</span>
                 </div>
               )}
 
               {addOns.carbonOffset && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#34D399', fontSize: '0.8rem' }}>
-                  <span>+ Eco SAF Carbon Offset</span>
-                  <span>+{formatCurrency(ADD_ON_RATES.carbonOffset * passengersCount, currency)}</span>
+                  <span>+ Eco Carbon Offset ({payingPaxCount} pax)</span>
+                  <span>+{formatCurrency(ADD_ON_RATES.carbonOffset * payingPaxCount, currency)}</span>
                 </div>
               )}
 
