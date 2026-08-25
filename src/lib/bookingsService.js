@@ -1,5 +1,23 @@
 import { db, doc, setDoc, getDoc, collection, query, where, getDocs, limit } from './firebase.js';
 
+export function extractAirportCode(val, fallback = 'JFK') {
+  if (!val) return fallback;
+  if (typeof val === 'string') return val.trim().toUpperCase();
+  if (typeof val === 'object') {
+    return (val.code || val.airport || val.iata || val.id || fallback).toString().toUpperCase();
+  }
+  return fallback;
+}
+
+export function extractAirportCity(val, codeFallback = '') {
+  if (!val) return codeFallback;
+  if (typeof val === 'string') return val.trim();
+  if (typeof val === 'object') {
+    return val.city || val.name || val.cityName || val.location || codeFallback;
+  }
+  return codeFallback;
+}
+
 /**
  * Saves a flight booking reservation into Firestore database and local cache
  */
@@ -8,6 +26,11 @@ export async function saveBookingToDatabase(booking) {
   
   const now = new Date();
   const expires = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 Hours hold
+
+  const originCode = extractAirportCode(booking.origin, 'JFK');
+  const originCity = extractAirportCity(booking.originCity, extractAirportCity(booking.origin, originCode));
+  const destCode = extractAirportCode(booking.destination, 'LHR');
+  const destCity = extractAirportCity(booking.destinationCity, extractAirportCity(booking.destination, destCode));
 
   const bookingRecord = {
     pnr: pnrCode,
@@ -20,13 +43,13 @@ export async function saveBookingToDatabase(booking) {
     adultsCount: Number(booking.adultsCount) || 1,
     childrenCount: Number(booking.childrenCount) || 0,
     infantsCount: Number(booking.infantsCount) || 0,
-    flightNumber: booking.flightNumber || 'BA178',
-    airline: booking.airline || 'British Airways',
-    origin: booking.origin || 'JFK',
-    originCity: booking.originCity || booking.origin || 'New York',
-    destination: booking.destination || 'LHR',
-    destinationCity: booking.destinationCity || booking.destination || 'London',
-    departDate: booking.departDate || '2026-08-20',
+    flightNumber: booking.flightNumber || 'FL' + Math.floor(100 + Math.random() * 900),
+    airline: booking.airline || 'Partner Airline',
+    origin: originCode,
+    originCity: originCity,
+    destination: destCode,
+    destinationCity: destCity,
+    departDate: booking.departDate || new Date().toISOString().split('T')[0],
     returnDate: booking.returnDate || null,
     tripType: booking.tripType || 'round',
     cabinClass: booking.cabinClass || 'Business Class',
@@ -35,15 +58,15 @@ export async function saveBookingToDatabase(booking) {
     royaPrice: Number(booking.royaPrice) || 840,
     savings: Number(booking.savings) || 360,
     aircraft: booking.aircraft || 'Boeing 787 Dreamliner',
-    status: 'CONFIRMED_HOLD',
-    createdAt: now.toISOString(),
-    holdExpiresAt: expires.toISOString()
+    status: booking.status || 'CONFIRMED_HOLD',
+    createdAt: booking.createdAt || now.toISOString(),
+    holdExpiresAt: booking.holdExpiresAt || expires.toISOString()
   };
 
   // 1. Save to Firestore DB
   try {
     const docRef = doc(db, 'bookings', pnrCode);
-    await setDoc(docRef, bookingRecord);
+    await setDoc(docRef, bookingRecord, { merge: true });
     console.log(`[Firestore] Successfully persisted booking PNR ${pnrCode}`);
   } catch (err) {
     console.warn(`[Firestore DB Warning] Could not reach remote database, utilizing local storage cache:`, err);
@@ -60,26 +83,28 @@ export async function saveBookingToDatabase(booking) {
     console.warn('LocalStorage error:', e);
   }
 
-  // 3. Dispatch confirmation email to passenger
-  try {
-    const emailRes = await fetch('/api/bookings/send-confirmation', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...bookingRecord,
-        seatPreference: booking.seatPreference,
-        mealPreference: booking.mealPreference,
-        selectedAddOns: booking.selectedAddOns
-      })
-    });
-    const emailData = await emailRes.json();
-    if (emailData && emailData.success) {
-      console.log(`[Email Confirmation] Successfully triggered confirmation email for PNR ${pnrCode}`);
-      bookingRecord.emailSent = true;
-      bookingRecord.emailDetails = emailData;
+  // 3. Dispatch confirmation email to passenger if email provided
+  if (booking.passengerEmail && booking.passengerEmail.trim()) {
+    try {
+      const emailRes = await fetch('/api/bookings/send-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...bookingRecord,
+          seatPreference: booking.seatPreference,
+          mealPreference: booking.mealPreference,
+          selectedAddOns: booking.selectedAddOns
+        })
+      });
+      const emailData = await emailRes.json();
+      if (emailData && emailData.success) {
+        console.log(`[Email Confirmation] Successfully triggered confirmation email for PNR ${pnrCode}`);
+        bookingRecord.emailSent = true;
+        bookingRecord.emailDetails = emailData;
+      }
+    } catch (emailErr) {
+      console.warn(`[Email Confirmation Warning] Email endpoint request error:`, emailErr);
     }
-  } catch (emailErr) {
-    console.warn(`[Email Confirmation Warning] Email endpoint request error:`, emailErr);
   }
 
   return bookingRecord;
@@ -215,21 +240,30 @@ function formatBookingResult(raw) {
   const now = new Date();
   const diffHours = Math.max(0, Math.round((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60)));
 
+  const originCode = extractAirportCode(raw.origin, 'JFK');
+  const originCity = extractAirportCity(raw.originCity, originCode);
+  const destCode = extractAirportCode(raw.destination, 'LHR');
+  const destCity = extractAirportCity(raw.destinationCity, destCode);
+
   return {
     ...raw,
     pnr: raw.pnr,
-    passenger: raw.passengerName,
-    email: raw.passengerEmail,
-    phone: raw.passengerPhone,
-    dob: raw.passengerDob,
-    passport: raw.passengerPassport,
-    route: `${raw.origin} (${raw.originCity || raw.origin}) → ${raw.destination} (${raw.destinationCity || raw.destination})`,
-    flightNumber: raw.flightNumber,
-    airline: raw.airline,
+    passenger: raw.passengerName || 'Valued Passenger',
+    email: raw.passengerEmail || '',
+    phone: raw.passengerPhone || '',
+    dob: raw.passengerDob || '',
+    passport: raw.passengerPassport || '',
+    origin: originCode,
+    originCity: originCity,
+    destination: destCode,
+    destinationCity: destCity,
+    route: `${originCode} (${originCity}) → ${destCode} (${destCity})`,
+    flightNumber: raw.flightNumber || 'FL101',
+    airline: raw.airline || 'Partner Airline',
     departDate: raw.departDate,
     returnDate: raw.returnDate,
     cabin: raw.cabinClass,
-    passengers: raw.passengersCount,
+    passengers: raw.passengersCount || 1,
     status: raw.status || 'CONFIRMED_HOLD',
     holdExpires: `${diffHours > 0 ? diffHours : 1} Hours Remaining`,
     totalFare: raw.royaPrice,

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, ShieldCheck, Download, Printer, MessageCircle, Clock, CheckCircle2, Copy, Plane, Activity, AlertCircle, Shield, Sparkles, Check, Luggage, PlusCircle, FileText, Lock, HeartHandshake, Search, Globe, ExternalLink, Share2, Mail, Send, CreditCard, CheckCircle } from 'lucide-react';
 import { generatePNR, formatCurrency } from '../utils/pnrGenerator';
-import { saveBookingToDatabase, updateBookingPaymentStatus } from '../lib/bookingsService';
+import { saveBookingToDatabase, updateBookingPaymentStatus, extractAirportCode, extractAirportCity } from '../lib/bookingsService';
 import { validateEmail, validatePhone, validateName, validateDob, validatePassengerDob, validatePassport } from '../utils/validation';
 import { openFlutterwavePayment } from '../utils/flutterwave';
 import CheckoutProgressIndicator from './CheckoutProgressIndicator';
@@ -105,6 +105,53 @@ export default function ReserveModal({ data, onClose, onOpenChat, onOpenTerms, o
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Auto-stage PNR hold in database/cache on mount so copying PNR anytime returns accurate flight details
+  useEffect(() => {
+    const autoPersistHold = async () => {
+      try {
+        const originCode = extractAirportCode(data?.origin, 'JFK');
+        const originCity = extractAirportCity(data?.origin, originCode);
+        const destCode = extractAirportCode(data?.destination, 'LHR');
+        const destCity = extractAirportCity(data?.destination, destCode);
+        const leadPax = passengersList.find(p => p.isLead) || passengersList[0];
+
+        await saveBookingToDatabase({
+          pnr: pnr,
+          passengerName: leadPax?.fullName || 'Valued Passenger (Hold Reserved)',
+          passengerEmail: leadPax?.email || '',
+          passengerPhone: leadPax?.phone || '',
+          passengerDob: leadPax?.dob || '',
+          passengerPassport: leadPax?.passport || '',
+          passengersList: passengersList,
+          adultsCount: adultsCount,
+          childrenCount: childrenCount,
+          infantsCount: infantsCount,
+          passengersCount: passengersCount,
+          flightNumber: data?.flightNumber || 'FL' + Math.floor(100 + Math.random() * 900),
+          airline: data?.airline || 'Partner Airline',
+          origin: originCode,
+          originCity: originCity,
+          destination: destCode,
+          destinationCity: destCity,
+          departDate: data?.departDate || new Date().toISOString().split('T')[0],
+          returnDate: data?.returnDate || null,
+          tripType: data?.tripType || 'round',
+          cabinClass: selectedCabin,
+          retailPrice: totalRetailPrice,
+          royaPrice: totalFinalPrice,
+          savings: totalSavings,
+          aircraft: data?.aircraft || 'Boeing 787 Dreamliner',
+          status: 'CONFIRMED_HOLD'
+        });
+      } catch (e) {
+        console.warn('Auto-persist hold warning:', e);
+      }
+    };
+    if (data && pnr) {
+      autoPersistHold();
+    }
+  }, [pnr, data]);
 
   const updatePassengerField = (index, field, value) => {
     setPassengersList(prev => {
@@ -388,6 +435,11 @@ ${window.location.origin}`;
       const addOnsList = Object.keys(addOns).filter(k => addOns[k]);
       const leadPax = passengersList.find(p => p.isLead) || passengersList[0];
 
+      const originCode = extractAirportCode(data.origin, 'JFK');
+      const originCity = extractAirportCity(data.origin, originCode);
+      const destCode = extractAirportCode(data.destination, 'LHR');
+      const destCity = extractAirportCity(data.destination, destCode);
+
       const savedRecord = await saveBookingToDatabase({
         pnr: pnr,
         passengerName: `${leadPax.title} ${leadPax.fullName}`.trim(),
@@ -400,13 +452,13 @@ ${window.location.origin}`;
         childrenCount: childrenCount,
         infantsCount: infantsCount,
         passengersCount: passengersCount,
-        flightNumber: data.flightNumber || 'BA178',
-        airline: data.airline || 'British Airways',
-        origin: data.origin?.code || data.origin || 'JFK',
-        originCity: data.origin?.city || data.origin?.name || 'New York',
-        destination: data.destination?.code || data.destination || 'LHR',
-        destinationCity: data.destination?.city || data.destination?.name || 'London',
-        departDate: data.departDate || '2026-08-20',
+        flightNumber: data.flightNumber || 'FL' + Math.floor(100 + Math.random() * 900),
+        airline: data.airline || 'Partner Airline',
+        origin: originCode,
+        originCity: originCity,
+        destination: destCode,
+        destinationCity: destCity,
+        departDate: data.departDate || new Date().toISOString().split('T')[0],
         returnDate: data.returnDate,
         tripType: data.tripType || 'round',
         cabinClass: selectedCabin,
@@ -417,7 +469,8 @@ ${window.location.origin}`;
         seatPreference: leadPax.seatPreference,
         mealPreference: leadPax.mealPreference,
         specialRequests: specialRequests,
-        aircraft: data.aircraft || 'Boeing 787 Dreamliner'
+        aircraft: data.aircraft || 'Boeing 787 Dreamliner',
+        status: 'CONFIRMED_HOLD'
       });
 
       setConfirmedSuccess(true);
@@ -430,9 +483,9 @@ ${window.location.origin}`;
           passengerEmail: leadPax.email.trim(),
           passengerName: `${leadPax.title} ${leadPax.fullName}`.trim(),
           passengerPhone: leadPax.phone.trim(),
-          flightNumber: data.flightNumber || 'BA178',
-          airline: data.airline || 'British Airways',
-          route: `${data.origin?.code || 'JFK'} → ${data.destination?.code || 'LHR'}`,
+          flightNumber: data.flightNumber || 'FL101',
+          airline: data.airline || 'Partner Airline',
+          route: `${originCode} → ${destCode}`,
           onSuccess: async (payRes) => {
             setIsPaid(true);
             setFlwDetails(payRes);

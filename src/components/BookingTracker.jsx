@@ -13,6 +13,57 @@ export default function BookingTracker({ isOpen, onClose, onOpenChat, showToast,
   const [isPaying, setIsPaying] = useState(false);
   const [error, setError] = useState('');
   const [copiedPnr, setCopiedPnr] = useState(false);
+  const [recentBookings, setRecentBookings] = useState([]);
+
+  const performLookup = async (queryText) => {
+    const q = (queryText || '').trim();
+    if (!q) {
+      setError('Please enter your 6-character PNR code, full legal name, or email address.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    setResult(null);
+
+    try {
+      const bookingData = await lookupBookingFromDatabase(q);
+      if (bookingData) {
+        setResult(bookingData);
+        if (showToast) {
+          showToast({
+            type: 'success',
+            title: 'PNR Hold Found in DB!',
+            message: `Retrieved confirmed booking for ${bookingData.passenger} (${bookingData.route}).`,
+            pnr: bookingData.pnr
+          });
+        }
+      } else {
+        setError(`No active reservation hold found matching "${q}". Please check your 6-character PNR code or email address.`);
+      }
+    } catch (err) {
+      console.error('PNR lookup error:', err);
+      setError('Failed to query database. Please check your search code and try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setSearchInput('');
+      setResult(null);
+      setError('');
+      try {
+        const localStr = localStorage.getItem('royabridge_bookings');
+        if (localStr) {
+          const list = JSON.parse(localStr);
+          if (Array.isArray(list)) setRecentBookings(list);
+        }
+      } catch (e) {
+        console.warn('Recent PNR lookup error:', e);
+      }
+    }
+  }, [isOpen]);
 
   const handlePayBookingWithFlutterwave = async () => {
     if (!result) return;
@@ -116,37 +167,9 @@ ${window.location.origin}`;
 
   if (!isOpen) return null;
 
-  const handlePnrSearch = async (e) => {
+  const handlePnrSearch = (e) => {
     e.preventDefault();
-    if (!searchInput.trim()) {
-      setError('Please enter your 6-character PNR code, full legal name, or email address.');
-      return;
-    }
-    setError('');
-    setLoading(true);
-    setResult(null);
-
-    try {
-      const bookingData = await lookupBookingFromDatabase(searchInput);
-      if (bookingData) {
-        setResult(bookingData);
-        if (showToast) {
-          showToast({
-            type: 'success',
-            title: 'PNR Hold Found in DB!',
-            message: `Retrieved confirmed booking for ${bookingData.passenger} (${bookingData.route}).`,
-            pnr: bookingData.pnr
-          });
-        }
-      } else {
-        setError(`No active reservation hold found matching "${searchInput}". Please check your 6-character PNR code or email address.`);
-      }
-    } catch (err) {
-      console.error('PNR lookup error:', err);
-      setError('Failed to query database. Please check your search code and try again.');
-    } finally {
-      setLoading(false);
-    }
+    performLookup(searchInput);
   };
 
   const handleFlightStatusSearch = async (e) => {
@@ -329,7 +352,7 @@ ${window.location.origin}`;
               Enter your 6-character PNR reference code to inspect your locked itinerary status and hold countdown.
             </p>
 
-            <form onSubmit={handlePnrSearch} style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+            <form onSubmit={handlePnrSearch} style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
               <input 
                 type="text" 
                 placeholder="e.g. RB8K92, Full Name, or email@domain.com"
@@ -351,6 +374,38 @@ ${window.location.origin}`;
                 {loading ? 'Searching...' : 'Search DB'}
               </button>
             </form>
+
+            {/* Quick-select Recent PNRs */}
+            {recentBookings.length > 0 && (
+              <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600 }}>Recent PNR Holds:</span>
+                {recentBookings.slice(0, 4).map((b) => (
+                  <button
+                    key={b.pnr}
+                    type="button"
+                    onClick={() => {
+                      setSearchInput(b.pnr);
+                      performLookup(b.pnr);
+                    }}
+                    style={{
+                      background: searchInput === b.pnr ? 'rgba(229,193,88,0.25)' : 'rgba(255,255,255,0.06)',
+                      border: searchInput === b.pnr ? '1px solid var(--color-gold)' : '1px solid rgba(255,255,255,0.12)',
+                      borderRadius: 'var(--radius-full)',
+                      padding: '4px 10px',
+                      fontSize: '0.75rem',
+                      color: searchInput === b.pnr ? 'var(--color-gold-bright)' : '#CBD5E1',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontWeight: 700
+                    }}
+                  >
+                    <Clock size={12} /> #{b.pnr} ({b.origin}→{b.destination})
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Loading Skeleton */}
             {loading && (

@@ -417,8 +417,23 @@ Thank you for choosing RoyaBridge Travels.
         }
       });
 
+      const rawSender = (process.env.EMAIL_FROM || (smtpUser && smtpUser.includes('@') ? smtpUser : '') || 'support@royabridge.com').trim();
+      let cleanSenderEmail = rawSender;
+      if (!cleanSenderEmail.includes('@')) {
+        const domain = (smtpHost && smtpHost.includes('.')) ? smtpHost.replace(/^(mail|smtp)\./i, '') : 'royabridge.com';
+        const sanitizedUsername = cleanSenderEmail.replace(/[^a-zA-Z0-9._-]/g, '').toLowerCase() || 'support';
+        cleanSenderEmail = `${sanitizedUsername}@${domain}`;
+      } else {
+        const match = cleanSenderEmail.match(/<([^>]+)>/);
+        if (match) {
+          cleanSenderEmail = match[1].trim();
+        }
+      }
+
+      const senderDisplayName = process.env.EMAIL_FROM_NAME || 'RoyaBridge Travels Concierge';
+
       const info = await transporter.sendMail({
-        from: `"${process.env.EMAIL_FROM_NAME || 'RoyaBridge Travels Concierge'}" <${process.env.EMAIL_FROM || smtpUser}>`,
+        from: `"${senderDisplayName}" <${cleanSenderEmail}>`,
         to: recipientEmail,
         subject,
         text: plainText,
