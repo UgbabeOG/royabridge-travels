@@ -4,6 +4,7 @@ import { generatePNR, formatCurrency } from '../utils/pnrGenerator';
 import { saveBookingToDatabase, updateBookingPaymentStatus } from '../lib/bookingsService';
 import { validateEmail, validatePhone, validateName, validateDob, validatePassengerDob, validatePassport } from '../utils/validation';
 import { openFlutterwavePayment } from '../utils/flutterwave';
+import CheckoutProgressIndicator from './CheckoutProgressIndicator';
 
 export default function ReserveModal({ data, onClose, onOpenChat, onOpenTerms, onOpenRefunds, showToast, currency = 'USD' }) {
   const paxContainerRef = useRef(null);
@@ -490,7 +491,27 @@ ${window.location.origin}`;
     window.print();
   };
 
+  const handleStepClick = (stepId) => {
+    if (stepId === 1) {
+      onClose();
+    } else if (stepId === 2) {
+      const modalCard = document.querySelector('.glass-card');
+      if (modalCard) modalCard.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (stepId === 3) {
+      if (paxContainerRef.current) {
+        paxContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    } else if (stepId === 4) {
+      const paymentEl = document.getElementById('checkout-payment-section');
+      if (paymentEl) {
+        paymentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  };
+
   if (!data) return null;
+
+  const activeStepNumber = isPaid ? 4 : confirmedSuccess ? 4 : 3;
 
   return (
     <div style={{
@@ -523,7 +544,7 @@ ${window.location.origin}`;
           alignItems: 'center',
           borderBottom: '1px solid rgba(229, 193, 88, 0.2)',
           paddingBottom: '18px',
-          marginBottom: '24px'
+          marginBottom: '20px'
         }}>
           <div>
             <span className="gold-badge" style={{ fontSize: '0.78rem', marginBottom: '6px' }}>
@@ -552,6 +573,14 @@ ${window.location.origin}`;
             <X size={20} />
           </button>
         </div>
+
+        {/* Multi-Step Checkout Progress Indicator */}
+        <CheckoutProgressIndicator 
+          currentStep={activeStepNumber}
+          isConfirmed={confirmedSuccess}
+          isPaid={isPaid}
+          onStepClick={handleStepClick}
+        />
 
         {/* 2-Column Checkout Layout */}
         <div style={{
@@ -1543,7 +1572,7 @@ ${window.location.origin}`;
               </div>
             ) : (
               /* Payment Method Option Selector */
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div id="checkout-payment-section" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 700, letterSpacing: '0.05em' }}>
                   CHOOSE CHECKOUT MODE
                 </span>
