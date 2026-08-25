@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
+import BreadcrumbNav from './components/BreadcrumbNav';
 import Hero from './components/Hero';
 import FlightSearchForm from './components/FlightSearchForm';
 import RealTimeFlightResults from './components/RealTimeFlightResults';
@@ -209,6 +210,18 @@ export default function App() {
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const activeModal = reserveModalData 
+    ? 'reserve' 
+    : isTrackerOpen 
+    ? 'tracker' 
+    : isContactOpen 
+    ? 'contact' 
+    : isTermsOpen 
+    ? 'terms' 
+    : isRefundsOpen 
+    ? 'refunds' 
+    : null;
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-dark)' }}>
       {/* Navigation */}
@@ -217,6 +230,17 @@ export default function App() {
         onOpenChat={() => setIsChatOpen(true)}
         onOpenTracker={() => setIsTrackerOpen(true)}
         onOpenContact={() => setIsContactOpen(true)}
+      />
+
+      {/* Breadcrumb Location Navigation */}
+      <BreadcrumbNav 
+        searchQuery={searchQuery}
+        activeModal={activeModal}
+        onNavigateHome={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        onNavigateSearch={() => {
+          const el = document.getElementById('realtime-results');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }}
       />
 
       <main id="main-content" style={{ flex: 1 }}>
