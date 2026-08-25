@@ -254,15 +254,19 @@ ${window.location.origin}`;
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '20px'
+      padding: '20px',
+      overflowY: 'auto'
     }}>
       <div className="glass-card" style={{
         maxWidth: '560px',
         width: '100%',
+        maxHeight: '90vh',
+        overflowY: 'auto',
         background: '#0E1526',
         border: '1.5px solid var(--border-gold-glow)',
         borderRadius: 'var(--radius-lg)',
-        padding: '32px'
+        padding: 'clamp(20px, 4vw, 32px)',
+        boxSizing: 'border-box'
       }}>
         
         {/* Header */}
