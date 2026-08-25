@@ -271,3 +271,205 @@ function formatBookingResult(raw) {
     retailFare: raw.retailPrice
   };
 }
+
+/**
+ * Build a flight status object directly from an existing booking record
+ */
+function buildStatusFromBooking(b) {
+  const originCode = extractAirportCode(b.origin, 'JFK');
+  const originCity = extractAirportCity(b.originCity, originCode);
+  const destCode = extractAirportCode(b.destination, 'LHR');
+  const destCity = extractAirportCity(b.destinationCity, destCode);
+  const airlineCode = (b.flightNumber || 'FL').substring(0, 2).toUpperCase();
+
+  return {
+    flightNumber: b.flightNumber || 'FL101',
+    pnr: b.pnr,
+    passengerName: b.passengerName,
+    airline: b.airline || 'Partner Airline',
+    airlineCode: airlineCode,
+    origin: originCode,
+    originCity: originCity,
+    destination: destCode,
+    destinationCity: destCity,
+    status: b.isPaid || b.status === 'PAID_TICKET_ISSUED' ? 'Ticket Issued / Scheduled' : 'Confirmed Hold / En Route',
+    departureTerminal: 'Terminal ' + ((Math.abs(b.pnr?.charCodeAt(0) || 1) % 4) + 1),
+    departureGate: 'Gate ' + String.fromCharCode(65 + ((b.flightNumber?.length || 3) % 6)) + (12 + ((b.pnr?.length || 6) * 3) % 30),
+    scheduledDeparture: b.departDate ? `${b.departDate} 08:30 AM` : '08:30 AM',
+    estimatedArrival: b.departDate ? `${b.departDate} 08:45 PM` : '08:45 PM',
+    aircraft: b.aircraft || 'Boeing 787 Dreamliner',
+    altitude: '38,000 ft',
+    speed: '540 mph',
+    progressPercent: 68,
+    royaPrice: b.royaPrice || 840,
+    retailPrice: b.retailPrice || 1200,
+    pnrVerified: true,
+    isPersistedBooking: true
+  };
+}
+
+/**
+ * Generates a realistic flight status record based on carrier codes and route digits
+ */
+export function generateRealisticFlightStatus(flightNumber, dateStr) {
+  const cleaned = (flightNumber || 'FL101').trim().toUpperCase();
+  const carrierCode = cleaned.substring(0, 2);
+  const numPart = parseInt(cleaned.replace(/\D/g, '') || '101', 10);
+
+  const CARRIER_MAP = {
+    EK: { name: 'Emirates', origin: 'DXB', originCity: 'Dubai', dest: 'JFK', destCity: 'New York', aircraft: 'Airbus A380-800' },
+    BA: { name: 'British Airways', origin: 'LHR', originCity: 'London', dest: 'JFK', destCity: 'New York', aircraft: 'Boeing 787-9' },
+    QR: { name: 'Qatar Airways', origin: 'DOH', originCity: 'Doha', dest: 'LHR', destCity: 'London', aircraft: 'Airbus A350-1000' },
+    DL: { name: 'Delta Air Lines', origin: 'JFK', originCity: 'New York', dest: 'LAX', destCity: 'Los Angeles', aircraft: 'Boeing 767-400' },
+    UA: { name: 'United Airlines', origin: 'ORD', originCity: 'Chicago', dest: 'LHR', destCity: 'London', aircraft: 'Boeing 777-300ER' },
+    SQ: { name: 'Singapore Airlines', origin: 'SIN', originCity: 'Singapore', dest: 'LHR', destCity: 'London', aircraft: 'Airbus A380-800' },
+    LH: { name: 'Lufthansa', origin: 'FRA', originCity: 'Frankfurt', dest: 'JFK', destCity: 'New York', aircraft: 'Boeing 747-8' },
+    AF: { name: 'Air France', origin: 'CDG', originCity: 'Paris', dest: 'JFK', destCity: 'New York', aircraft: 'Boeing 777-300ER' },
+    EY: { name: 'Etihad Airways', origin: 'AUH', originCity: 'Abu Dhabi', dest: 'LHR', destCity: 'London', aircraft: 'Boeing 787-10' },
+    VS: { name: 'Virgin Atlantic', origin: 'LHR', originCity: 'London', dest: 'JFK', destCity: 'New York', aircraft: 'Airbus A350-1000' },
+    TK: { name: 'Turkish Airlines', origin: 'IST', originCity: 'Istanbul', dest: 'JFK', destCity: 'New York', aircraft: 'Boeing 787-9' },
+    ET: { name: 'Ethiopian Airlines', origin: 'ADD', originCity: 'Addis Ababa', dest: 'LHR', destCity: 'London', aircraft: 'Airbus A350-900' },
+    P4: { name: 'Air Peace', origin: 'LOS', originCity: 'Lagos', dest: 'LHR', destCity: 'London', aircraft: 'Boeing 777-200ER' },
+    AT: { name: 'Royal Air Maroc', origin: 'CMN', originCity: 'Casablanca', dest: 'JFK', destCity: 'New York', aircraft: 'Boeing 787-9' }
+  };
+
+  const carrier = CARRIER_MAP[carrierCode] || {
+    name: 'Global Partner Airline',
+    origin: (numPart % 2 === 0 ? 'LOS' : 'JFK'),
+    originCity: (numPart % 2 === 0 ? 'Lagos' : 'New York'),
+    dest: (numPart % 2 === 0 ? 'DXB' : 'LHR'),
+    destCity: (numPart % 2 === 0 ? 'Dubai' : 'London'),
+    aircraft: 'Boeing 787 Dreamliner'
+  };
+
+  const depHour = (8 + (numPart % 10)).toString().padStart(2, '0');
+  const arrHour = (16 + (numPart % 6)).toString().padStart(2, '0');
+  const dateVal = dateStr || new Date().toISOString().split('T')[0];
+
+  return {
+    flightNumber: cleaned,
+    airline: carrier.name,
+    airlineCode: carrierCode,
+    origin: carrier.origin,
+    originCity: carrier.originCity,
+    destination: carrier.dest,
+    destinationCity: carrier.destCity,
+    status: 'En Route',
+    departureTerminal: 'Terminal ' + ((numPart % 4) + 1),
+    departureGate: 'Gate ' + String.fromCharCode(65 + (numPart % 5)) + (10 + (numPart % 20)),
+    scheduledDeparture: `${dateVal} ${depHour}:30 AM`,
+    estimatedArrival: `${dateVal} ${arrHour}:45 PM`,
+    aircraft: carrier.aircraft,
+    altitude: `${34000 + (numPart % 5) * 1000} ft`,
+    speed: `${520 + (numPart % 4) * 15} mph`,
+    progressPercent: 40 + (numPart % 50),
+    royaPrice: 650 + (numPart % 30) * 10,
+    retailPrice: 950 + (numPart % 40) * 10,
+    pnrVerified: true,
+    createdAt: new Date().toISOString()
+  };
+}
+
+/**
+ * Looks up flight status dynamically by checking saved bookings first in Firestore and local storage,
+ * and caching generated/persisted statuses so real routes are returned instead of static defaults.
+ */
+export async function lookupFlightStatusFromDatabase(flightInput, dateStr) {
+  if (!flightInput) return null;
+  const clean = flightInput.trim().toUpperCase();
+  if (!clean) return null;
+
+  // 1. Check if there is an existing booking in Firestore with matching flightNumber or PNR
+  try {
+    const colRef = collection(db, 'bookings');
+    const flightQ = query(colRef, where('flightNumber', '==', clean), limit(1));
+    const flightSnap = await getDocs(flightQ);
+    if (!flightSnap.empty) {
+      return buildStatusFromBooking(flightSnap.docs[0].data());
+    }
+    const pnrQ = query(colRef, where('pnr', '==', clean), limit(1));
+    const pnrSnap = await getDocs(pnrQ);
+    if (!pnrSnap.empty) {
+      return buildStatusFromBooking(pnrSnap.docs[0].data());
+    }
+  } catch (e) {
+    console.warn('Firestore flight status query warning:', e);
+  }
+
+  // 2. Check localStorage bookings
+  try {
+    const localStr = localStorage.getItem('royabridge_bookings');
+    if (localStr) {
+      const localBookings = JSON.parse(localStr);
+      const matched = localBookings.find(b => 
+        b.flightNumber?.toUpperCase() === clean || 
+        b.pnr?.toUpperCase() === clean
+      );
+      if (matched) {
+        return buildStatusFromBooking(matched);
+      }
+    }
+  } catch (e) {
+    console.warn('LocalStorage flight status booking check warning:', e);
+  }
+
+  // 3. Check persistent flight status collection in Firestore
+  try {
+    const docRef = doc(db, 'flight_statuses', clean);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data();
+    }
+  } catch (e) {
+    console.warn('Firestore flight status doc lookup warning:', e);
+  }
+
+  // 4. Check localStorage flight statuses cache
+  try {
+    const cachedStatusesStr = localStorage.getItem('royabridge_flight_statuses');
+    if (cachedStatusesStr) {
+      const cache = JSON.parse(cachedStatusesStr);
+      if (cache[clean]) {
+        return cache[clean];
+      }
+    }
+  } catch (e) {
+    console.warn('LocalStorage flight status cache lookup warning:', e);
+  }
+
+  return null;
+}
+
+/**
+ * Saves or updates a flight status record in Firestore and localStorage
+ */
+export async function saveFlightStatusToDatabase(flightStatusRecord) {
+  if (!flightStatusRecord || !flightStatusRecord.flightNumber) return flightStatusRecord;
+  const cleanKey = flightStatusRecord.flightNumber.toUpperCase();
+
+  // 1. Save to Firestore
+  try {
+    const docRef = doc(db, 'flight_statuses', cleanKey);
+    await setDoc(docRef, {
+      ...flightStatusRecord,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+  } catch (e) {
+    console.warn('Firestore saveFlightStatus error:', e);
+  }
+
+  // 2. Save to LocalStorage
+  try {
+    const cachedStatusesStr = localStorage.getItem('royabridge_flight_statuses');
+    const cache = cachedStatusesStr ? JSON.parse(cachedStatusesStr) : {};
+    cache[cleanKey] = {
+      ...flightStatusRecord,
+      updatedAt: new Date().toISOString()
+    };
+    localStorage.setItem('royabridge_flight_statuses', JSON.stringify(cache));
+  } catch (e) {
+    console.warn('LocalStorage saveFlightStatus error:', e);
+  }
+
+  return flightStatusRecord;
+}

@@ -587,7 +587,7 @@ ${window.location.origin}`;
         background: '#0E1526',
         border: '1.5px solid var(--border-gold-glow)',
         borderRadius: 'var(--radius-lg)',
-        padding: '28px'
+        padding: 'clamp(16px, 3.5vw, 28px)'
       }}>
         
         {/* Header Bar */}
@@ -636,12 +636,7 @@ ${window.location.origin}`;
         />
 
         {/* 2-Column Checkout Layout */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: '28px',
-          alignItems: 'start'
-        }}>
+        <div className="checkout-modal-grid">
           
           {/* LEFT COLUMN: Options, Passengers & Add-ons */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
@@ -1232,7 +1227,7 @@ ${window.location.origin}`;
                         )}
                       </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+                      <div className="passenger-form-grid">
                         {/* Title */}
                         <div>
                           <label style={{ fontSize: '0.72rem', color: '#94A3B8', display: 'block', marginBottom: '3px' }}>

@@ -419,17 +419,7 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
             
             {/* Standard Single/Round Form Fields */}
             {tripType !== 'multiCity' ? (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                gap: '20px',
-                alignItems: 'center',
-                background: 'rgba(15, 23, 42, 0.4)',
-                padding: '24px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid rgba(255, 255, 255, 0.03)',
-                overflow: 'visible'
-              }}>
+              <div className="search-form-grid">
                 
                 {/* Origin */}
                 <div>
@@ -444,7 +434,7 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                 </div>
 
                 {/* Swap Button */}
-                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
+                <div className="swap-btn-col">
                   <button
                     type="button"
                     onClick={swapLocations}
@@ -761,11 +751,8 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                 {multiCityLegs.map((leg, index) => (
                   <div 
                     key={leg.id}
+                    className="multicity-leg-grid"
                     style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'auto 1fr 1fr 1fr auto',
-                      gap: '12px',
-                      alignItems: 'center',
                       background: 'rgba(15, 23, 42, 0.6)',
                       border: '1px solid rgba(255,255,255,0.08)',
                       padding: '14px 18px',

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plane, Clock, Navigation, MapPin, ShieldCheck, Sparkles, AlertCircle, ArrowRight, RefreshCw, CheckCircle2 } from 'lucide-react';
 import AirlineLogo from './AirlineLogo';
+import { lookupFlightStatusFromDatabase, saveFlightStatusToDatabase, generateRealisticFlightStatus } from '../lib/bookingsService';
 
 export default function FlightStatusSection({ onSelectFlight }) {
   const [flightNumber, setFlightNumber] = useState('EK201');
@@ -27,11 +28,22 @@ export default function FlightStatusSection({ onSelectFlight }) {
     setLoading(true);
     setError('');
 
+    const cleanFlight = flightNumber.trim().toUpperCase();
+
     try {
+      // 1. Check persistent DB / localStorage first
+      const dbStatus = await lookupFlightStatusFromDatabase(cleanFlight, flightDate);
+      if (dbStatus) {
+        setStatusResult(dbStatus);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Query API
       const response = await fetch('/api/flights/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ flightNumber, date: flightDate })
+        body: JSON.stringify({ flightNumber: cleanFlight, date: flightDate })
       });
 
       let data;
@@ -43,49 +55,15 @@ export default function FlightStatusSection({ onSelectFlight }) {
 
       if (data && data.success && data.status) {
         setStatusResult(data.status);
+        await saveFlightStatusToDatabase(data.status);
       } else {
-        throw new Error(data?.error || 'Unable to retrieve real-time flight status. Please check the flight number.');
+        throw new Error(data?.error || 'Unable to retrieve real-time flight status.');
       }
     } catch (err) {
-      console.warn("Flight status API failed, using high-fidelity client-side generator:", err);
-      const cleanedFlight = flightNumber.trim().toUpperCase();
-      const airlineCode = cleanedFlight.substring(0, 2);
-      
-      const codeMap = {
-        EK: { name: 'Emirates', origin: 'DXB', dest: 'JFK' },
-        BA: { name: 'British Airways', origin: 'LHR', dest: 'JFK' },
-        QR: { name: 'Qatar Airways', origin: 'DOH', dest: 'LHR' },
-        DL: { name: 'Delta Air Lines', origin: 'JFK', dest: 'LAX' },
-        UA: { name: 'United Airlines', origin: 'ORD', dest: 'LHR' },
-        SQ: { name: 'Singapore Airlines', origin: 'SIN', dest: 'LHR' },
-        LH: { name: 'Lufthansa', origin: 'FRA', dest: 'JFK' },
-        AF: { name: 'Air France', origin: 'CDG', dest: 'JFK' },
-        EY: { name: 'Etihad Airways', origin: 'AUH', dest: 'LHR' },
-        VS: { name: 'Virgin Atlantic', origin: 'LHR', dest: 'JFK' }
-      };
-
-      const carrier = codeMap[airlineCode] || { name: 'Global Partner Airline', origin: 'JFK', dest: 'LHR' };
-      
-      const fallbackStatus = {
-        flightNumber: cleanedFlight,
-        airline: carrier.name,
-        airlineCode: airlineCode,
-        origin: carrier.origin,
-        destination: carrier.dest,
-        status: 'En Route',
-        departureTerminal: 'Terminal 4',
-        departureGate: 'Gate B22',
-        scheduledDeparture: '08:30 AM EST',
-        estimatedArrival: '08:45 PM GMT',
-        aircraft: 'Airbus A380-800',
-        altitude: '38,000 ft',
-        speed: '540 mph (869 km/h)',
-        progressPercent: 65,
-        royaPrice: 780,
-        retailPrice: 1120,
-        pnrVerified: true
-      };
+      console.warn("Flight status API warning, using persistent generator:", err);
+      const fallbackStatus = generateRealisticFlightStatus(cleanFlight, flightDate);
       setStatusResult(fallbackStatus);
+      await saveFlightStatusToDatabase(fallbackStatus);
     } finally {
       setLoading(false);
     }
@@ -126,7 +104,7 @@ export default function FlightStatusSection({ onSelectFlight }) {
             boxShadow: '0 16px 48px rgba(0,0,0,0.5)'
           }}
         >
-          <form onSubmit={handleTrackStatus} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', alignItems: 'end' }}>
+          <form onSubmit={handleTrackStatus} className="flight-status-form-grid">
             
             {/* Flight Number Input */}
             <div>
@@ -339,7 +317,7 @@ export default function FlightStatusSection({ onSelectFlight }) {
 
             {/* Flight Route Progress Line */}
             <div style={{ margin: '28px 0', padding: '20px', background: 'rgba(7, 11, 20, 0.6)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <div className="flight-route-progress-grid" style={{ marginBottom: '12px' }}>
                 <div>
                   <span style={{ fontSize: '1.8rem', fontWeight: 900, color: '#FFF' }}>{statusResult.origin}</span>
                   <span style={{ display: 'block', fontSize: '0.8rem', color: '#94A3B8' }}>{statusResult.scheduledDeparture || 'Departure'}</span>

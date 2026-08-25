@@ -346,5 +346,192 @@ h1, h2, h3, .font-royal {
   border-width: 0;
 }
 
+/* ==========================================================================
+   Responsive CSS Grid Layouts for Tablet and Mobile Views
+   ========================================================================== */
+
+/* 1. Main Search Panel Form Grid */
+.search-form-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr 1fr 1fr 1.2fr;
+  gap: 14px;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.4);
+  padding: 24px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  overflow: visible;
+}
+
+.swap-btn-col {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+}
+
+@media (max-width: 1023px) {
+  .search-form-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .swap-btn-col {
+    grid-column: span 2;
+    margin-top: 0;
+  }
+  .search-form-grid > div {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 639px) {
+  .search-form-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 16px;
+  }
+  .swap-btn-col {
+    grid-column: span 1;
+    margin: 4px 0;
+  }
+}
+
+/* Multi-city leg row grid */
+.multicity-leg-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+@media (max-width: 767px) {
+  .multicity-leg-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .multicity-leg-grid > div:last-child {
+    grid-column: span 2;
+    display: flex;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .multicity-leg-grid {
+    grid-template-columns: 1fr;
+  }
+  .multicity-leg-grid > div:last-child {
+    grid-column: span 1;
+  }
+}
+
+/* 2. Checkout & Reservation Summary Modal Grid */
+.checkout-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 950px) {
+  .checkout-modal-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+.passenger-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 480px) {
+  .passenger-form-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+/* 3. PNR & Flight Status Tracker Result Grids */
+.pnr-result-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  font-size: 0.86rem;
+  color: #CBD5E1;
+  margin-bottom: 16px;
+  word-break: break-word;
+}
+
+@media (max-width: 580px) {
+  .pnr-result-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .pnr-result-grid > div {
+    grid-column: span 1 !important;
+  }
+}
+
+.flight-tracker-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  font-size: 0.88rem;
+  color: #CBD5E1;
+  word-break: break-word;
+}
+
+@media (max-width: 580px) {
+  .flight-tracker-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+/* 4. Live Flight Status Check Form & Progress Grids */
+.flight-status-form-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1.5fr 1fr;
+  gap: 16px;
+  align-items: end;
+}
+
+@media (max-width: 767px) {
+  .flight-status-form-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .flight-status-form-grid > div:last-child {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 480px) {
+  .flight-status-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .flight-status-form-grid > div:last-child {
+    grid-column: span 1;
+  }
+}
+
+.flight-route-progress-grid {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 20px;
+  align-items: center;
+}
+
+@media (max-width: 639px) {
+  .flight-route-progress-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    text-align: center;
+  }
+}
+
+
 
 

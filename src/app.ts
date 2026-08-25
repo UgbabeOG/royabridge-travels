@@ -617,8 +617,14 @@ apiRouter.post("/flights/status", async (req, res) => {
     }
 
     const cleanedFlight = flightNumber.trim().toUpperCase();
-    const airlineCode = cleanedFlight.substring(0, 2);
+    const cacheKey = `status_${cleanedFlight}_${date || 'today'}`;
 
+    const cached = getCachedResponse(cacheKey);
+    if (cached) {
+      return res.json({ success: true, status: cached, cached: true });
+    }
+
+    const airlineCode = cleanedFlight.substring(0, 2);
     const gemini = getGeminiClient();
     let statusData = null;
 
@@ -639,20 +645,29 @@ apiRouter.post("/flights/status", async (req, res) => {
     }
 
     if (!statusData) {
-      const codeMap: Record<string, { name: string; origin: string; dest: string }> = {
-        EK: { name: 'Emirates', origin: 'DXB', dest: 'JFK' },
-        BA: { name: 'British Airways', origin: 'LHR', dest: 'JFK' },
-        QR: { name: 'Qatar Airways', origin: 'DOH', dest: 'LHR' },
-        DL: { name: 'Delta Air Lines', origin: 'JFK', dest: 'LAX' },
-        UA: { name: 'United Airlines', origin: 'ORD', dest: 'LHR' },
-        SQ: { name: 'Singapore Airlines', origin: 'SIN', dest: 'LHR' },
-        LH: { name: 'Lufthansa', origin: 'FRA', dest: 'JFK' },
-        AF: { name: 'Air France', origin: 'CDG', dest: 'JFK' },
-        EY: { name: 'Etihad Airways', origin: 'AUH', dest: 'LHR' },
-        VS: { name: 'Virgin Atlantic', origin: 'LHR', dest: 'JFK' }
+      const numPart = parseInt(cleanedFlight.replace(/\D/g, '') || '101', 10);
+      const codeMap: Record<string, { name: string; origin: string; dest: string; aircraft: string }> = {
+        EK: { name: 'Emirates', origin: 'DXB', dest: 'JFK', aircraft: 'Airbus A380-800' },
+        BA: { name: 'British Airways', origin: 'LHR', dest: 'JFK', aircraft: 'Boeing 787-9' },
+        QR: { name: 'Qatar Airways', origin: 'DOH', dest: 'LHR', aircraft: 'Airbus A350-1000' },
+        DL: { name: 'Delta Air Lines', origin: 'JFK', dest: 'LAX', aircraft: 'Boeing 767-400' },
+        UA: { name: 'United Airlines', origin: 'ORD', dest: 'LHR', aircraft: 'Boeing 777-300ER' },
+        SQ: { name: 'Singapore Airlines', origin: 'SIN', dest: 'LHR', aircraft: 'Airbus A380-800' },
+        LH: { name: 'Lufthansa', origin: 'FRA', dest: 'JFK', aircraft: 'Boeing 747-8' },
+        AF: { name: 'Air France', origin: 'CDG', dest: 'JFK', aircraft: 'Boeing 777-300ER' },
+        EY: { name: 'Etihad Airways', origin: 'AUH', dest: 'LHR', aircraft: 'Boeing 787-10' },
+        VS: { name: 'Virgin Atlantic', origin: 'LHR', dest: 'JFK', aircraft: 'Airbus A350-1000' },
+        TK: { name: 'Turkish Airlines', origin: 'IST', dest: 'JFK', aircraft: 'Boeing 787-9' },
+        ET: { name: 'Ethiopian Airlines', origin: 'ADD', dest: 'LHR', aircraft: 'Airbus A350-900' },
+        P4: { name: 'Air Peace', origin: 'LOS', dest: 'LHR', aircraft: 'Boeing 777-200ER' }
       };
 
-      const carrier = codeMap[airlineCode] || { name: 'Global Partner Airline', origin: 'JFK', dest: 'LHR' };
+      const carrier = codeMap[airlineCode] || {
+        name: 'Global Partner Airline',
+        origin: numPart % 2 === 0 ? 'LOS' : 'JFK',
+        dest: numPart % 2 === 0 ? 'DXB' : 'LHR',
+        aircraft: 'Boeing 787 Dreamliner'
+      };
 
       statusData = {
         flightNumber: cleanedFlight,
@@ -661,16 +676,16 @@ apiRouter.post("/flights/status", async (req, res) => {
         origin: carrier.origin,
         destination: carrier.dest,
         status: 'En Route',
-        departureTerminal: 'Terminal 4',
-        departureGate: 'Gate B22',
-        scheduledDeparture: '08:30 AM EST',
-        estimatedArrival: '08:45 PM GMT',
-        aircraft: 'Airbus A380-800',
-        altitude: '38,000 ft',
+        departureTerminal: 'Terminal ' + ((numPart % 4) + 1),
+        departureGate: 'Gate ' + String.fromCharCode(65 + (numPart % 5)) + (10 + (numPart % 20)),
+        scheduledDeparture: `${date || 'Today'} 08:30 AM EST`,
+        estimatedArrival: `${date || 'Today'} 08:45 PM GMT`,
+        aircraft: carrier.aircraft,
+        altitude: `${34000 + (numPart % 5) * 1000} ft`,
         speed: '540 mph (869 km/h)',
-        progressPercent: 65,
-        royaPrice: 780,
-        retailPrice: 1120,
+        progressPercent: 40 + (numPart % 50),
+        royaPrice: 650 + (numPart % 30) * 10,
+        retailPrice: 950 + (numPart % 40) * 10,
         pnrVerified: true
       };
     } else {
@@ -678,6 +693,7 @@ apiRouter.post("/flights/status", async (req, res) => {
       if (!statusData.progressPercent) statusData.progressPercent = 60;
     }
 
+    setCachedResponse(cacheKey, statusData);
     res.json({ success: true, status: statusData });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
