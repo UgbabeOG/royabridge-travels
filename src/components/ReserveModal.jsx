@@ -5,7 +5,7 @@ import { saveBookingToDatabase, updateBookingPaymentStatus } from '../lib/bookin
 import { validateEmail, validatePhone, validateName, validateDob, validatePassengerDob, validatePassport } from '../utils/validation';
 import { openFlutterwavePayment } from '../utils/flutterwave';
 
-export default function ReserveModal({ data, onClose, onOpenChat, showToast, currency = 'USD' }) {
+export default function ReserveModal({ data, onClose, onOpenChat, onOpenTerms, onOpenRefunds, showToast, currency = 'USD' }) {
   const paxContainerRef = useRef(null);
   const [isShaking, setIsShaking] = useState(false);
   const initialBreakdown = data?.passengerBreakdown || { adults: data?.passengers || 1, children: 0, infants: 0 };
@@ -1660,9 +1660,47 @@ ${window.location.origin}`;
               </button>
             </div>
 
-            {/* Guarantees */}
-            <div style={{ fontSize: '0.72rem', color: '#94A3B8', textAlign: 'center', lineHeight: 1.4 }}>
-              🛡️ Official PNR hold stored securely in database. Cancel anytime within 24 hours at no cost.
+            {/* Guarantees & Legal Links */}
+            <div style={{ 
+              fontSize: '0.73rem', 
+              color: '#94A3B8', 
+              textAlign: 'center', 
+              lineHeight: 1.5,
+              background: 'rgba(7, 11, 20, 0.65)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '10px 12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px'
+            }}>
+              <div>
+                🛡️ Official PNR hold stored securely in database. Cancel anytime within 24 hours at no cost.
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                gap: '12px', 
+                paddingTop: '6px', 
+                borderTop: '1px solid rgba(255,255,255,0.08)' 
+              }}>
+                <button
+                  type="button"
+                  onClick={() => onOpenRefunds && onOpenRefunds()}
+                  style={{ background: 'none', border: 'none', color: 'var(--color-gold-bright)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.73rem', padding: 0 }}
+                >
+                  Refund Policy
+                </button>
+                <span style={{ color: '#475569' }}>•</span>
+                <button
+                  type="button"
+                  onClick={() => onOpenTerms && onOpenTerms()}
+                  style={{ background: 'none', border: 'none', color: 'var(--color-gold-bright)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.73rem', padding: 0 }}
+                >
+                  Terms of Service
+                </button>
+              </div>
             </div>
 
           </div>

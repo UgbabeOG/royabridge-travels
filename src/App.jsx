@@ -297,6 +297,8 @@ export default function App() {
           currency={currency}
           showToast={showToast}
           onClose={() => setReserveModalData(null)}
+          onOpenTerms={() => setIsTermsOpen(true)}
+          onOpenRefunds={() => setIsRefundsOpen(true)}
           onOpenChat={() => {
             setReserveModalData(null);
             setIsChatOpen(true);

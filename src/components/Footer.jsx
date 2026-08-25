@@ -1,5 +1,5 @@
 import React from 'react';
-import { Phone, Mail, MapPin, ArrowUp, Facebook, Instagram, Twitter, MessageCircle } from 'lucide-react';
+import { Phone, Mail, MapPin, ArrowUp, Facebook, Instagram, Twitter, MessageCircle, RefreshCw, ShieldCheck } from 'lucide-react';
 
 export default function Footer({ onOpenChat, onOpenContact, onOpenTerms, onOpenRefunds }) {
   const scrollToTop = () => {
@@ -127,7 +127,7 @@ export default function Footer({ onOpenChat, onOpenContact, onOpenTerms, onOpenR
             </ul>
           </div>
 
-          {/* Contact Details */}
+          {/* Contact Details & Legal Policies */}
           <div>
             <h4 style={{ color: '#FFF', fontSize: '1rem', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Customer Support
@@ -144,6 +144,55 @@ export default function Footer({ onOpenChat, onOpenContact, onOpenTerms, onOpenR
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <MapPin size={16} color="var(--color-gold)" />
                 <span>Worldwide Travel Concierge Headquarters</span>
+              </div>
+
+              {/* Legal & Policies */}
+              <div style={{
+                marginTop: '6px',
+                paddingTop: '12px',
+                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}>
+                <button 
+                  onClick={(e) => { e.preventDefault(); if (onOpenRefunds) onOpenRefunds(); }} 
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--color-gold-bright)',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    fontSize: '0.86rem',
+                    textAlign: 'left',
+                    padding: 0,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <RefreshCw size={14} color="var(--color-gold)" />
+                  Refund & Cancellation Policy
+                </button>
+                <button 
+                  onClick={(e) => { e.preventDefault(); if (onOpenTerms) onOpenTerms(); }} 
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--color-gold-bright)',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    fontSize: '0.86rem',
+                    textAlign: 'left',
+                    padding: 0,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <ShieldCheck size={14} color="var(--color-gold)" />
+                  Terms of Service
+                </button>
               </div>
             </div>
           </div>
@@ -164,21 +213,6 @@ export default function Footer({ onOpenChat, onOpenContact, onOpenTerms, onOpenR
         }}>
           <div>
             © {new Date().getFullYear()} <strong>RoyaBridge Travels</strong>. All Rights Reserved. Discover the World, Save Big and Travel Better.
-          </div>
-
-          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <button 
-              onClick={(e) => { e.preventDefault(); if (onOpenRefunds) onOpenRefunds(); }} 
-              style={{ background: 'none', border: 'none', color: '#94A3B8', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.82rem', padding: 0 }}
-            >
-              Refund Policy
-            </button>
-            <button 
-              onClick={(e) => { e.preventDefault(); if (onOpenTerms) onOpenTerms(); }} 
-              style={{ background: 'none', border: 'none', color: '#94A3B8', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.82rem', padding: 0 }}
-            >
-              Terms of Service
-            </button>
           </div>
 
           <button 
