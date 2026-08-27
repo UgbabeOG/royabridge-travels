@@ -1,3 +1,5 @@
+import { formatCurrency, getConvertedAmount } from './pnrGenerator';
+
 /**
  * Flutterwave Payment Client Utility
  * Dynamically loads Flutterwave Checkout v3 script and initializes inline payment popup
@@ -53,14 +55,18 @@ export async function openFlutterwavePayment({
   try {
     const FlutterwaveCheckout = await loadFlutterwaveScript();
 
+    // Ensure amount is in the proper currency units
+    const payableAmount = Number(amount) > 0 ? Number(amount) : 100;
+    const cleanCurrency = (currency || 'USD').toUpperCase();
+
     // 1. Initialize session on backend
     const initRes = await fetch('/api/payments/flutterwave/initialize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         pnr,
-        amount,
-        currency,
+        amount: payableAmount,
+        currency: cleanCurrency,
         passengerEmail,
         passengerName,
         passengerPhone,
@@ -76,13 +82,17 @@ export async function openFlutterwavePayment({
     }
 
     const { publicKey, tx_ref, amountFormatted, currencyFormatted } = initData;
+    const finalAmount = Number(amountFormatted || payableAmount);
+    const finalCurrency = (currencyFormatted || cleanCurrency || 'USD').toUpperCase();
+
+    console.log(`[FLUTTERWAVE CHECKOUT LAUNCH] PNR=${pnr} Amount=${finalAmount} ${finalCurrency}`);
 
     // 2. Launch Flutterwave Inline Checkout
     FlutterwaveCheckout({
       public_key: publicKey,
       tx_ref: tx_ref,
-      amount: Number(amount),
-      currency: currencyFormatted || currency || 'USD',
+      amount: finalAmount,
+      currency: finalCurrency,
       payment_options: "card, mobilemoney, ussd, banktransfer, barter",
       customer: {
         email: passengerEmail,
@@ -91,7 +101,7 @@ export async function openFlutterwavePayment({
       },
       customizations: {
         title: "RoyaBridge Travels Flight Ticket",
-        description: `Payment for PNR ${pnr} (${flightNumber || 'Flight'})`,
+        description: `Payment for PNR ${pnr} (${flightNumber || 'Flight'}) - ${finalCurrency === 'NGN' ? '₦' : ''}${finalAmount.toLocaleString()} ${finalCurrency}`,
         logo: "https://images.unsplash.com/photo-1540339832862-47459980783b?auto=format&fit=crop&w=200&q=80",
       },
       callback: async function (response) {
@@ -107,8 +117,8 @@ export async function openFlutterwavePayment({
                 transaction_id: response.transaction_id || response.flw_ref || response.tx_ref,
                 tx_ref: response.tx_ref || tx_ref,
                 pnr: pnr,
-                amount: amount,
-                currency: currency,
+                amount: finalAmount,
+                currency: finalCurrency,
                 status: response.status,
                 flw_ref: response.flw_ref
               })
@@ -119,11 +129,11 @@ export async function openFlutterwavePayment({
               if (onSuccess) onSuccess(verifyData);
             } else {
               console.warn('[FLUTTERWAVE VERIFY WARNING]', verifyData);
-              if (onSuccess) onSuccess({ success: true, pnr, tx_ref, response });
+              if (onSuccess) onSuccess({ success: true, pnr, tx_ref, response, paidAmount: finalAmount, paidCurrency: finalCurrency });
             }
           } catch (vErr) {
             console.error('[FLUTTERWAVE VERIFY FETCH ERROR]', vErr);
-            if (onSuccess) onSuccess({ success: true, pnr, tx_ref, response });
+            if (onSuccess) onSuccess({ success: true, pnr, tx_ref, response, paidAmount: finalAmount, paidCurrency: finalCurrency });
           }
         } else {
           if (onError) onError(new Error(`Flutterwave payment status: ${response.status || 'Failed'}`));

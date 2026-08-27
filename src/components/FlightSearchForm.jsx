@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plane, Calendar, Users, Shield, ArrowRightLeft, Sparkles, Activity, Search, History, Clock, ArrowRight, Tag, Globe, Plus, Trash2, MapPin } from 'lucide-react';
 import { POPULAR_AIRPORTS, INTERCITY_ROUTES } from '../data/destinations';
-import { calculateSavings, formatCurrency } from '../utils/pnrGenerator';
+import { calculateSavings, formatCurrency, CURRENCY_RATES } from '../utils/pnrGenerator';
 import SearchableAirportSelect from './SearchableAirportSelect';
 
 export default function FlightSearchForm({ onSearchFlights, loading, currency = 'USD', onCurrencyChange }) {
@@ -333,9 +333,11 @@ export default function FlightSearchForm({ onSearchFlights, loading, currency = 
                   id="currency-selector"
                   aria-label="Select Currency"
                 >
-                  <option value="USD" style={{ background: '#0F172A', color: '#FFF' }}>USD ($)</option>
-                  <option value="EUR" style={{ background: '#0F172A', color: '#FFF' }}>EUR (€)</option>
-                  <option value="GBP" style={{ background: '#0F172A', color: '#FFF' }}>GBP (£)</option>
+                  {Object.entries(CURRENCY_RATES).map(([code, info]) => (
+                    <option key={code} value={code} style={{ background: '#0F172A', color: '#FFF' }}>
+                      {info.flag ? `${info.flag} ` : ''}{info.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 

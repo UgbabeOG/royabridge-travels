@@ -20,9 +20,11 @@ import AnimatedSection from './components/AnimatedSection';
 import { POPULAR_AIRPORTS } from './data/destinations';
 import { generateClientSideFlights, generateClientSidePriceTrend } from './utils/pnrGenerator';
 import { CacheManager } from './utils/cacheManager';
+import { initializeUserCurrency, saveUserCurrencySelection } from './utils/currencyDetector';
 
 export default function App() {
   const [currency, setCurrency] = useState('USD');
+  const [detectedLocation, setDetectedLocation] = useState(null);
   const [reserveModalData, setReserveModalData] = useState(null);
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -39,6 +41,22 @@ export default function App() {
   const handleDismissToast = (id) => {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
+
+  const handleCurrencyChange = (newCurrency) => {
+    setCurrency(newCurrency);
+    saveUserCurrencySelection(newCurrency);
+  };
+
+  // Detect location and set local currency on mount
+  useEffect(() => {
+    initializeUserCurrency((detectedCurr, detectedInfo) => {
+      setCurrency(detectedCurr);
+      setDetectedLocation(detectedInfo);
+      if (detectedInfo?.countryName && detectedCurr === 'NGN' && !detectedInfo?.isUserSelected) {
+        console.log(`[GEO_DETECTED] Set currency to ${detectedCurr} (₦) based on detected location: ${detectedInfo.countryName}`);
+      }
+    });
+  }, []);
 
   // Real-time Flight Search API State
   const [searchQuery, setSearchQuery] = useState({
@@ -258,7 +276,7 @@ export default function App() {
             onSearchFlights={handleSearchFlights}
             loading={searchLoading}
             currency={currency}
-            onCurrencyChange={setCurrency}
+            onCurrencyChange={handleCurrencyChange}
           />
         </AnimatedSection>
 

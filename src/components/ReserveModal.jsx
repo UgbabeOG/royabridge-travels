@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, ShieldCheck, Download, Printer, MessageCircle, Clock, CheckCircle2, Copy, Plane, Activity, AlertCircle, Shield, Sparkles, Check, Luggage, PlusCircle, FileText, Lock, HeartHandshake, Search, Globe, ExternalLink, Share2, Mail, Send, CreditCard, CheckCircle } from 'lucide-react';
-import { generatePNR, formatCurrency } from '../utils/pnrGenerator';
+import { generatePNR, formatCurrency, getConvertedAmount } from '../utils/pnrGenerator';
 import { saveBookingToDatabase, updateBookingPaymentStatus, extractAirportCode, extractAirportCity } from '../lib/bookingsService';
 import { validateEmail, validatePhone, validateName, validateDob, validatePassengerDob, validatePassport } from '../utils/validation';
 import { openFlutterwavePayment } from '../utils/flutterwave';
@@ -476,9 +476,10 @@ ${window.location.origin}`;
       setConfirmedSuccess(true);
 
       if (checkoutMode === 'flutterwave') {
+        const payableAmount = getConvertedAmount(totalFinalPrice, currency);
         await openFlutterwavePayment({
           pnr: pnr,
-          amount: totalFinalPrice,
+          amount: payableAmount,
           currency: currency || 'USD',
           passengerEmail: leadPax.email.trim(),
           passengerName: `${leadPax.title} ${leadPax.fullName}`.trim(),
@@ -1650,10 +1651,11 @@ ${window.location.origin}`;
                     }} />
                     <div>
                       <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#FFF', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <CreditCard size={15} color="var(--color-gold-bright)" /> Pay Now & Issue Ticket
+                        <CreditCard size={15} color="var(--color-gold-bright)" /> 
+                        {currency === 'NGN' ? 'Pay Now in Naira (₦)' : `Pay Now (${currency})`} & Issue Ticket
                       </div>
                       <div style={{ fontSize: '0.72rem', color: '#94A3B8' }}>
-                        Cards, M-Pesa, Mobile Money, Bank Transfer, Apple Pay
+                        {currency === 'NGN' ? 'Naira Debit Cards, Bank Transfer, USSD, Barter, Mobile Money' : 'Credit/Debit Cards, Mobile Money, Bank Transfer, Apple Pay'}
                       </div>
                     </div>
                   </div>
@@ -1687,7 +1689,7 @@ ${window.location.origin}`;
                     }} />
                     <div>
                       <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#FFF', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Clock size={15} color="#38BDF8" /> 24-Hour Hold ($0 Today)
+                        <Clock size={15} color="#38BDF8" /> 24-Hour Hold ({formatCurrency(0, currency)} Today)
                       </div>
                       <div style={{ fontSize: '0.72rem', color: '#94A3B8' }}>
                         Lock fare price for 24 hours free. Pay later.
@@ -1695,7 +1697,7 @@ ${window.location.origin}`;
                     </div>
                   </div>
                   <span style={{ fontSize: '0.7rem', color: '#38BDF8', fontWeight: 700, background: 'rgba(56,189,248,0.15)', padding: '2px 6px', borderRadius: '4px' }}>
-                    $0 Now
+                    {formatCurrency(0, currency)} Now
                   </span>
                 </div>
               </div>
@@ -1712,7 +1714,7 @@ ${window.location.origin}`;
                   style={{ width: '100%', padding: '12px', fontSize: '0.92rem', fontWeight: 800 }}
                 >
                   {saving ? <Activity className="animate-spin" size={16} /> : (checkoutMode === 'flutterwave' ? <CreditCard size={16} /> : <MessageCircle size={16} />)}
-                  {saving ? 'Processing Booking...' : (checkoutMode === 'flutterwave' ? `Pay ${formatCurrency(totalFinalPrice, currency)}` : 'Confirm Flight Hold ($0 Now)')}
+                  {saving ? 'Processing Booking...' : (checkoutMode === 'flutterwave' ? `Pay ${formatCurrency(totalFinalPrice, currency)}` : `Confirm 24h Flight Hold (${formatCurrency(0, currency)} Now)`)}
                 </button>
               ) : (
                 <button 

@@ -24,20 +24,54 @@ export function calculateSavings(baseFare, cabinClass = 'Economy') {
 }
 
 export const CURRENCY_RATES = {
-  USD: { rate: 1.0, symbol: '$', code: 'USD', name: 'USD ($)' },
-  EUR: { rate: 0.92, symbol: '€', code: 'EUR', name: 'EUR (€)' },
-  GBP: { rate: 0.78, symbol: '£', code: 'GBP', name: 'GBP (£)' }
+  USD: { rate: 1.0, symbol: '$', code: 'USD', name: 'USD ($)', country: 'United States', flag: '🇺🇸' },
+  NGN: { rate: 1550, symbol: '₦', code: 'NGN', name: 'NGN (₦)', country: 'Nigeria', flag: '🇳🇬' },
+  GBP: { rate: 0.78, symbol: '£', code: 'GBP', name: 'GBP (£)', country: 'United Kingdom', flag: '🇬🇧' },
+  EUR: { rate: 0.92, symbol: '€', code: 'EUR', name: 'EUR (€)', country: 'European Union', flag: '🇪🇺' },
+  CAD: { rate: 1.36, symbol: 'CA$', code: 'CAD', name: 'CAD (CA$)', country: 'Canada', flag: '🇨🇦' },
+  AED: { rate: 3.67, symbol: 'AED', code: 'AED', name: 'AED (د.إ)', country: 'United Arab Emirates', flag: '🇦🇪' },
+  ZAR: { rate: 18.2, symbol: 'R', code: 'ZAR', name: 'ZAR (R)', country: 'South Africa', flag: '🇿🇦' },
+  GHS: { rate: 15.5, symbol: 'GH₵', code: 'GHS', name: 'GHS (GH₵)', country: 'Ghana', flag: '🇬🇭' },
+  KES: { rate: 129, symbol: 'KSh', code: 'KES', name: 'KES (KSh)', country: 'Kenya', flag: '🇰🇪' },
+  AUD: { rate: 1.52, symbol: 'A$', code: 'AUD', name: 'AUD (A$)', country: 'Australia', flag: '🇦🇺' }
 };
+
+export function getConvertedAmount(amountInUSD, currency = 'USD') {
+  if (amountInUSD === undefined || amountInUSD === null || isNaN(amountInUSD)) return 0;
+  const info = CURRENCY_RATES[currency] || CURRENCY_RATES.USD;
+  return Math.round(amountInUSD * info.rate);
+}
 
 export function formatCurrency(amount, currency = 'USD') {
   if (amount === undefined || amount === null || isNaN(amount)) return '$0';
   const info = CURRENCY_RATES[currency] || CURRENCY_RATES.USD;
   const convertedAmount = Math.round(amount * info.rate);
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: info.code,
-    maximumFractionDigits: 0
-  }).format(convertedAmount);
+
+  const localeMap = {
+    NGN: 'en-NG',
+    GBP: 'en-GB',
+    EUR: 'de-DE',
+    CAD: 'en-CA',
+    AUD: 'en-AU',
+    AED: 'ar-AE',
+    ZAR: 'en-ZA',
+    GHS: 'en-GH',
+    KES: 'en-KE',
+    USD: 'en-US'
+  };
+
+  const locale = localeMap[info.code] || 'en-US';
+
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: info.code,
+      currencyDisplay: 'narrowSymbol',
+      maximumFractionDigits: 0
+    }).format(convertedAmount);
+  } catch (e) {
+    return `${info.symbol}${convertedAmount.toLocaleString()}`;
+  }
 }
 
 // Client-side high-fidelity fallback engines for static/Vercel hosting

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Search, ShieldCheck, X, Clock, Plane, Activity, CheckCircle2, AlertCircle, RefreshCw, User, Mail, Phone, Tag, Share2, Copy, Check, CreditCard, CheckCircle } from 'lucide-react';
-import { formatCurrency } from '../utils/pnrGenerator';
+import { formatCurrency, getConvertedAmount } from '../utils/pnrGenerator';
 import { lookupBookingFromDatabase, updateBookingPaymentStatus, lookupFlightStatusFromDatabase, saveFlightStatusToDatabase, generateRealisticFlightStatus } from '../lib/bookingsService';
 import { openFlutterwavePayment } from '../utils/flutterwave';
 
@@ -70,9 +70,10 @@ export default function BookingTracker({ isOpen, onClose, onOpenChat, showToast,
     setIsPaying(true);
 
     try {
+      const payableAmount = getConvertedAmount(result.totalFare || 840, currency);
       await openFlutterwavePayment({
         pnr: result.pnr,
-        amount: result.totalFare || 840,
+        amount: payableAmount,
         currency: currency || 'USD',
         passengerEmail: result.email || 'traveler@royabridge.com',
         passengerName: result.passenger || 'Valued Passenger',

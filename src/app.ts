@@ -16,6 +16,20 @@ function getSerpApiKey(): string | undefined {
   return key ? key.trim() : undefined;
 }
 
+// SerpAPI Quota Guard & Circuit Breaker
+let serpApiExhaustedUntil = 0;
+let serpApiExhaustedReason = '';
+
+function isSerpApiExhausted(): boolean {
+  return Date.now() < serpApiExhaustedUntil;
+}
+
+function markSerpApiExhausted(reason: string, cooldownMs = 60 * 60 * 1000) {
+  serpApiExhaustedUntil = Date.now() + cooldownMs;
+  serpApiExhaustedReason = reason;
+  console.info(`[SerpAPI Quota Notice] SerpAPI searches limited/exhausted (${reason}). Cooldown active for ${Math.round(cooldownMs / 60000)}m. Automatically routing all queries via Gemini Grounded Search & Global GDS.`);
+}
+
 // Lazy-loaded Gemini AI client helper
 let aiClient: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI | null {
@@ -237,13 +251,14 @@ apiRouter.post("/flights/search", async (req, res) => {
 
     const serpApiKey = getSerpApiKey();
     const serpapiConfigured = Boolean(serpApiKey);
+    const serpapiAvailable = serpapiConfigured && !isSerpApiExhausted();
 
-    console.log("[SERPAPI CONFIG]", { configured: serpapiConfigured });
+    console.log("[SERPAPI CONFIG]", { configured: Boolean(serpApiKey), active: serpapiAvailable, exhausted: isSerpApiExhausted() });
     console.log(`[FLIGHT_SEARCH] request received`);
     console.log(`[FLIGHT_SEARCH] origin=${origin} destination=${destination}`);
     console.log(`[FLIGHT_SEARCH] forceFresh=${forceFresh}`);
     console.log(`[FLIGHT_SEARCH] cache=${forceFresh ? 'BYPASS' : 'MISS'}`);
-    console.log(`[FLIGHT_SEARCH] serpapi=${serpapiConfigured ? 'configured' : 'missing'}`);
+    console.log(`[FLIGHT_SEARCH] serpapi=${!serpApiKey ? 'missing' : (isSerpApiExhausted() ? 'quota_cooldown' : 'active')}`);
 
     const gemini = getGeminiClient();
     let realTimeFlights: any[] | null = null;
@@ -252,11 +267,11 @@ apiRouter.post("/flights/search", async (req, res) => {
     let isGrounded = false;
     let flightSource: 'serpapi_google_flights' | 'gemini_grounded_search' | 'estimated_fallback' = 'estimated_fallback';
     let isLive = false;
-    let upstreamStatus = serpapiConfigured ? 'SerpAPI Querying...' : 'SERPAPI_API_KEY missing in process.env';
-    let fallbackReason = 'NONE';
+    let upstreamStatus = serpapiAvailable ? 'SerpAPI Querying...' : (!serpApiKey ? 'SERPAPI_API_KEY missing in process.env' : `SerpAPI Quota Exhausted: ${serpApiExhaustedReason || 'Cooldown'}`);
+    let fallbackReason = isSerpApiExhausted() ? 'SERPAPI_QUOTA_EXHAUSTED' : 'NONE';
 
     // 1. Primary Direct API: SerpAPI Google Flights engine query
-    if (serpapiConfigured && serpApiKey) {
+    if (serpapiAvailable && serpApiKey) {
       const serpOrigin = extractIataCode(origin, 'JFK');
       const serpDest = extractIataCode(destination, 'LHR');
       console.log(`[FLIGHT_SEARCH] calling SerpAPI with origin=${serpOrigin} dest=${serpDest}`);
@@ -293,9 +308,13 @@ apiRouter.post("/flights/search", async (req, res) => {
         if (serpRes.ok) {
           const serpData = await serpRes.json();
           if (serpData.error) {
-            upstreamStatus = `SerpAPI Error: "${serpData.error}"`;
-            fallbackReason = `SERPAPI_ERROR_FIELD: ${serpData.error}`;
-            console.log(`[SERPAPI ERROR] status=200 message="${serpData.error}"`);
+            const errStr = String(serpData.error);
+            if (errStr.toLowerCase().includes('run out of searches') || errStr.toLowerCase().includes('limit') || errStr.toLowerCase().includes('quota') || errStr.toLowerCase().includes('plan')) {
+              markSerpApiExhausted(errStr);
+            }
+            upstreamStatus = `SerpAPI Notice: "${errStr}"`;
+            fallbackReason = `SERPAPI_ERROR_FIELD: ${errStr}`;
+            console.info(`[SerpAPI Notice] status=200 message="${errStr}". Falling back to Grounded Engine.`);
           }
           const rawFlights = [...(serpData.best_flights || []), ...(serpData.other_flights || [])];
           const bestCount = serpData.best_flights?.length || 0;
@@ -380,17 +399,22 @@ apiRouter.post("/flights/search", async (req, res) => {
           } catch (e) {
             // ignore
           }
+          if (serpRes.status === 429 || serpRes.status === 401 || serpRes.status === 403 || String(errDetail).toLowerCase().includes('run out of searches')) {
+            markSerpApiExhausted(errDetail || `HTTP_${serpRes.status}`);
+          }
           upstreamStatus = `SerpAPI HTTP ${serpRes.status} (${errDetail})`;
           fallbackReason = `SERPAPI_HTTP_${serpRes.status}`;
-          console.log(`[SERPAPI ERROR] status=${serpRes.status} message="${errDetail}"`);
+          console.info(`[SerpAPI Notice] status=${serpRes.status} message="${errDetail}". Switched to fallback.`);
         }
       } catch (serpErr: any) {
         upstreamStatus = `SerpAPI Exception: ${serpErr?.message || serpErr}`;
         fallbackReason = `SERPAPI_EXCEPTION: ${serpErr?.message || 'Network exception'}`;
-        console.log(`[FLIGHT_SEARCH] ERROR stage=SERPAPI error="${serpErr?.message || 'Upstream exception'}"`);
+        console.info(`[FLIGHT_SEARCH] SerpAPI exception: "${serpErr?.message || 'Upstream exception'}". Routing via Grounded Engine.`);
       }
-    } else {
+    } else if (!serpApiKey) {
       fallbackReason = 'SERPAPI_KEY_MISSING';
+    } else if (isSerpApiExhausted()) {
+      fallbackReason = 'SERPAPI_QUOTA_EXHAUSTED';
     }
 
     // 2. Secondary Engine: Gemini Google Search Grounded Search
@@ -850,7 +874,7 @@ apiRouter.post("/flights/price-trend", async (req, res) => {
 
     // 1. Primary Direct API: SerpAPI Google Flights engine query for price insights
     const serpApiKey = getSerpApiKey();
-    if (serpApiKey) {
+    if (serpApiKey && !isSerpApiExhausted()) {
       try {
         const travelClassMap: Record<string, string> = {
           'Economy': '1',
@@ -885,6 +909,12 @@ apiRouter.post("/flights/price-trend", async (req, res) => {
         const serpRes = await fetch(serpUrl);
         if (serpRes.ok) {
           const serpData = await serpRes.json();
+          if (serpData.error) {
+            const errStr = String(serpData.error);
+            if (errStr.toLowerCase().includes('run out of searches') || errStr.toLowerCase().includes('limit') || errStr.toLowerCase().includes('quota')) {
+              markSerpApiExhausted(errStr);
+            }
+          }
           const priceInsights = serpData.price_insights;
           if (priceInsights) {
             const lowest = priceInsights.lowest_price;
@@ -895,6 +925,17 @@ apiRouter.post("/flights/price-trend", async (req, res) => {
           }
           groundingSources = [{ title: 'SerpAPI Live Google Flights Engine', url: `https://www.google.com/travel/flights?q=price+trend+${origin}+to+${destination}` }];
           console.log(`✅ [SERPAPI ENGINE] Successfully retrieved price insights via SerpAPI!`);
+        } else {
+          let errDetail = serpRes.statusText;
+          try {
+            const errJson = await serpRes.json();
+            if (errJson?.error) errDetail = errJson.error;
+          } catch (e) {
+            // ignore
+          }
+          if (serpRes.status === 429 || serpRes.status === 401 || serpRes.status === 403 || String(errDetail).toLowerCase().includes('run out of searches')) {
+            markSerpApiExhausted(errDetail || `HTTP_${serpRes.status}`);
+          }
         }
       } catch (serpErr) {
         console.log('ℹ️ [SERPAPI ENGINE] Price trend query via SerpAPI skipped/fallback.');
@@ -1170,6 +1211,70 @@ Guidelines:
     res.status(500).json({
       success: false,
       reply: "Our concierge network is currently updating live flight availability. Please re-send your message or reach us at support@royabridge.com for immediate assistance."
+    });
+  }
+});
+
+// Location & Currency Detection Endpoint
+apiRouter.get("/geo/detect", (req, res) => {
+  try {
+    const rawCountry = 
+      req.headers["cf-ipcountry"] || 
+      req.headers["x-country-code"] || 
+      req.headers["x-vercel-ip-country"] || 
+      req.headers["x-appengine-country"] || 
+      req.headers["x-client-country"] || 
+      "";
+
+    const countryCode = String(rawCountry).toUpperCase().trim();
+    
+    const countryCurrencyMap: Record<string, { currency: string; symbol: string; country: string; flag: string }> = {
+      NG: { currency: "NGN", symbol: "₦", country: "Nigeria", flag: "🇳🇬" },
+      GB: { currency: "GBP", symbol: "£", country: "United Kingdom", flag: "🇬🇧" },
+      US: { currency: "USD", symbol: "$", country: "United States", flag: "🇺🇸" },
+      CA: { currency: "CAD", symbol: "CA$", country: "Canada", flag: "🇨🇦" },
+      AU: { currency: "AUD", symbol: "A$", country: "Australia", flag: "🇦🇺" },
+      AE: { currency: "AED", symbol: "AED", country: "United Arab Emirates", flag: "🇦🇪" },
+      ZA: { currency: "ZAR", symbol: "R", country: "South Africa", flag: "🇿🇦" },
+      GH: { currency: "GHS", symbol: "GH₵", country: "Ghana", flag: "🇬🇭" },
+      KE: { currency: "KES", symbol: "KSh", country: "Kenya", flag: "🇰🇪" },
+      DE: { currency: "EUR", symbol: "€", country: "Germany", flag: "🇩🇪" },
+      FR: { currency: "EUR", symbol: "€", country: "France", flag: "🇫🇷" },
+      IT: { currency: "EUR", symbol: "€", country: "Italy", flag: "🇮🇹" },
+      ES: { currency: "EUR", symbol: "€", country: "Spain", flag: "🇪🇸" },
+      NL: { currency: "EUR", symbol: "€", country: "Netherlands", flag: "🇳🇱" },
+      IE: { currency: "EUR", symbol: "€", country: "Ireland", flag: "🇮🇪" }
+    };
+
+    if (countryCode && countryCurrencyMap[countryCode]) {
+      const match = countryCurrencyMap[countryCode];
+      return res.json({
+        success: true,
+        countryCode,
+        country: match.country,
+        currency: match.currency,
+        symbol: match.symbol,
+        flag: match.flag,
+        detectedVia: "server_headers"
+      });
+    }
+
+    // Default response when headers do not specify
+    res.json({
+      success: true,
+      countryCode: countryCode || null,
+      currency: "USD",
+      symbol: "$",
+      flag: "🇺🇸",
+      detectedVia: "default"
+    });
+  } catch (err) {
+    res.json({
+      success: true,
+      currency: "USD",
+      symbol: "$",
+      flag: "🇺🇸",
+      detectedVia: "error_fallback"
     });
   }
 });
