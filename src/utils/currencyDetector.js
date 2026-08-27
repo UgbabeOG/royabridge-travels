@@ -28,7 +28,98 @@ export function detectBrowserLocationAndCurrency() {
       };
     }
 
-    // 2. United Kingdom Check
+    // 2. India Check (Indian Rupee - INR)
+    if (
+      tzLower.includes('kolkata') ||
+      tzLower.includes('calcutta') ||
+      tzLower.includes('delhi') ||
+      tzLower.includes('mumbai') ||
+      tzLower.includes('india') ||
+      navLangs.some(l => l && (l.toLowerCase().includes('-in') || l.toLowerCase() === 'hi' || l.toLowerCase().startsWith('hi-')))
+    ) {
+      return {
+        countryCode: 'IN',
+        countryName: 'India',
+        currency: 'INR',
+        symbol: '₹',
+        flag: '🇮🇳',
+        detectedVia: 'browser_india_match'
+      };
+    }
+
+    // 3. China Check (Chinese Yuan - CNY)
+    if (
+      tzLower.includes('shanghai') ||
+      tzLower.includes('beijing') ||
+      tzLower.includes('urumqi') ||
+      tzLower.includes('china') ||
+      navLangs.some(l => l && (l.toLowerCase().includes('-cn') || l.toLowerCase() === 'zh-cn'))
+    ) {
+      return {
+        countryCode: 'CN',
+        countryName: 'China',
+        currency: 'CNY',
+        symbol: '¥',
+        flag: '🇨🇳',
+        detectedVia: 'browser_china_match'
+      };
+    }
+
+    // 4. Japan Check (Japanese Yen - JPY)
+    if (
+      tzLower.includes('tokyo') ||
+      tzLower.includes('japan') ||
+      navLangs.some(l => l && (l.toLowerCase().includes('-jp') || l.toLowerCase().startsWith('ja')))
+    ) {
+      return {
+        countryCode: 'JP',
+        countryName: 'Japan',
+        currency: 'JPY',
+        symbol: '¥',
+        flag: '🇯🇵',
+        detectedVia: 'browser_japan_match'
+      };
+    }
+
+    // 5. Russia Check (Russian Ruble - RUB)
+    if (
+      tzLower.includes('moscow') ||
+      tzLower.includes('samara') ||
+      tzLower.includes('yekaterinburg') ||
+      tzLower.includes('novosibirsk') ||
+      tzLower.includes('krasnoyarsk') ||
+      tzLower.includes('vladivostok') ||
+      tzLower.includes('russia') ||
+      navLangs.some(l => l && (l.toLowerCase().includes('-ru') || l.toLowerCase().startsWith('ru')))
+    ) {
+      return {
+        countryCode: 'RU',
+        countryName: 'Russia',
+        currency: 'RUB',
+        symbol: '₽',
+        flag: '🇷🇺',
+        detectedVia: 'browser_russia_match'
+      };
+    }
+
+    // 6. Turkey Check (Turkish Lira - TRY)
+    if (
+      tzLower.includes('istanbul') ||
+      tzLower.includes('ankara') ||
+      tzLower.includes('turkey') ||
+      navLangs.some(l => l && (l.toLowerCase().includes('-tr') || l.toLowerCase().startsWith('tr')))
+    ) {
+      return {
+        countryCode: 'TR',
+        countryName: 'Turkey',
+        currency: 'TRY',
+        symbol: '₺',
+        flag: '🇹🇷',
+        detectedVia: 'browser_turkey_match'
+      };
+    }
+
+    // 7. United Kingdom Check
     if (
       tzLower.includes('london') ||
       tzLower.includes('belfast') ||
@@ -44,7 +135,7 @@ export function detectBrowserLocationAndCurrency() {
       };
     }
 
-    // 3. Canada Check
+    // 8. Canada Check
     if (
       tzLower.includes('toronto') ||
       tzLower.includes('vancouver') ||
@@ -64,7 +155,7 @@ export function detectBrowserLocationAndCurrency() {
       };
     }
 
-    // 4. Australia Check
+    // 9. Australia Check
     if (
       tzLower.includes('sydney') ||
       tzLower.includes('melbourne') ||
@@ -84,7 +175,7 @@ export function detectBrowserLocationAndCurrency() {
       };
     }
 
-    // 5. United Arab Emirates Check
+    // 10. United Arab Emirates Check
     if (
       tzLower.includes('dubai') ||
       tzLower.includes('abu_dhabi') ||
@@ -100,7 +191,23 @@ export function detectBrowserLocationAndCurrency() {
       };
     }
 
-    // 6. South Africa Check
+    // 11. Saudi Arabia Check
+    if (
+      tzLower.includes('riyadh') ||
+      tzLower.includes('jeddah') ||
+      navLangs.some(l => l && l.toLowerCase().includes('-sa'))
+    ) {
+      return {
+        countryCode: 'SA',
+        countryName: 'Saudi Arabia',
+        currency: 'SAR',
+        symbol: 'SAR',
+        flag: '🇸🇦',
+        detectedVia: 'browser_saudi_match'
+      };
+    }
+
+    // 12. South Africa Check
     if (
       tzLower.includes('johannesburg') ||
       navLangs.some(l => l && l.toLowerCase().includes('-za'))
@@ -115,7 +222,7 @@ export function detectBrowserLocationAndCurrency() {
       };
     }
 
-    // 7. Ghana Check
+    // 13. Ghana Check
     if (
       tzLower.includes('accra') ||
       navLangs.some(l => l && l.toLowerCase().includes('-gh'))
@@ -130,7 +237,7 @@ export function detectBrowserLocationAndCurrency() {
       };
     }
 
-    // 8. Kenya Check
+    // 14. Kenya Check
     if (
       tzLower.includes('nairobi') ||
       navLangs.some(l => l && l.toLowerCase().includes('-ke'))
@@ -145,7 +252,40 @@ export function detectBrowserLocationAndCurrency() {
       };
     }
 
-    // 9. European Union / Eurozone Check
+    // 15. Brazil Check
+    if (
+      tzLower.includes('sao_paulo') ||
+      tzLower.includes('brasilia') ||
+      tzLower.includes('rio_branco') ||
+      navLangs.some(l => l && l.toLowerCase().includes('-br'))
+    ) {
+      return {
+        countryCode: 'BR',
+        countryName: 'Brazil',
+        currency: 'BRL',
+        symbol: 'R$',
+        flag: '🇧🇷',
+        detectedVia: 'browser_brazil_match'
+      };
+    }
+
+    // 16. Switzerland Check
+    if (
+      tzLower.includes('zurich') ||
+      tzLower.includes('geneva') ||
+      navLangs.some(l => l && l.toLowerCase().includes('-ch'))
+    ) {
+      return {
+        countryCode: 'CH',
+        countryName: 'Switzerland',
+        currency: 'CHF',
+        symbol: 'CHF',
+        flag: '🇨🇭',
+        detectedVia: 'browser_switzerland_match'
+      };
+    }
+
+    // 17. European Union / France / Germany / Eurozone Check
     if (
       tzLower.includes('paris') ||
       tzLower.includes('berlin') ||
@@ -156,14 +296,15 @@ export function detectBrowserLocationAndCurrency() {
       tzLower.includes('dublin') ||
       tzLower.includes('vienna') ||
       tzLower.includes('athens') ||
-      tzLower.includes('europe/')
+      tzLower.includes('europe/') ||
+      navLangs.some(l => l && (l.toLowerCase().includes('-fr') || l.toLowerCase().includes('-de') || l.toLowerCase().includes('-it') || l.toLowerCase().includes('-es')))
     ) {
       return {
         countryCode: 'EU',
-        countryName: 'Europe',
+        countryName: 'France / Eurozone',
         currency: 'EUR',
         symbol: '€',
-        flag: '🇪🇺',
+        flag: '🇫🇷',
         detectedVia: 'browser_europe_match'
       };
     }

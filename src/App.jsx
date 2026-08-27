@@ -248,6 +248,8 @@ export default function App() {
         onOpenChat={() => setIsChatOpen(true)}
         onOpenTracker={() => setIsTrackerOpen(true)}
         onOpenContact={() => setIsContactOpen(true)}
+        currency={currency}
+        onCurrencyChange={handleCurrencyChange}
       />
 
       {/* Breadcrumb Location Navigation */}

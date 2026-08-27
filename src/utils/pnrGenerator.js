@@ -24,16 +24,37 @@ export function calculateSavings(baseFare, cabinClass = 'Economy') {
 }
 
 export const CURRENCY_RATES = {
-  USD: { rate: 1.0, symbol: '$', code: 'USD', name: 'USD ($)', country: 'United States', flag: '🇺🇸' },
-  NGN: { rate: 1550, symbol: '₦', code: 'NGN', name: 'NGN (₦)', country: 'Nigeria', flag: '🇳🇬' },
-  GBP: { rate: 0.78, symbol: '£', code: 'GBP', name: 'GBP (£)', country: 'United Kingdom', flag: '🇬🇧' },
-  EUR: { rate: 0.92, symbol: '€', code: 'EUR', name: 'EUR (€)', country: 'European Union', flag: '🇪🇺' },
-  CAD: { rate: 1.36, symbol: 'CA$', code: 'CAD', name: 'CAD (CA$)', country: 'Canada', flag: '🇨🇦' },
-  AED: { rate: 3.67, symbol: 'AED', code: 'AED', name: 'AED (د.إ)', country: 'United Arab Emirates', flag: '🇦🇪' },
-  ZAR: { rate: 18.2, symbol: 'R', code: 'ZAR', name: 'ZAR (R)', country: 'South Africa', flag: '🇿🇦' },
-  GHS: { rate: 15.5, symbol: 'GH₵', code: 'GHS', name: 'GHS (GH₵)', country: 'Ghana', flag: '🇬🇭' },
-  KES: { rate: 129, symbol: 'KSh', code: 'KES', name: 'KES (KSh)', country: 'Kenya', flag: '🇰🇪' },
-  AUD: { rate: 1.52, symbol: 'A$', code: 'AUD', name: 'AUD (A$)', country: 'Australia', flag: '🇦🇺' }
+  USD: { rate: 1.0, symbol: '$', code: 'USD', name: 'USD ($) · US Dollar', country: 'United States', flag: '🇺🇸', locale: 'en-US' },
+  NGN: { rate: 1550, symbol: '₦', code: 'NGN', name: 'NGN (₦) · Nigerian Naira', country: 'Nigeria', flag: '🇳🇬', locale: 'en-NG' },
+  INR: { rate: 84.0, symbol: '₹', code: 'INR', name: 'INR (₹) · Indian Rupee', country: 'India', flag: '🇮🇳', locale: 'en-IN' },
+  CNY: { rate: 7.25, symbol: '¥', code: 'CNY', name: 'CNY (¥) · Chinese Yuan', country: 'China', flag: '🇨🇳', locale: 'zh-CN' },
+  JPY: { rate: 155, symbol: '¥', code: 'JPY', name: 'JPY (¥) · Japanese Yen', country: 'Japan', flag: '🇯🇵', locale: 'ja-JP' },
+  RUB: { rate: 92.0, symbol: '₽', code: 'RUB', name: 'RUB (₽) · Russian Ruble', country: 'Russia', flag: '🇷🇺', locale: 'ru-RU' },
+  TRY: { rate: 34.2, symbol: '₺', code: 'TRY', name: 'TRY (₺) · Turkish Lira', country: 'Turkey', flag: '🇹🇷', locale: 'tr-TR' },
+  EUR: { rate: 0.92, symbol: '€', code: 'EUR', name: 'EUR (€) · Euro (France / EU)', country: 'France / Eurozone', flag: '🇫🇷', locale: 'fr-FR' },
+  GBP: { rate: 0.78, symbol: '£', code: 'GBP', name: 'GBP (£) · British Pound', country: 'United Kingdom', flag: '🇬🇧', locale: 'en-GB' },
+  CAD: { rate: 1.36, symbol: 'CA$', code: 'CAD', name: 'CAD (CA$) · Canadian Dollar', country: 'Canada', flag: '🇨🇦', locale: 'en-CA' },
+  AUD: { rate: 1.52, symbol: 'A$', code: 'AUD', name: 'AUD (A$) · Australian Dollar', country: 'Australia', flag: '🇦🇺', locale: 'en-AU' },
+  AED: { rate: 3.67, symbol: 'AED', code: 'AED', name: 'AED (د.إ) · UAE Dirham', country: 'United Arab Emirates', flag: '🇦🇪', locale: 'en-AE' },
+  SAR: { rate: 3.75, symbol: 'SAR', code: 'SAR', name: 'SAR (﷼) · Saudi Riyal', country: 'Saudi Arabia', flag: '🇸🇦', locale: 'en-SA' },
+  CHF: { rate: 0.89, symbol: 'CHF', code: 'CHF', name: 'CHF (Fr) · Swiss Franc', country: 'Switzerland', flag: '🇨🇭', locale: 'de-CH' },
+  SGD: { rate: 1.35, symbol: 'S$', code: 'SGD', name: 'SGD (S$) · Singapore Dollar', country: 'Singapore', flag: '🇸🇬', locale: 'en-SG' },
+  BRL: { rate: 5.65, symbol: 'R$', code: 'BRL', name: 'BRL (R$) · Brazilian Real', country: 'Brazil', flag: '🇧🇷', locale: 'pt-BR' },
+  MXN: { rate: 19.8, symbol: 'Mex$', code: 'MXN', name: 'MXN ($) · Mexican Peso', country: 'Mexico', flag: '🇲🇽', locale: 'es-MX' },
+  ZAR: { rate: 18.2, symbol: 'R', code: 'ZAR', name: 'ZAR (R) · South African Rand', country: 'South Africa', flag: '🇿🇦', locale: 'en-ZA' },
+  GHS: { rate: 15.5, symbol: 'GH₵', code: 'GHS', name: 'GHS (GH₵) · Ghanaian Cedi', country: 'Ghana', flag: '🇬🇭', locale: 'en-GH' },
+  KES: { rate: 129, symbol: 'KSh', code: 'KES', name: 'KES (KSh) · Kenyan Shilling', country: 'Kenya', flag: '🇰🇪', locale: 'en-KE' },
+  EGP: { rate: 48.5, symbol: 'E£', code: 'EGP', name: 'EGP (E£) · Egyptian Pound', country: 'Egypt', flag: '🇪🇬', locale: 'en-EG' },
+  PKR: { rate: 278, symbol: 'Rs', code: 'PKR', name: 'PKR (Rs) · Pakistani Rupee', country: 'Pakistan', flag: '🇵🇰', locale: 'en-PK' },
+  PHP: { rate: 58.5, symbol: '₱', code: 'PHP', name: 'PHP (₱) · Philippine Peso', country: 'Philippines', flag: '🇵🇭', locale: 'en-PH' },
+  MYR: { rate: 4.45, symbol: 'RM', code: 'MYR', name: 'MYR (RM) · Malaysian Ringgit', country: 'Malaysia', flag: '🇲🇾', locale: 'ms-MY' },
+  IDR: { rate: 16200, symbol: 'Rp', code: 'IDR', name: 'IDR (Rp) · Indonesian Rupiah', country: 'Indonesia', flag: '🇮🇩', locale: 'id-ID' },
+  THB: { rate: 36.5, symbol: '฿', code: 'THB', name: 'THB (฿) · Thai Baht', country: 'Thailand', flag: '🇹🇭', locale: 'th-TH' },
+  KRW: { rate: 1380, symbol: '₩', code: 'KRW', name: 'KRW (₩) · South Korean Won', country: 'South Korea', flag: '🇰🇷', locale: 'ko-KR' },
+  NZD: { rate: 1.65, symbol: 'NZ$', code: 'NZD', name: 'NZD (NZ$) · New Zealand Dollar', country: 'New Zealand', flag: '🇳🇿', locale: 'en-NZ' },
+  SEK: { rate: 10.5, symbol: 'kr', code: 'SEK', name: 'SEK (kr) · Swedish Krona', country: 'Sweden', flag: '🇸🇪', locale: 'sv-SE' },
+  NOK: { rate: 10.8, symbol: 'kr', code: 'NOK', name: 'NOK (kr) · Norwegian Krone', country: 'Norway', flag: '🇳🇴', locale: 'nb-NO' },
+  PLN: { rate: 4.0, symbol: 'zł', code: 'PLN', name: 'PLN (zł) · Polish Zloty', country: 'Poland', flag: '🇵🇱', locale: 'pl-PL' }
 };
 
 export function getConvertedAmount(amountInUSD, currency = 'USD') {
@@ -47,20 +68,7 @@ export function formatCurrency(amount, currency = 'USD') {
   const info = CURRENCY_RATES[currency] || CURRENCY_RATES.USD;
   const convertedAmount = Math.round(amount * info.rate);
 
-  const localeMap = {
-    NGN: 'en-NG',
-    GBP: 'en-GB',
-    EUR: 'de-DE',
-    CAD: 'en-CA',
-    AUD: 'en-AU',
-    AED: 'ar-AE',
-    ZAR: 'en-ZA',
-    GHS: 'en-GH',
-    KES: 'en-KE',
-    USD: 'en-US'
-  };
-
-  const locale = localeMap[info.code] || 'en-US';
+  const locale = info.locale || 'en-US';
 
   try {
     return new Intl.NumberFormat(locale, {

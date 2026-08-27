@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, MessageSquare, PhoneCall, Menu, X, Phone, Mail } from 'lucide-react';
+import { ShieldCheck, MessageSquare, PhoneCall, Menu, X, Phone, Mail, Globe } from 'lucide-react';
+import { CURRENCY_RATES } from '../utils/pnrGenerator';
 
-export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpenContact }) {
+export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpenContact, currency = 'USD', onCurrencyChange }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('');
@@ -204,6 +205,47 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
         {/* Action Buttons & Hamburger Menu */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           
+          {/* Quick Currency Selector */}
+          {onCurrencyChange && (
+            <div 
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                background: 'rgba(15, 23, 42, 0.85)',
+                border: '1px solid var(--border-gold)',
+                borderRadius: '20px',
+                padding: '4px 8px',
+                fontSize: '0.8rem',
+                color: 'var(--color-gold-bright)'
+              }}
+              title="Change Global Currency"
+            >
+              <span>{CURRENCY_RATES[currency]?.flag || '🌐'}</span>
+              <select
+                value={currency}
+                onChange={(e) => onCurrencyChange(e.target.value)}
+                style={{
+                  background: 'transparent',
+                  color: 'var(--color-gold-bright)',
+                  border: 'none',
+                  outline: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer'
+                }}
+                aria-label="Select Currency"
+                id="navbar-currency-select"
+              >
+                {Object.entries(CURRENCY_RATES).map(([code, info]) => (
+                  <option key={code} value={code} style={{ background: '#0F172A', color: '#FFF' }}>
+                    {info.flag ? `${info.flag} ` : ''}{info.code} ({info.symbol})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Contact Us Button - Desktop Only */}
           <button 
             onClick={onOpenContact}
@@ -292,6 +334,49 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
               </a>
             );
           })}
+
+          {/* Mobile Drawer Currency Selector */}
+          {onCurrencyChange && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'rgba(15, 23, 42, 0.8)',
+              border: '1px solid var(--border-gold)',
+              borderRadius: '12px',
+              padding: '10px 14px',
+              marginTop: '4px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Globe size={16} color="var(--color-gold)" />
+                <span style={{ fontSize: '0.85rem', color: '#CBD5E1', fontWeight: 600 }}>Currency:</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>{CURRENCY_RATES[currency]?.flag || '🌐'}</span>
+                <select
+                  value={currency}
+                  onChange={(e) => onCurrencyChange(e.target.value)}
+                  style={{
+                    background: '#0F172A',
+                    color: 'var(--color-gold-bright)',
+                    border: '1px solid rgba(229,193,88,0.3)',
+                    borderRadius: '6px',
+                    padding: '4px 8px',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    outline: 'none'
+                  }}
+                  id="mobile-drawer-currency-select"
+                >
+                  {Object.entries(CURRENCY_RATES).map(([code, info]) => (
+                    <option key={code} value={code} style={{ background: '#0F172A', color: '#FFF' }}>
+                      {info.flag ? `${info.flag} ` : ''}{info.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
 
           <div style={{ height: '1px', background: 'rgba(229,193,88,0.15)', margin: '8px 0' }} />
 

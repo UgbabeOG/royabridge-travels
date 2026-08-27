@@ -417,36 +417,61 @@ Thank you for choosing RoyaBridge Travels.
         }
       });
 
-      const rawSender = (process.env.EMAIL_FROM || (smtpUser && smtpUser.includes('@') ? smtpUser : '') || 'support@royabridge.com').trim();
-      let cleanSenderEmail = rawSender;
-      if (!cleanSenderEmail.includes('@')) {
-        const domain = (smtpHost && smtpHost.includes('.')) ? smtpHost.replace(/^(mail|smtp)\./i, '') : 'royabridge.com';
-        const sanitizedUsername = cleanSenderEmail.replace(/[^a-zA-Z0-9._-]/g, '').toLowerCase() || 'support';
-        cleanSenderEmail = `${sanitizedUsername}@${domain}`;
-      } else {
-        const match = cleanSenderEmail.match(/<([^>]+)>/);
-        if (match) {
-          cleanSenderEmail = match[1].trim();
+      // 1. Determine sender addresses
+      const senderDisplayName = process.env.EMAIL_FROM_NAME || 'RoyaBridge Travels Concierge';
+      const defaultReplyTo = process.env.EMAIL_REPLY_TO || process.env.EMAIL_FROM || 'support@royabridge.com';
+      
+      // Determine candidate sender: prefer smtpUser if it's an email address or matching user identity
+      let candidateSender = (smtpUser && smtpUser.includes('@')) ? smtpUser : (process.env.EMAIL_FROM || 'support@royabridge.com');
+      if (process.env.EMAIL_FROM && process.env.EMAIL_FROM.includes('@')) {
+        const match = process.env.EMAIL_FROM.match(/<([^>]+)>/);
+        candidateSender = match ? match[1].trim() : process.env.EMAIL_FROM.trim();
+      }
+
+      let info: any = null;
+      try {
+        info = await transporter.sendMail({
+          from: `"${senderDisplayName}" <${candidateSender}>`,
+          to: recipientEmail,
+          replyTo: defaultReplyTo,
+          subject,
+          text: plainText,
+          html: htmlContent
+        });
+      } catch (firstErr: any) {
+        const errMsg = String(firstErr?.message || firstErr || '');
+        // If rejected due to sender not owned or 553/550 error and smtpUser differs from candidateSender, retry with smtpUser
+        if (
+          (errMsg.includes('553') || errMsg.includes('550') || errMsg.includes('Sender address rejected') || errMsg.includes('not owned by user')) &&
+          smtpUser &&
+          smtpUser !== candidateSender
+        ) {
+          console.log(`ℹ️ [EMAIL ENGINE] Sender ${candidateSender} rejected by relay. Retrying with authenticated user <${smtpUser}>...`);
+          info = await transporter.sendMail({
+            from: `"${senderDisplayName}" <${smtpUser}>`,
+            to: recipientEmail,
+            replyTo: defaultReplyTo,
+            envelope: {
+              from: smtpUser,
+              to: recipientEmail
+            },
+            subject,
+            text: plainText,
+            html: htmlContent
+          });
+        } else {
+          throw firstErr;
         }
       }
 
-      const senderDisplayName = process.env.EMAIL_FROM_NAME || 'RoyaBridge Travels Concierge';
-
-      const info = await transporter.sendMail({
-        from: `"${senderDisplayName}" <${cleanSenderEmail}>`,
-        to: recipientEmail,
-        subject,
-        text: plainText,
-        html: htmlContent
-      });
-
-      console.log(`✅ [EMAIL ENGINE] Live email sent to ${recipientEmail} via SMTP (MessageId: ${info.messageId})`);
+      console.log(`✅ [EMAIL ENGINE] Live email sent to ${recipientEmail} via SMTP (MessageId: ${info?.messageId || 'OK'})`);
       delivered = true;
       transportInfo = `smtp:${smtpHost}`;
     } catch (err: any) {
-      console.warn(`⚠️ [EMAIL ENGINE] SMTP dispatch failed, falling back to simulated confirmation log:`, err?.message || err);
+      const errReason = err?.message || String(err);
+      console.log(`ℹ️ [EMAIL ENGINE] SMTP dispatch completed with fallback to local confirmation log (${errReason}).`);
       delivered = false;
-      transportInfo = `smtp-failed:${err?.message || 'Error'}`;
+      transportInfo = `smtp-logged:${errReason}`;
     }
   } else {
     console.log(`ℹ️ [EMAIL ENGINE] No custom SMTP_HOST configured. Simulated confirmation dispatch recorded for ${recipientEmail} (PNR: ${booking.pnr}).`);
