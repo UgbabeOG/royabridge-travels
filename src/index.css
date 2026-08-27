@@ -652,6 +652,45 @@ h1, h2, h3, .font-royal {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Admin Data Table Alternating Rows and Smooth Hover */
+.admin-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.82rem;
+}
+
+.admin-data-table th {
+  background: #1E293B;
+  color: #94A3B8;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.admin-data-table tbody tr.row-even {
+  background-color: #0F172A;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.15s ease-in-out;
+}
+
+.admin-data-table tbody tr.row-odd {
+  background-color: rgba(30, 41, 59, 0.38);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.15s ease-in-out;
+}
+
+.admin-data-table tbody tr:hover {
+  background-color: rgba(229, 193, 88, 0.09) !important;
+  box-shadow: inset 2px 0 0 var(--color-gold);
+}
+
+.admin-search-input:focus-within {
+  border-color: var(--color-gold) !important;
+  box-shadow: 0 0 0 2px rgba(229, 193, 88, 0.2);
+}
+
 .admin-form-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
