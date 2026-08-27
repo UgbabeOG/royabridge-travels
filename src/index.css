@@ -532,6 +532,155 @@ h1, h2, h3, .font-royal {
   }
 }
 
+/* 5. Executive Admin Portal Responsive Styles */
+.admin-portal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(5, 10, 20, 0.95);
+  backdrop-filter: blur(14px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 640px) {
+  .admin-portal-overlay {
+    padding: 6px;
+    align-items: flex-start;
+  }
+}
+
+.admin-portal-container {
+  width: 100%;
+  max-width: 1280px;
+  height: 94vh;
+  max-height: 94vh;
+  background: #0B132B;
+  border: 1px solid var(--border-gold);
+  border-radius: 16px;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.85), 0 0 35px rgba(229,193,88,0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  margin: auto;
+}
+
+@media (max-width: 640px) {
+  .admin-portal-container {
+    height: 98vh;
+    max-height: 98vh;
+    border-radius: 12px;
+  }
+}
+
+.admin-portal-header {
+  padding: 14px 20px;
+  background: linear-gradient(90deg, #0F172A 0%, #1E293B 100%);
+  border-bottom: 1px solid rgba(229,193,88,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .admin-portal-header {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+}
+
+.admin-tabs-scroll {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  white-space: nowrap;
+  max-width: 100%;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-tabs-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.admin-tabs-scroll::-webkit-scrollbar-thumb {
+  background: rgba(229,193,88,0.3);
+  border-radius: 4px;
+}
+
+.admin-metrics-grid {
+  background: #090F1E;
+  padding: 10px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .admin-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 8px 12px;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-metrics-grid {
+    grid-template-columns: 1fr 1fr;
+    padding: 8px 10px;
+    gap: 6px;
+  }
+}
+
+.admin-table-container {
+  background: #0F172A;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 600px) {
+  .admin-form-grid-2 {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+.admin-form-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 600px) {
+  .admin-form-grid-3 {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+
 
 
 

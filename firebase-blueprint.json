@@ -19,22 +19,11 @@
         "retailPrice": { "type": "number", "description": "Original retail fare USD" },
         "royaPrice": { "type": "number", "description": "Discounted Concierge fare USD" },
         "savings": { "type": "number", "description": "Saved USD amount" },
-        "status": { "type": "string", "description": "Status e.g. CONFIRMED_HOLD, TICKETED, EXPIRED" },
+        "status": { "type": "string", "description": "Status e.g. CONFIRMED_HOLD, PAID_TICKET_ISSUED, CANCELLED, EXPIRED" },
         "holdExpiresAt": { "type": "string", "description": "ISO timestamp for hold expiry" },
         "createdAt": { "type": "string", "description": "ISO timestamp when hold was created" }
       },
       "required": ["pnr", "passengerName", "passengerEmail", "origin", "destination", "status"]
-    },
-    "airports": {
-      "title": "Airports Directory",
-      "description": "Inventory of global airports and airfield hubs supported",
-      "properties": {
-        "code": { "type": "string", "description": "3-letter IATA airport code" },
-        "city": { "type": "string", "description": "City name" },
-        "country": { "type": "string", "description": "Country name" },
-        "name": { "type": "string", "description": "Official airport name" }
-      },
-      "required": ["code", "city", "country", "name"]
     },
     "destinations": {
       "title": "Worldwide Destinations",
@@ -52,6 +41,65 @@
         "tagline": { "type": "string", "description": "Branding slogan or marketing copy" }
       },
       "required": ["id", "name", "airport", "region"]
+    },
+    "flight_statuses": {
+      "title": "Flight Status Information",
+      "description": "Live flight tracking, route info, gates, terminals, and progress metrics",
+      "properties": {
+        "flightNumber": { "type": "string", "description": "Flight identifier e.g. BA178" },
+        "airline": { "type": "string", "description": "Operating airline name" },
+        "origin": { "type": "string", "description": "Origin IATA airport code" },
+        "destination": { "type": "string", "description": "Destination IATA airport code" },
+        "status": { "type": "string", "description": "Current status e.g. On Time, Boarding, En Route, Landed, Delayed" },
+        "departureTerminal": { "type": "string", "description": "Departure terminal" },
+        "departureGate": { "type": "string", "description": "Departure gate" },
+        "scheduledDeparture": { "type": "string", "description": "Departure time string" },
+        "estimatedArrival": { "type": "string", "description": "Arrival time string" },
+        "aircraft": { "type": "string", "description": "Aircraft model" },
+        "altitude": { "type": "string", "description": "Current flight altitude" },
+        "speed": { "type": "string", "description": "Current flight ground speed" },
+        "progressPercent": { "type": "number", "description": "Flight route completion percentage" }
+      },
+      "required": ["flightNumber", "airline", "origin", "destination", "status"]
+    },
+    "promos": {
+      "title": "Promotional Discount Codes",
+      "description": "Promo vouchers and percentage/fixed discounts managed by admin",
+      "properties": {
+        "code": { "type": "string", "description": "Promo voucher code e.g. ROYA30" },
+        "discountPercent": { "type": "number", "description": "Discount percentage e.g. 30" },
+        "description": { "type": "string", "description": "Promo description banner" },
+        "active": { "type": "boolean", "description": "Is promo active" },
+        "expiryDate": { "type": "string", "description": "Expiry date string" },
+        "usageCount": { "type": "number", "description": "Number of times applied" }
+      },
+      "required": ["code", "discountPercent", "active"]
+    },
+    "inquiries": {
+      "title": "Customer Contact Inquiries",
+      "description": "Direct customer support inquiries and messages",
+      "properties": {
+        "id": { "type": "string", "description": "Unique inquiry ID" },
+        "name": { "type": "string", "description": "Customer name" },
+        "email": { "type": "string", "description": "Customer email" },
+        "phone": { "type": "string", "description": "Customer phone" },
+        "subject": { "type": "string", "description": "Message subject" },
+        "message": { "type": "string", "description": "Inquiry body" },
+        "status": { "type": "string", "description": "Status: NEW, IN_PROGRESS, RESOLVED" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["name", "email", "message"]
+    },
+    "admins": {
+      "title": "Admin Users",
+      "description": "Authorized administrator profiles and access rights",
+      "properties": {
+        "email": { "type": "string", "description": "Admin email address" },
+        "role": { "type": "string", "description": "Role e.g. superadmin, manager" },
+        "displayName": { "type": "string", "description": "Admin display name" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["email", "role"]
     }
   },
   "firestore": {
@@ -59,13 +107,25 @@
       "schema": "bookings",
       "description": "Flight booking documents"
     },
-    "/airports/{airportCode}": {
-      "schema": "airports",
-      "description": "Global airport entries"
-    },
     "/destinations/{destinationId}": {
       "schema": "destinations",
       "description": "Worldwide flight destination profiles"
+    },
+    "/flight_statuses/{flightNumber}": {
+      "schema": "flight_statuses",
+      "description": "Live flight tracking and status records"
+    },
+    "/promos/{promoId}": {
+      "schema": "promos",
+      "description": "Promotional discount codes"
+    },
+    "/inquiries/{inquiryId}": {
+      "schema": "inquiries",
+      "description": "Customer support contact inquiries"
+    },
+    "/admins/{adminId}": {
+      "schema": "admins",
+      "description": "Authorized administrator accounts"
     }
   }
 }

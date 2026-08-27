@@ -17,10 +17,13 @@ import FAQSection from './components/FAQSection';
 import Footer from './components/Footer';
 import ToastNotification from './components/ToastNotification';
 import AnimatedSection from './components/AnimatedSection';
+import AdminPortalModal from './components/AdminPortalModal';
 import { POPULAR_AIRPORTS } from './data/destinations';
 import { generateClientSideFlights, generateClientSidePriceTrend } from './utils/pnrGenerator';
 import { CacheManager } from './utils/cacheManager';
 import { initializeUserCurrency, saveUserCurrencySelection } from './utils/currencyDetector';
+import { getSavedAdminSession } from './lib/adminService';
+import { ShieldCheck } from 'lucide-react';
 
 export default function App() {
   const [currency, setCurrency] = useState('USD');
@@ -31,7 +34,42 @@ export default function App() {
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [isRefundsOpen, setIsRefundsOpen] = useState(false);
+  const [isAdminPortalOpen, setIsAdminPortalOpen] = useState(false);
+  const [adminSession, setAdminSession] = useState(getSavedAdminSession());
   const [toasts, setToasts] = useState([]);
+
+  // Check URL params / hash for hidden admin portal access (?admin=true or #admin)
+  useEffect(() => {
+    const checkAdminTrigger = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const isParam = urlParams.get('admin') === 'true' || urlParams.get('portal') === 'admin';
+      const isHash = window.location.hash.toLowerCase().includes('admin');
+      if (isParam || isHash) {
+        setIsAdminPortalOpen(true);
+      }
+    };
+    checkAdminTrigger();
+    window.addEventListener('hashchange', checkAdminTrigger);
+    return () => window.removeEventListener('hashchange', checkAdminTrigger);
+  }, []);
+
+  // Global keyboard shortcut (Ctrl + Shift + A or Cmd + Shift + A) for hidden staff admin access
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        setIsAdminPortalOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Sync admin session periodically
+  useEffect(() => {
+    const session = getSavedAdminSession();
+    setAdminSession(session);
+  }, [isAdminPortalOpen]);
 
   const showToast = ({ type = 'success', title, message, pnr, duration = 5000 }) => {
     const id = Date.now() + Math.random().toString(36).substring(2, 6);
@@ -331,8 +369,52 @@ export default function App() {
         onOpenContact={() => setIsContactOpen(true)}
         onOpenTerms={() => setIsTermsOpen(true)}
         onOpenRefunds={() => setIsRefundsOpen(true)}
+        onOpenAdmin={() => setIsAdminPortalOpen(true)}
       />
 
+      {/* Floating Authenticated Admin Badge (Only visible when admin is actively logged in) */}
+      {adminSession && (
+        <div 
+          onClick={() => setIsAdminPortalOpen(true)}
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            left: '24px',
+            zIndex: 9990,
+            background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
+            border: '1px solid var(--border-gold)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.6), 0 0 15px rgba(229,193,88,0.2)',
+            padding: '8px 14px',
+            borderRadius: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            transition: 'transform 0.2s',
+            animation: 'fadeIn 0.3s ease-out'
+          }}
+          title="Open Executive Admin Dashboard"
+        >
+          <div style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#10B981',
+            boxShadow: '0 0 8px #10B981'
+          }} />
+          <ShieldCheck size={16} color="var(--color-gold-bright)" />
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#FFF' }}>
+            Admin Mode: <span style={{ color: 'var(--color-gold-bright)' }}>{adminSession.email}</span>
+          </span>
+        </div>
+      )}
+
+      {/* Executive Admin Management Portal (CRUD for Bookings, Destinations, Flights, Promos, Inquiries) */}
+      <AdminPortalModal
+        isOpen={isAdminPortalOpen}
+        onClose={() => setIsAdminPortalOpen(false)}
+        currency={currency}
+      />
 
       {/* Reserve Before Payment Itinerary Hold Modal */}
       {reserveModalData && (

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Phone, Mail, MapPin, ArrowUp, Facebook, Instagram, Twitter, MessageCircle, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Phone, Mail, MapPin, ArrowUp, Facebook, Instagram, Twitter, MessageCircle, RefreshCw, ShieldCheck, Lock } from 'lucide-react';
 
-export default function Footer({ onOpenChat, onOpenContact, onOpenTerms, onOpenRefunds }) {
+export default function Footer({ onOpenChat, onOpenContact, onOpenTerms, onOpenRefunds, onOpenAdmin }) {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -211,8 +211,34 @@ export default function Footer({ onOpenChat, onOpenContact, onOpenTerms, onOpenR
           fontSize: '0.82rem',
           color: '#64748B'
         }}>
-          <div>
-            © {new Date().getFullYear()} <strong>RoyaBridge Travels</strong>. All Rights Reserved. Discover the World, Save Big and Travel Better.
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>
+              © {new Date().getFullYear()} <strong>RoyaBridge Travels</strong>. All Rights Reserved. Discover the World, Save Big and Travel Better.
+            </span>
+            {/* Discreet staff access trigger */}
+            {onOpenAdmin && (
+              <button
+                onClick={onOpenAdmin}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#475569',
+                  cursor: 'pointer',
+                  padding: '2px 4px',
+                  borderRadius: '4px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  opacity: 0.35,
+                  transition: 'opacity 0.2s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.35')}
+                title="Staff Portal (Ctrl+Shift+A)"
+                aria-label="Staff Portal"
+              >
+                <Lock size={12} />
+              </button>
+            )}
           </div>
 
           <button 

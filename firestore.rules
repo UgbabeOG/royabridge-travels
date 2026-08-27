@@ -1,16 +1,52 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'ugbabechoco@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Admins Collection
+    match /admins/{adminId} {
+      allow read: if isSignedIn() && (request.auth.uid == adminId || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // Bookings Collection (CRUD for Admin, Create & Read/Hold for Users)
     match /bookings/{bookingId} {
       allow read, create, update: if true;
+      allow delete: if isAdmin();
     }
-    match /airports/{airportCode} {
-      allow read: if true;
-      allow write: if false;
-    }
+
+    // Destinations Catalog
     match /destinations/{destinationId} {
       allow read: if true;
-      allow write: if false;
+      allow write: if isAdmin();
+    }
+
+    // Flight Statuses
+    match /flight_statuses/{flightNumber} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Promo Codes
+    match /promos/{promoId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Inquiries / Support Messages
+    match /inquiries/{inquiryId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
     }
   }
 }
