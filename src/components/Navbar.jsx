@@ -239,7 +239,7 @@ export default function Navbar({ onOpenSearch, onOpenChat, onOpenTracker, onOpen
               >
                 {Object.entries(CURRENCY_RATES).map(([code, info]) => (
                   <option key={code} value={code} style={{ background: '#0F172A', color: '#FFF' }}>
-                    {info.flag ? `${info.flag} ` : ''}{info.code} ({info.symbol})
+                    {info.code} ({info.symbol})
                   </option>
                 ))}
               </select>
