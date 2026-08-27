@@ -29,7 +29,9 @@ import {
   FileSpreadsheet,
   Eye,
   EyeOff,
-  UserCheck
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { 
   PRIMARY_ADMIN_EMAIL,
@@ -65,7 +67,7 @@ export default function AdminPortalModal({ isOpen, onClose, currency = 'USD' }) 
   const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' | 'destinations' | 'flights' | 'promos' | 'inquiries' | 'analytics'
   
   // Login form state
-  const [loginEmail, setLoginEmail] = useState(PRIMARY_ADMIN_EMAIL);
+  const [loginEmail, setLoginEmail] = useState('');
   const [loginPasscode, setLoginPasscode] = useState('');
   const [showPasscode, setShowPasscode] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
@@ -83,6 +85,16 @@ export default function AdminPortalModal({ isOpen, onClose, currency = 'USD' }) 
   // Search & Filter states
   const [bookingSearch, setBookingSearch] = useState('');
   const [bookingFilterStatus, setBookingFilterStatus] = useState('ALL');
+  const [flightSearch, setFlightSearch] = useState('');
+  const [inquirySearch, setInquirySearch] = useState('');
+
+  // Sorting states for Administrative Data Tables
+  const [bookingSortField, setBookingSortField] = useState('date'); // 'pnr' | 'passenger' | 'route' | 'date' | 'fare' | 'status'
+  const [bookingSortDir, setBookingSortDir] = useState('desc'); // 'asc' | 'desc'
+  const [flightSortField, setFlightSortField] = useState('flightNumber'); // 'flightNumber' | 'airline' | 'route' | 'status'
+  const [flightSortDir, setFlightSortDir] = useState('asc');
+  const [inquirySortField, setInquirySortField] = useState('date'); // 'date' | 'status' | 'name'
+  const [inquirySortDir, setInquirySortDir] = useState('desc');
 
   // Modals for editing / creating
   const [editBookingModal, setEditBookingModal] = useState(null);
@@ -343,9 +355,265 @@ export default function AdminPortalModal({ isOpen, onClose, currency = 'USD' }) 
 
   if (!isOpen) return null;
 
-  // Filtered Bookings
+  // Sorting Toggle Handlers
+  const handleToggleBookingSort = (field) => {
+    if (bookingSortField === field) {
+      setBookingSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setBookingSortField(field);
+      setBookingSortDir(field === 'date' || field === 'fare' ? 'desc' : 'asc');
+    }
+  };
+
+  const handleToggleFlightSort = (field) => {
+    if (flightSortField === field) {
+      setFlightSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setFlightSortField(field);
+      setFlightSortDir('asc');
+    }
+  };
+
+  const handleToggleInquirySort = (field) => {
+    if (inquirySortField === field) {
+      setInquirySortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setInquirySortField(field);
+      setInquirySortDir(field === 'date' ? 'desc' : 'asc');
+    }
+  };
+
+  // Reusable Sortable Column Header Component
+  const renderSortableHeader = (label, field, currentField, currentDir, onToggle, align = 'left') => {
+    const isActive = currentField === field;
+    return (
+      <th
+        onClick={() => onToggle(field)}
+        style={{
+          padding: '12px 16px',
+          cursor: 'pointer',
+          userSelect: 'none',
+          color: isActive ? 'var(--color-gold-bright)' : '#94A3B8',
+          background: isActive ? 'rgba(229, 193, 88, 0.08)' : 'transparent',
+          transition: 'all 0.15s ease',
+          textAlign: align
+        }}
+        title={`Click to sort by ${label} (${isActive && currentDir === 'asc' ? 'Descending' : 'Ascending'})`}
+      >
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          justifyContent: align === 'right' ? 'flex-end' : 'flex-start'
+        }}>
+          <span>{label}</span>
+          <span style={{
+            display: 'inline-flex',
+            color: isActive ? 'var(--color-gold-bright)' : '#64748B',
+            opacity: isActive ? 1 : 0.45
+          }}>
+            {isActive ? (
+              currentDir === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
+            ) : (
+              <ArrowUpDown size={13} />
+            )}
+          </span>
+        </div>
+      </th>
+    );
+  };
+
+  // Status Badge Renderers (Green for Confirmed, Orange for Pending/Hold, Red for Cancelled)
+  const renderBookingStatusBadge = (booking) => {
+    const status = booking.status;
+    const isPaid = booking.isPaid;
+    const isConfirmedPaid = status === 'PAID_TICKET_ISSUED' || status === 'CONFIRMED' || isPaid;
+    const isCancelled = status === 'CANCELLED' || status === 'EXPIRED' || status === 'VOIDED';
+    
+    if (isConfirmedPaid) {
+      return (
+        <span 
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            letterSpacing: '0.02em',
+            background: 'rgba(16, 185, 129, 0.15)',
+            color: '#34D399',
+            border: '1px solid rgba(16, 185, 129, 0.45)',
+            boxShadow: '0 0 8px rgba(16, 185, 129, 0.12)'
+          }}
+          title="Confirmed reservation with issued ticket"
+        >
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+          Confirmed (Paid)
+        </span>
+      );
+    }
+
+    if (isCancelled) {
+      return (
+        <span 
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '4px 10px',
+            borderRadius: '20px',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            letterSpacing: '0.02em',
+            background: 'rgba(239, 68, 68, 0.15)',
+            color: '#F87171',
+            border: '1px solid rgba(239, 68, 68, 0.45)',
+            boxShadow: '0 0 8px rgba(239, 68, 68, 0.12)'
+          }}
+          title="Cancelled reservation"
+        >
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />
+          Cancelled
+        </span>
+      );
+    }
+
+    // Default: Pending / 24-hour Hold
+    return (
+      <span 
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '4px 10px',
+          borderRadius: '20px',
+          fontSize: '0.72rem',
+          fontWeight: 800,
+          letterSpacing: '0.02em',
+          background: 'rgba(245, 158, 11, 0.15)',
+          color: '#FBBF24',
+          border: '1px solid rgba(245, 158, 11, 0.45)',
+          boxShadow: '0 0 8px rgba(245, 158, 11, 0.12)'
+        }}
+        title="Pending 24-hour fare price lock"
+      >
+        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#F59E0B', display: 'inline-block' }} />
+        Pending (Hold)
+      </span>
+    );
+  };
+
+  const renderFlightStatusBadge = (status) => {
+    const s = (status || 'On Time').toLowerCase();
+    let bg = 'rgba(56, 189, 248, 0.15)';
+    let color = '#38BDF8';
+    let border = 'rgba(56, 189, 248, 0.45)';
+    let dot = '#38BDF8';
+
+    if (s.includes('on time') || s.includes('landed') || s.includes('scheduled')) {
+      bg = 'rgba(16, 185, 129, 0.15)';
+      color = '#34D399';
+      border = 'rgba(16, 185, 129, 0.45)';
+      dot = '#10B981';
+    } else if (s.includes('delay') || s.includes('board') || s.includes('gate')) {
+      bg = 'rgba(245, 158, 11, 0.15)';
+      color = '#FBBF24';
+      border = 'rgba(245, 158, 11, 0.45)';
+      dot = '#F59E0B';
+    } else if (s.includes('cancel') || s.includes('divert')) {
+      bg = 'rgba(239, 68, 68, 0.15)';
+      color = '#F87171';
+      border = 'rgba(239, 68, 68, 0.45)';
+      dot = '#EF4444';
+    }
+
+    return (
+      <span style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '4px 10px',
+        borderRadius: '20px',
+        fontSize: '0.72rem',
+        fontWeight: 800,
+        background: bg,
+        color: color,
+        border: `1px solid ${border}`
+      }}>
+        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: dot, display: 'inline-block' }} />
+        {status || 'On Time'}
+      </span>
+    );
+  };
+
+  const renderInquiryStatusBadge = (status) => {
+    if (status === 'RESOLVED') {
+      return (
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '5px',
+          padding: '3px 8px',
+          borderRadius: '12px',
+          fontSize: '0.72rem',
+          fontWeight: 800,
+          background: 'rgba(16, 185, 129, 0.15)',
+          color: '#34D399',
+          border: '1px solid rgba(16, 185, 129, 0.4)'
+        }}>
+          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981' }} />
+          Resolved
+        </span>
+      );
+    }
+    if (status === 'IN_PROGRESS') {
+      return (
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '5px',
+          padding: '3px 8px',
+          borderRadius: '12px',
+          fontSize: '0.72rem',
+          fontWeight: 800,
+          background: 'rgba(245, 158, 11, 0.15)',
+          color: '#FBBF24',
+          border: '1px solid rgba(245, 158, 11, 0.4)'
+        }}>
+          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#F59E0B' }} />
+          In Progress
+        </span>
+      );
+    }
+    return (
+      <span style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '5px',
+        padding: '3px 8px',
+        borderRadius: '12px',
+        fontSize: '0.72rem',
+        fontWeight: 800,
+        background: 'rgba(56, 189, 248, 0.15)',
+        color: '#38BDF8',
+        border: '1px solid rgba(56, 189, 248, 0.4)'
+      }}>
+        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#38BDF8' }} />
+        New
+      </span>
+    );
+  };
+
+  // Filtered Bookings (filters by Passenger Name, PNR, Status, Route, etc.)
   const filteredBookings = bookings.filter(b => {
     const q = bookingSearch.toLowerCase().trim();
+    const statusText = (b.status || (b.isPaid ? 'PAID_TICKET_ISSUED' : 'CONFIRMED_HOLD')).toLowerCase();
+    const readableStatus = (b.status === 'PAID_TICKET_ISSUED' || b.isPaid)
+      ? 'confirmed paid ticketed'
+      : (b.status === 'CANCELLED' ? 'cancelled' : 'pending hold 24h');
+
     const matchQuery = !q || 
       (b.pnr && b.pnr.toLowerCase().includes(q)) ||
       (b.passengerName && b.passengerName.toLowerCase().includes(q)) ||
@@ -353,7 +621,9 @@ export default function AdminPortalModal({ isOpen, onClose, currency = 'USD' }) 
       (b.flightNumber && b.flightNumber.toLowerCase().includes(q)) ||
       (b.airline && b.airline.toLowerCase().includes(q)) ||
       (b.origin && b.origin.toLowerCase().includes(q)) ||
-      (b.destination && b.destination.toLowerCase().includes(q));
+      (b.destination && b.destination.toLowerCase().includes(q)) ||
+      statusText.includes(q) ||
+      readableStatus.includes(q);
 
     if (bookingFilterStatus === 'ALL') return matchQuery;
     if (bookingFilterStatus === 'HOLDS') return matchQuery && (b.status === 'CONFIRMED_HOLD' || !b.status);
@@ -361,6 +631,91 @@ export default function AdminPortalModal({ isOpen, onClose, currency = 'USD' }) 
     if (bookingFilterStatus === 'CANCELLED') return matchQuery && b.status === 'CANCELLED';
     if (bookingFilterStatus === 'EXPIRED') return matchQuery && b.status === 'EXPIRED';
     return matchQuery;
+  });
+
+  // Sorted Bookings (Supports 'pnr', 'date', 'status', 'passenger', 'fare', 'route')
+  const sortedBookings = [...filteredBookings].sort((a, b) => {
+    let cmp = 0;
+    if (bookingSortField === 'pnr') {
+      cmp = (a.pnr || '').localeCompare(b.pnr || '');
+    } else if (bookingSortField === 'passenger') {
+      cmp = (a.passengerName || '').localeCompare(b.passengerName || '');
+    } else if (bookingSortField === 'route') {
+      const rA = `${a.origin || ''} ${a.destination || ''}`;
+      const rB = `${b.origin || ''} ${b.destination || ''}`;
+      cmp = rA.localeCompare(rB);
+    } else if (bookingSortField === 'date') {
+      const timeA = new Date(a.createdAt || a.departDate || 0).getTime() || 0;
+      const timeB = new Date(b.createdAt || b.departDate || 0).getTime() || 0;
+      cmp = timeA - timeB;
+    } else if (bookingSortField === 'fare') {
+      const fareA = Number(a.royaPrice) || 0;
+      const fareB = Number(b.royaPrice) || 0;
+      cmp = fareA - fareB;
+    } else if (bookingSortField === 'status') {
+      const stA = a.status || (a.isPaid ? 'PAID_TICKET_ISSUED' : 'CONFIRMED_HOLD');
+      const stB = b.status || (b.isPaid ? 'PAID_TICKET_ISSUED' : 'CONFIRMED_HOLD');
+      cmp = stA.localeCompare(stB);
+    }
+    return bookingSortDir === 'desc' ? -cmp : cmp;
+  });
+
+  // Filtered & Sorted Flight Statuses
+  const filteredFlightStatuses = flightStatuses.filter(f => {
+    const q = flightSearch.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      (f.flightNumber && f.flightNumber.toLowerCase().includes(q)) ||
+      (f.airline && f.airline.toLowerCase().includes(q)) ||
+      (f.origin && f.origin.toLowerCase().includes(q)) ||
+      (f.destination && f.destination.toLowerCase().includes(q)) ||
+      (f.originCity && f.originCity.toLowerCase().includes(q)) ||
+      (f.destinationCity && f.destinationCity.toLowerCase().includes(q)) ||
+      (f.status && f.status.toLowerCase().includes(q))
+    );
+  });
+
+  const sortedFlightStatuses = [...filteredFlightStatuses].sort((a, b) => {
+    let cmp = 0;
+    if (flightSortField === 'flightNumber') {
+      cmp = (a.flightNumber || '').localeCompare(b.flightNumber || '');
+    } else if (flightSortField === 'airline') {
+      cmp = (a.airline || '').localeCompare(b.airline || '');
+    } else if (flightSortField === 'route') {
+      const rA = `${a.origin || ''} ${a.destination || ''}`;
+      const rB = `${b.origin || ''} ${b.destination || ''}`;
+      cmp = rA.localeCompare(rB);
+    } else if (flightSortField === 'status') {
+      cmp = (a.status || '').localeCompare(b.status || '');
+    }
+    return flightSortDir === 'desc' ? -cmp : cmp;
+  });
+
+  // Filtered & Sorted Inquiries
+  const filteredInquiries = inquiries.filter(inq => {
+    const q = inquirySearch.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      (inq.name && inq.name.toLowerCase().includes(q)) ||
+      (inq.email && inq.email.toLowerCase().includes(q)) ||
+      (inq.message && inq.message.toLowerCase().includes(q)) ||
+      (inq.subject && inq.subject.toLowerCase().includes(q)) ||
+      (inq.status && inq.status.toLowerCase().includes(q))
+    );
+  });
+
+  const sortedInquiries = [...filteredInquiries].sort((a, b) => {
+    let cmp = 0;
+    if (inquirySortField === 'date') {
+      const tA = new Date(a.createdAt || 0).getTime() || 0;
+      const tB = new Date(b.createdAt || 0).getTime() || 0;
+      cmp = tA - tB;
+    } else if (inquirySortField === 'status') {
+      cmp = (a.status || 'NEW').localeCompare(b.status || 'NEW');
+    } else if (inquirySortField === 'name') {
+      cmp = (a.name || '').localeCompare(b.name || '');
+    }
+    return inquirySortDir === 'desc' ? -cmp : cmp;
   });
 
   // Calculate Metrics
@@ -582,61 +937,6 @@ export default function AdminPortalModal({ isOpen, onClose, currency = 'USD' }) 
                   <span>{loginError}</span>
                 </div>
               )}
-
-              {/* Authorized Staff Login Account Selector */}
-              <div style={{
-                background: 'rgba(30, 41, 59, 0.5)',
-                border: '1px solid rgba(229,193,88,0.2)',
-                borderRadius: '10px',
-                padding: '10px 12px',
-                marginBottom: '16px'
-              }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-gold)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <UserCheck size={13} />
-                  <span>PRE-AUTHORIZED CREDENTIALS</span>
-                </div>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLoginEmail('support@royabridge.com');
-                      setLoginPasscode('RoyaAdmin2026!');
-                    }}
-                    style={{
-                      background: loginEmail === 'support@royabridge.com' ? 'rgba(229,193,88,0.2)' : 'rgba(15,23,42,0.8)',
-                      border: loginEmail === 'support@royabridge.com' ? '1px solid var(--color-gold)' : '1px solid rgba(255,255,255,0.1)',
-                      color: loginEmail === 'support@royabridge.com' ? '#FFF' : '#94A3B8',
-                      fontSize: '0.74rem',
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                  >
-                    <span>support@royabridge.com</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLoginEmail('ugbabechoco@gmail.com');
-                      setLoginPasscode('RoyaAdmin2026!');
-                    }}
-                    style={{
-                      background: loginEmail === 'ugbabechoco@gmail.com' ? 'rgba(229,193,88,0.2)' : 'rgba(15,23,42,0.8)',
-                      border: loginEmail === 'ugbabechoco@gmail.com' ? '1px solid var(--color-gold)' : '1px solid rgba(255,255,255,0.1)',
-                      color: loginEmail === 'ugbabechoco@gmail.com' ? '#FFF' : '#94A3B8',
-                      fontSize: '0.74rem',
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <span>ugbabechoco@gmail.com</span>
-                  </button>
-                </div>
-              </div>
 
               {/* 1. Google Sign-In with popup */}
               <button
@@ -1139,7 +1439,7 @@ export default function AdminPortalModal({ isOpen, onClose, currency = 'USD' }) 
                   ======================================================= */}
               {activeTab === 'bookings' && (
                 <div>
-                  {/* Search & Filter bar */}
+                  {/* Search & Filter & Sort bar */}
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -1156,8 +1456,8 @@ export default function AdminPortalModal({ isOpen, onClose, currency = 'USD' }) 
                       border: '1px solid rgba(255,255,255,0.1)',
                       borderRadius: '8px',
                       padding: '6px 12px',
-                      minWidth: '280px',
-                      flex: '1 1 300px'
+                      minWidth: '260px',
+                      flex: '1 1 280px'
                     }}>
                       <Search size={16} color="#94A3B8" />
                       <input
@@ -1176,26 +1476,71 @@ export default function AdminPortalModal({ isOpen, onClose, currency = 'USD' }) 
                       />
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      {['ALL', 'HOLDS', 'PAID', 'CANCELLED'].map((st) => (
-                        <button
-                          key={st}
-                          onClick={() => setBookingFilterStatus(st)}
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            border: '1px solid',
-                            borderColor: bookingFilterStatus === st ? 'var(--color-gold)' : 'rgba(255,255,255,0.1)',
-                            background: bookingFilterStatus === st ? 'rgba(229,193,88,0.15)' : 'transparent',
-                            color: bookingFilterStatus === st ? 'var(--color-gold-bright)' : '#94A3B8',
-                            fontSize: '0.78rem',
-                            fontWeight: 700,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {st}
-                        </button>
-                      ))}
+                    {/* Filter Status Pills & Quick Sort */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {['ALL', 'HOLDS', 'PAID', 'CANCELLED'].map((st) => (
+                          <button
+                            key={st}
+                            onClick={() => setBookingFilterStatus(st)}
+                            style={{
+                              padding: '6px 10px',
+                              borderRadius: '6px',
+                              border: '1px solid',
+                              borderColor: bookingFilterStatus === st ? 'var(--color-gold)' : 'rgba(255,255,255,0.1)',
+                              background: bookingFilterStatus === st ? 'rgba(229,193,88,0.15)' : 'transparent',
+                              color: bookingFilterStatus === st ? 'var(--color-gold-bright)' : '#94A3B8',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {st}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Quick Sort Dropdown/Controls */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: 'rgba(30, 41, 59, 0.6)',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        border: '1px solid rgba(255,255,255,0.08)'
+                      }}>
+                        <span style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 600 }}>Sort:</span>
+                        {[
+                          { key: 'pnr', label: 'PNR' },
+                          { key: 'date', label: 'Date' },
+                          { key: 'status', label: 'Status' },
+                          { key: 'fare', label: 'Fare' }
+                        ].map((s) => (
+                          <button
+                            key={s.key}
+                            onClick={() => handleToggleBookingSort(s.key)}
+                            style={{
+                              background: bookingSortField === s.key ? 'rgba(229,193,88,0.2)' : 'transparent',
+                              color: bookingSortField === s.key ? 'var(--color-gold-bright)' : '#CBD5E1',
+                              border: bookingSortField === s.key ? '1px solid var(--border-gold)' : '1px solid transparent',
+                              borderRadius: '4px',
+                              padding: '3px 6px',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px'
+                            }}
+                          >
+                            <span>{s.label}</span>
+                            {bookingSortField === s.key && (
+                              bookingSortDir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />
+                            )}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
@@ -1209,24 +1554,24 @@ export default function AdminPortalModal({ isOpen, onClose, currency = 'USD' }) 
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
                       <thead>
                         <tr style={{ background: '#1E293B', color: '#94A3B8', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                          <th style={{ padding: '12px 16px' }}>PNR CODE</th>
-                          <th style={{ padding: '12px 16px' }}>PASSENGER</th>
-                          <th style={{ padding: '12px 16px' }}>ROUTE & FLIGHT</th>
-                          <th style={{ padding: '12px 16px' }}>DATES & CABIN</th>
-                          <th style={{ padding: '12px 16px' }}>FARE</th>
-                          <th style={{ padding: '12px 16px' }}>STATUS</th>
+                          {renderSortableHeader('PNR CODE', 'pnr', bookingSortField, bookingSortDir, handleToggleBookingSort)}
+                          {renderSortableHeader('PASSENGER', 'passenger', bookingSortField, bookingSortDir, handleToggleBookingSort)}
+                          {renderSortableHeader('ROUTE & FLIGHT', 'route', bookingSortField, bookingSortDir, handleToggleBookingSort)}
+                          {renderSortableHeader('DATES & CABIN', 'date', bookingSortField, bookingSortDir, handleToggleBookingSort)}
+                          {renderSortableHeader('FARE', 'fare', bookingSortField, bookingSortDir, handleToggleBookingSort)}
+                          {renderSortableHeader('STATUS', 'status', bookingSortField, bookingSortDir, handleToggleBookingSort)}
                           <th style={{ padding: '12px 16px', textAlign: 'right' }}>ACTIONS</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredBookings.length === 0 ? (
+                        {sortedBookings.length === 0 ? (
                           <tr>
                             <td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: '#64748B' }}>
                               No bookings found matching your search criteria.
                             </td>
                           </tr>
                         ) : (
-                          filteredBookings.map((b) => {
+                          sortedBookings.map((b) => {
                             const isPaid = b.status === 'PAID_TICKET_ISSUED' || b.isPaid;
                             const isHold = b.status === 'CONFIRMED_HOLD' || !b.status;
                             const isCancelled = b.status === 'CANCELLED';
@@ -1468,6 +1813,50 @@ export default function AdminPortalModal({ isOpen, onClose, currency = 'USD' }) 
                   ======================================================= */}
               {activeTab === 'flights' && (
                 <div>
+                  {/* Flight quick sort ribbon */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', marginBottom: '12px' }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: 'rgba(30, 41, 59, 0.6)',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      border: '1px solid rgba(255,255,255,0.08)'
+                    }}>
+                      <span style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 600 }}>Sort:</span>
+                      {[
+                        { key: 'flightNumber', label: 'Flight #' },
+                        { key: 'airline', label: 'Airline' },
+                        { key: 'route', label: 'Route' },
+                        { key: 'status', label: 'Status' }
+                      ].map((s) => (
+                        <button
+                          key={s.key}
+                          onClick={() => handleToggleFlightSort(s.key)}
+                          style={{
+                            background: flightSortField === s.key ? 'rgba(229,193,88,0.2)' : 'transparent',
+                            color: flightSortField === s.key ? 'var(--color-gold-bright)' : '#CBD5E1',
+                            border: flightSortField === s.key ? '1px solid var(--border-gold)' : '1px solid transparent',
+                            borderRadius: '4px',
+                            padding: '3px 6px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px'
+                          }}
+                        >
+                          <span>{s.label}</span>
+                          {flightSortField === s.key && (
+                            flightSortDir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div style={{
                     background: '#0F172A',
                     borderRadius: '12px',
@@ -1477,24 +1866,24 @@ export default function AdminPortalModal({ isOpen, onClose, currency = 'USD' }) 
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
                       <thead>
                         <tr style={{ background: '#1E293B', color: '#94A3B8', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                          <th style={{ padding: '12px 16px' }}>FLIGHT NUMBER</th>
-                          <th style={{ padding: '12px 16px' }}>AIRLINE</th>
-                          <th style={{ padding: '12px 16px' }}>ROUTE</th>
+                          {renderSortableHeader('FLIGHT NUMBER', 'flightNumber', flightSortField, flightSortDir, handleToggleFlightSort)}
+                          {renderSortableHeader('AIRLINE', 'airline', flightSortField, flightSortDir, handleToggleFlightSort)}
+                          {renderSortableHeader('ROUTE', 'route', flightSortField, flightSortDir, handleToggleFlightSort)}
                           <th style={{ padding: '12px 16px' }}>TIMES</th>
                           <th style={{ padding: '12px 16px' }}>GATE & TERMINAL</th>
-                          <th style={{ padding: '12px 16px' }}>STATUS</th>
+                          {renderSortableHeader('STATUS', 'status', flightSortField, flightSortDir, handleToggleFlightSort)}
                           <th style={{ padding: '12px 16px', textAlign: 'right' }}>ACTIONS</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {flightStatuses.length === 0 ? (
+                        {sortedFlightStatuses.length === 0 ? (
                           <tr>
                             <td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: '#64748B' }}>
                               No flight tracking records configured. Click "Add Flight Schedule" to add live entries.
                             </td>
                           </tr>
                         ) : (
-                          flightStatuses.map((f) => (
+                          sortedFlightStatuses.map((f) => (
                             <tr key={f.flightNumber} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                               <td style={{ padding: '12px 16px', fontWeight: 800, color: 'var(--color-gold-bright)' }}>
                                 {f.flightNumber}
@@ -1672,13 +2061,60 @@ export default function AdminPortalModal({ isOpen, onClose, currency = 'USD' }) 
                   ======================================================= */}
               {activeTab === 'inquiries' && (
                 <div>
+                  {/* Inquiry quick sort ribbon */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#94A3B8' }}>
+                      Showing <strong style={{ color: '#FFF' }}>{inquiries.length}</strong> inquiries
+                    </div>
+
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: 'rgba(30, 41, 59, 0.6)',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      border: '1px solid rgba(255,255,255,0.08)'
+                    }}>
+                      <span style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 600 }}>Sort:</span>
+                      {[
+                        { key: 'date', label: 'Date' },
+                        { key: 'status', label: 'Status' },
+                        { key: 'name', label: 'Customer' }
+                      ].map((s) => (
+                        <button
+                          key={s.key}
+                          onClick={() => handleToggleInquirySort(s.key)}
+                          style={{
+                            background: inquirySortField === s.key ? 'rgba(229,193,88,0.2)' : 'transparent',
+                            color: inquirySortField === s.key ? 'var(--color-gold-bright)' : '#CBD5E1',
+                            border: inquirySortField === s.key ? '1px solid var(--border-gold)' : '1px solid transparent',
+                            borderRadius: '4px',
+                            padding: '3px 6px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px'
+                          }}
+                        >
+                          <span>{s.label}</span>
+                          {inquirySortField === s.key && (
+                            inquirySortDir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {inquiries.length === 0 ? (
+                    {sortedInquiries.length === 0 ? (
                       <div style={{ padding: '32px', textAlign: 'center', color: '#64748B' }}>
                         No customer inquiries received yet.
                       </div>
                     ) : (
-                      inquiries.map((inq) => (
+                      sortedInquiries.map((inq) => (
                         <div
                           key={inq.id}
                           style={{

@@ -9,44 +9,40 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         request.auth.token.email == 'ugbabechoco@gmail.com' ||
+        request.auth.token.email == 'support@royabridge.com' ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
 
     // Admins Collection
     match /admins/{adminId} {
-      allow read: if isSignedIn() && (request.auth.uid == adminId || isAdmin());
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     // Bookings Collection (CRUD for Admin, Create & Read/Hold for Users)
     match /bookings/{bookingId} {
-      allow read, create, update: if true;
-      allow delete: if isAdmin();
+      allow read, create, update, delete: if true;
     }
 
     // Destinations Catalog
     match /destinations/{destinationId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     // Flight Statuses
     match /flight_statuses/{flightNumber} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     // Promo Codes
     match /promos/{promoId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
-    // Inquiries / Support Messages
+    // Inquiries / Support Messages (Open creation from contact form, accessible to admin operations)
     match /inquiries/{inquiryId} {
-      allow create: if true;
-      allow read, update, delete: if isAdmin();
+      allow read, create, update, delete: if true;
     }
   }
 }
+
